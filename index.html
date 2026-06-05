@@ -164,6 +164,10 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
 .upload-label{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:10px;font-family:'Heebo',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
 .upload-label:hover{background:var(--primary-light)}
 .upload-label input{display:none}
+.fin-progress-card{margin:24px 0}
+.fin-charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:24px}
+.fin-charts-grid .card canvas{width:100%!important;max-height:300px}
+.fin-pct-big{font-size:32px;font-weight:800;color:var(--primary);text-align:center;margin:12px 0 16px}
 @media(max-width:768px){:root{--sidebar:200px}.main-content{padding:16px}}
 @media(max-width:560px){.sidebar{display:none}.main-content{margin-right:0}}
 </style>
@@ -219,6 +223,8 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
     <main class="main-content" id="main-content"></main>
   </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <!-- Modal: Project -->
 <div class="modal-overlay" id="modal-project">
@@ -316,6 +322,7 @@ function getData(){
       id:'proj1',name:'בית פרטי - רמת השרון',address:'רחוב הורדים, רמת השרון',houseNumber:'12',
       desc:'בניית בית פרטי דו-קומתי, 280 מ"ר',start:'2025-01-01',end:'2025-12-01',
       budget:2500000,status:'active',progress:35,
+      budgetPlan:{שלד:900000,טיח:350000,חשמל:400000,אינסטלציה:350000,ריצוף:300000,גמר:450000,אחר:250000},
       phases:[
         {id:'ph1',name:'שלד',status:'done',start:'2025-01-01',end:'2025-03-01',progress:100,notes:'הושלם בהצלחה'},
         {id:'ph2',name:'טיח וגבס',status:'active',start:'2025-03-15',end:'2025-05-30',progress:60,notes:'בתהליך'},
@@ -503,6 +510,7 @@ function renderProjectDetail(el){
     '<button class="tab '+(currentTab==='overview'?'active':'')+'" onclick="switchTab(\'overview\')">📊 סקירה</button>'+
     '<button class="tab '+(currentTab==='timeline'?'active':'')+'" onclick="switchTab(\'timeline\')">📅 לוח זמנים</button>'+
     '<button class="tab '+(currentTab==='budget'?'active':'')+'" onclick="switchTab(\'budget\')">💰 תקציב</button>'+
+    '<button class="tab '+(currentTab==='financial'?'active':'')+'" onclick="switchTab(\'financial\')">📈 דוח פיננסי</button>'+
     '<button class="tab '+(currentTab==='docs'?'active':'')+'" onclick="switchTab(\'docs\')">📁 מסמכים</button>'+
     '<button class="tab '+(currentTab==='gallery'?'active':'')+'" onclick="switchTab(\'gallery\')">📷 גלריה</button>'+
     '<button class="tab '+(currentTab==='updates'?'active':'')+'" onclick="switchTab(\'updates\')">🔔 עדכונים</button>'+
@@ -578,6 +586,27 @@ function renderProjectDetail(el){
     }).join('')+'</tbody></table>')+
     '</div></div>';
 
+  // FINANCIAL REPORT TAB
+  var budgetPct=p.budget?Math.min(100,Math.round(paid/p.budget*100)):0;
+  var budgetBarColor=budgetPct>=100?'var(--danger)':budgetPct>=80?'var(--warning)':'var(--success)';
+  html+='<div id="tab-financial" class="tab-content '+(currentTab==='financial'?'active':'')+'">'+
+    '<div class="section-title mb-16">📈 דוח פיננסי</div>'+
+    '<div class="budget-summary">'+
+    '<div class="budget-item"><div class="label">תקציב כולל</div><div class="amount total">'+fmtMoney(p.budget)+'</div></div>'+
+    '<div class="budget-item"><div class="label">שולם עד כה</div><div class="amount paid">'+fmtMoney(paid)+'</div></div>'+
+    '<div class="budget-item"><div class="label">יתרה</div><div class="amount remaining">'+fmtMoney(remaining)+'</div></div>'+
+    '</div>'+
+    '<div class="card fin-progress-card">'+
+    '<div class="card-title">📊 ניצול תקציב</div>'+
+    '<div class="fin-pct-big">'+budgetPct+'%</div>'+
+    '<div class="progress-bar-wrap" style="height:14px"><div class="progress-bar" style="width:'+budgetPct+'%;background:'+budgetBarColor+'"></div></div>'+
+    '<div class="progress-label" style="margin-top:10px"><span>₪0</span><span>'+fmtMoney(p.budget)+'</span></div>'+
+    '</div>'+
+    '<div class="fin-charts-grid">'+
+    '<div class="card"><div class="card-title">🥧 פילוח הוצאות לפי קטגוריה</div><canvas id="fin-pie-chart"></canvas></div>'+
+    '<div class="card"><div class="card-title">📊 תקציב מתוכנן מול ביצוע בפועל</div><canvas id="fin-bar-chart"></canvas></div>'+
+    '</div></div>';
+
   // DOCS TAB
   html+='<div id="tab-docs" class="tab-content '+(currentTab==='docs'?'active':'')+'">'+
     '<div class="section-title" style="margin-bottom:16px">📁 מסמכים ותוכניות</div>'+
@@ -650,7 +679,91 @@ function renderProjectDetail(el){
     '<button class="btn btn-primary btn-sm" onclick="sendMessage()">שלח</button></div></div></div>';
 
   el.innerHTML=html;
-  setTimeout(function(){var ml=document.getElementById('messages-list');if(ml)ml.scrollTop=ml.scrollHeight;},50);
+  setTimeout(function(){
+    var ml=document.getElementById('messages-list');if(ml)ml.scrollTop=ml.scrollHeight;
+    if(currentTab==='financial')renderFinancialCharts(p);
+  },50);
+}
+
+var FIN_CATEGORIES=['שלד','טיח','חשמל','אינסטלציה','ריצוף','גמר','אחר'];
+var FIN_CHART_COLORS=['#1a3c5e','#2563a8','#e8a020','#22c55e','#f59e0b','#ef4444','#6b7a8d'];
+var finCharts={pie:null,bar:null};
+
+function getCategoryFinancials(p){
+  var actual={};
+  FIN_CATEGORIES.forEach(function(c){actual[c]=0;});
+  p.payments.forEach(function(pay){
+    var cat=pay.category||'אחר';
+    if(actual[cat]===undefined)actual[cat]=0;
+    actual[cat]+=Number(pay.amount||0);
+  });
+  var planned=p.budgetPlan||{};
+  var hasPlan=Object.keys(planned).length>0;
+  if(!hasPlan){
+    var perCat=Math.round(Number(p.budget||0)/FIN_CATEGORIES.length);
+    FIN_CATEGORIES.forEach(function(c){planned[c]=perCat;});
+  }
+  return FIN_CATEGORIES.map(function(c){
+    return {category:c,planned:Number(planned[c]||0),actual:actual[c]||0};
+  });
+}
+
+function destroyFinancialCharts(){
+  if(finCharts.pie){finCharts.pie.destroy();finCharts.pie=null;}
+  if(finCharts.bar){finCharts.bar.destroy();finCharts.bar=null;}
+}
+
+function renderFinancialCharts(p){
+  if(typeof Chart==='undefined')return;
+  destroyFinancialCharts();
+  var data=getCategoryFinancials(p);
+  var pieEl=document.getElementById('fin-pie-chart');
+  var barEl=document.getElementById('fin-bar-chart');
+  if(!pieEl||!barEl)return;
+  var pieData=data.filter(function(d){return d.actual>0;});
+  if(pieData.length>0){
+    finCharts.pie=new Chart(pieEl,{
+      type:'pie',
+      data:{
+        labels:pieData.map(function(d){return d.category;}),
+        datasets:[{data:pieData.map(function(d){return d.actual;}),backgroundColor:FIN_CHART_COLORS}]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:true,
+        plugins:{
+          legend:{position:'bottom',labels:{font:{family:'Heebo'}}},
+          tooltip:{callbacks:{label:function(ctx){
+            var total=ctx.dataset.data.reduce(function(s,v){return s+v;},0);
+            var pct=total?Math.round(ctx.raw/total*100):0;
+            return ctx.label+': '+fmtMoney(ctx.raw)+' ('+pct+'%)';
+          }}}
+        }
+      }
+    });
+  }
+  var barData=data.filter(function(d){return d.planned>0||d.actual>0;});
+  if(barData.length===0)barData=data;
+  finCharts.bar=new Chart(barEl,{
+    type:'bar',
+    data:{
+      labels:barData.map(function(d){return d.category;}),
+      datasets:[
+        {label:'תקציב מתוכנן',data:barData.map(function(d){return d.planned;}),backgroundColor:'#2563a8',borderRadius:6},
+        {label:'ביצוע בפועל',data:barData.map(function(d){return d.actual;}),backgroundColor:'#e8a020',borderRadius:6}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:true,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{family:'Heebo'}}},
+        tooltip:{callbacks:{label:function(ctx){return ctx.dataset.label+': '+fmtMoney(ctx.raw);}}}
+      },
+      scales:{
+        y:{ticks:{callback:function(v){return '₪'+(v/1000)+'K';}},grid:{color:'#dde3ea'}},
+        x:{grid:{display:false},ticks:{font:{family:'Heebo'}}}
+      }
+    }
+  });
 }
 
 function switchTab(t){
@@ -776,7 +889,11 @@ function saveProject(){
   var proj={name:document.getElementById('proj-name').value,address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,budget:document.getElementById('proj-budget').value,status:document.getElementById('proj-status').value};
   if(!proj.name)return alert('יש להזין שם פרויקט');
   if(editingProjectId){var idx=data.projects.findIndex(function(p){return p.id===editingProjectId;});data.projects[idx]=Object.assign({},data.projects[idx],proj);}
-  else{data.projects.push(Object.assign({},proj,{id:'proj'+Date.now(),progress:0,phases:[],payments:[],documents:[],photos:[],updates:[],messages:[]}));}
+  else{
+    var perCat=proj.budget?Math.round(Number(proj.budget)/FIN_CATEGORIES.length):0;
+    var budgetPlan={};FIN_CATEGORIES.forEach(function(c){budgetPlan[c]=perCat;});
+    data.projects.push(Object.assign({},proj,{id:'proj'+Date.now(),progress:0,budgetPlan:budgetPlan,phases:[],payments:[],documents:[],photos:[],updates:[],messages:[]}));
+  }
   saveData(data);closeModal('modal-project');showView(currentView);
 }
 
