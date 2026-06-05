@@ -387,7 +387,6 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 const ADMIN_EMAIL='atlassahar14@gmail.com';
 
 const supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-const supabaseHelper=createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:false,storageKey:'aronstein-helper'}});
 
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
 var appDataCache={projects:[]},appUsers=[],authBootstrapped=false;
@@ -1090,8 +1089,8 @@ async function saveUser(){
   var projectId=document.getElementById('new-user-project').value;
   if(!name||!email||!pass)return alert('יש למלא את כל השדות');
   if(appUsers.find(function(u){return u.email===email;}))return alert('אימייל כבר קיים במערכת');
-  var res=await supabaseHelper.auth.signUp({email:email,password:pass,options:{data:{name:name,role:'client'}}});
-  await supabaseHelper.auth.signOut();
+  var res=await supabase.auth.signUp({email:email,password:pass,options:{data:{name:name,role:'client'}}});
+  await supabase.auth.signOut();
   if(res.error){alert(supabaseErrorToHebrew(res.error.message));return;}
   await supabase.from('profiles').upsert({id:res.data.user.id,email:email,name:name,role:'client',project_id:projectId});
   await refreshAppUsers();
