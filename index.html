@@ -489,12 +489,16 @@ function renderProjectDetail(el){
     (isAdmin?'<button class="btn btn-primary btn-sm" onclick="openAddPaymentModal()">➕ תשלום חדש</button>':'')+
     '</div>'+
     (p.payments.length===0?'<div class="empty-state"><div class="empty-icon">💰</div><p>אין תשלומים עדיין</p></div>':
-    '<table class="payments-table"><thead><tr><th>תיאור</th><th>נמען</th><th>קטגוריה</th><th>תאריך</th><th>סכום</th></tr></thead><tbody>'+
+    '<table class="payments-table"><thead><tr><th>תיאור</th><th>נמען</th><th>קטגוריה</th><th>תאריך</th><th>סכום</th><th></th></tr></thead><tbody>'+
     p.payments.map(function(pay){
       return '<tr><td style="font-weight:600">'+pay.desc+'</td><td style="color:var(--text-muted)">'+pay.to+'</td>'+
         '<td><span class="badge badge-blue">'+pay.category+'</span></td>'+
         '<td style="color:var(--text-muted)">'+pay.date+'</td>'+
-        '<td style="font-weight:700;color:var(--primary)">'+fmtMoney(pay.amount)+'</td></tr>';
+        '<td style="font-weight:700;color:var(--primary)">'+fmtMoney(pay.amount)+'</td>'+
+        '<td><div style="display:flex;gap:6px">'+
+        (isAdmin?'<button class="btn btn-outline btn-sm" onclick="openEditPaymentModal(\''+pay.id+'\')">✏️</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="deletePayment(\''+pay.id+'\')">🗑️</button>':'')+
+        '</div></td></tr>';
     }).join('')+'</tbody></table>')+
     '</div></div>';
 
@@ -656,7 +660,26 @@ function deleteUser(id){
   saveData(data);renderClients(document.getElementById('main-content'));
 }
 
+function openEditPaymentModal(id){
+  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  var pay=proj.payments.find(function(x){return x.id===id;});if(!pay)return;
+  document.getElementById('pay-desc').value=pay.desc;
+  document.getElementById('pay-amount').value=pay.amount;
+  document.getElementById('pay-date').value=pay.date;
+  document.getElementById('pay-to').value=pay.to;
+  document.getElementById('pay-category').value=pay.category;
+  // store editing id
+  document.getElementById('modal-payment').dataset.editId=id;
+  openModal('modal-payment');
+}
+function deletePayment(id){
+  if(!confirm('למחוק תשלום זה?'))return;
+  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  proj.payments=proj.payments.filter(function(x){return x.id!==id;});
+  saveData(data);renderProjectDetail(document.getElementById('main-content'));
+}
 function openAddPaymentModal(){
+  delete document.getElementById('modal-payment').dataset.editId;
   document.getElementById('pay-desc').value='';document.getElementById('pay-amount').value='';
   document.getElementById('pay-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('pay-to').value='';
@@ -664,9 +687,17 @@ function openAddPaymentModal(){
 }
 function savePayment(){
   var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
-  var pay={id:'p'+Date.now(),desc:document.getElementById('pay-desc').value,amount:document.getElementById('pay-amount').value,date:document.getElementById('pay-date').value,to:document.getElementById('pay-to').value,category:document.getElementById('pay-category').value};
+  var pay={desc:document.getElementById('pay-desc').value,amount:document.getElementById('pay-amount').value,date:document.getElementById('pay-date').value,to:document.getElementById('pay-to').value,category:document.getElementById('pay-category').value};
   if(!pay.desc||!pay.amount)return alert('יש למלא תיאור וסכום');
-  proj.payments.push(pay);saveData(data);closeModal('modal-payment');renderProjectDetail(document.getElementById('main-content'));
+  var editId=document.getElementById('modal-payment').dataset.editId;
+  if(editId){
+    var idx=proj.payments.findIndex(function(x){return x.id===editId;});
+    proj.payments[idx]=Object.assign({},proj.payments[idx],pay);
+    delete document.getElementById('modal-payment').dataset.editId;
+  } else {
+    proj.payments.push(Object.assign({id:'p'+Date.now()},pay));
+  }
+  saveData(data);closeModal('modal-payment');renderProjectDetail(document.getElementById('main-content'));
 }
 
 function openAddPhaseModal(){
