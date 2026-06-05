@@ -177,22 +177,22 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
       <p>מערכת ניהול פרויקטי בנייה</p>
     </div>
     <div id="login-form">
-      <div class="form-group"><label>אימייל</label><input type="email" id="login-email" placeholder="הכנס אימייל" autocomplete="email"/></div>
+      <div class="form-group"><label>שם משתמש</label><input type="text" id="login-user" placeholder="הכנס שם משתמש"/></div>
       <div class="form-group">
         <label>סיסמה</label>
-        <input type="password" id="login-pass" placeholder="הכנס סיסמה" autocomplete="current-password"/>
+        <input type="password" id="login-pass" placeholder="הכנס סיסמה"/>
         <button type="button" class="forgot-link" onclick="showForgotPassword()">שכחתי סיסמה?</button>
       </div>
-      <button class="btn btn-primary" id="login-btn" onclick="doLogin()">כניסה לחשבון</button>
-      <div class="error-msg" id="login-error">אימייל או סיסמה שגויים</div>
+      <button class="btn btn-primary" onclick="doLogin()">כניסה לחשבון</button>
+      <div class="error-msg" id="login-error">שם משתמש או סיסמה שגויים</div>
     </div>
     <div id="forgot-form" style="display:none">
       <div class="forgot-title">שחזור סיסמה</div>
-      <p class="forgot-desc">הזן את כתובת האימייל שלך ונשלח אליך קישור לאיפוס הסיסמה</p>
-      <div class="form-group"><label>אימייל</label><input type="email" id="forgot-email" placeholder="הכנס אימייל" autocomplete="email"/></div>
-      <button class="btn btn-primary" id="forgot-btn" onclick="submitForgotPassword()">שלח קישור לאיפוס</button>
-      <div class="error-msg" id="forgot-error">שגיאה בשליחת האימייל</div>
-      <div class="success-msg" id="forgot-success">✅ נשלח אליך אימייל עם קישור לאיפוס הסיסמה. בדוק את תיבת הדואר.</div>
+      <p class="forgot-desc">הזן את שם המשתמש שלך ונשלח בקשה לצוות ארונשטיין פיקוח וניהול</p>
+      <div class="form-group"><label>שם משתמש</label><input type="text" id="forgot-user" placeholder="הכנס שם משתמש"/></div>
+      <button class="btn btn-primary" onclick="submitForgotPassword()">שלח בקשת שחזור</button>
+      <div class="error-msg" id="forgot-error">שם משתמש לא נמצא במערכת</div>
+      <div class="success-msg" id="forgot-success">✅ הבקשה נשלחה בהצלחה! צוות ארונשטיין יצור איתך קשר בהקדם.</div>
       <button type="button" class="back-login-link" onclick="showLoginForm()">← חזרה לכניסה</button>
     </div>
     <p style="text-align:center;margin-top:20px;font-size:12px;color:var(--text-muted)">פרטי הגישה מסופקים על ידי ארונשטיין פיקוח וניהול</p>
@@ -246,8 +246,8 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
   <div class="modal">
     <div class="modal-header"><div class="modal-title">הוספת לקוח</div><button class="modal-close" onclick="closeModal('modal-user')">✕</button></div>
     <div class="form-group"><label>שם מלא</label><input type="text" id="new-user-name" placeholder="שם הלקוח"/></div>
-    <div class="form-group"><label>אימייל</label><input type="email" id="new-user-email" placeholder="email@example.com"/></div>
-    <div class="form-group"><label>סיסמה</label><input type="text" id="new-user-pass" placeholder="סיסמה ראשונית"/></div>
+    <div class="form-group"><label>שם משתמש</label><input type="text" id="new-user-username" placeholder="שם כניסה"/></div>
+    <div class="form-group"><label>סיסמה</label><input type="text" id="new-user-pass" placeholder="סיסמה"/></div>
     <div class="form-group"><label>פרויקט משויך</label><select id="new-user-project"></select></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-user')">ביטול</button>
@@ -304,112 +304,14 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
   </div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updatePassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, getDocs, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
-
-const firebaseConfig={
-  apiKey:"AIzaSyBsSDCAWSKGV0bOsi4lLQcCABf4hjOLI0k",
-  authDomain:"aronstein-pikuach.firebaseapp.com",
-  projectId:"aronstein-pikuach",
-  storageBucket:"aronstein-pikuach.firebasestorage.app",
-  messagingSenderId:"333478812777",
-  appId:"1:333478812777:web:3073b8d866cc841e9516f8"
-};
-const app=initializeApp(firebaseConfig);
-const auth=getAuth(app);
-const db=getFirestore(app);
-const secondaryApp=initializeApp(firebaseConfig,"Secondary");
-const secondaryAuth=getAuth(secondaryApp);
-
-const ADMIN_EMAIL='atlassahar14@gmail.com';
-const ADMIN_UID='4zIaqOl4YqOkCNcbu7JPHC9Sptv2';
-
-function isDesignatedAdmin(fbUser){
-  return fbUser.uid===ADMIN_UID;
-}
-
+<script>
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
-var appUsers=[],authBootstrapped=false;
-
-function firebaseErrorToHebrew(e){
-  var code=e&&e.code?e.code:'';
-  var map={
-    'auth/invalid-email':'כתובת אימייל לא תקינה',
-    'auth/user-disabled':'החשבון הושבת',
-    'auth/user-not-found':'לא נמצא משתמש עם אימייל זה',
-    'auth/wrong-password':'אימייל או סיסמה שגויים',
-    'auth/invalid-credential':'אימייל או סיסמה שגויים',
-    'auth/email-already-in-use':'כתובת האימייל כבר בשימוש',
-    'auth/weak-password':'הסיסמה חלשה מדי (לפחות 6 תווים)',
-    'auth/too-many-requests':'יותר מדי ניסיונות. נסה שוב מאוחר יותר',
-    'auth/requires-recent-login':'יש להתחבר מחדש לפני שינוי הסיסמה',
-    'auth/missing-email':'יש להזין אימייל'
-  };
-  return map[code]||'אירעה שגיאה. נסה שוב';
-}
-
-async function refreshAppUsers(){
-  var snap=await getDocs(collection(db,'users'));
-  appUsers=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
-  return appUsers;
-}
-
-async function ensureUserProfile(fbUser){
-  var ref=doc(db,'users',fbUser.uid);
-  if(isDesignatedAdmin(fbUser)){
-    var adminProfile={uid:fbUser.uid,email:ADMIN_EMAIL,name:'ארונשטיין',role:'admin',projectId:null};
-    await setDoc(ref,adminProfile,{merge:true});
-    return Object.assign({id:fbUser.uid},adminProfile);
-  }
-  var snap=await getDoc(ref);
-  if(snap.exists())return Object.assign({id:fbUser.uid},snap.data());
-  return null;
-}
-
-function startApp(user){
-  currentUser=user;
-  refreshAppUsers().then(function(){
-    document.getElementById('login-screen').style.display='none';
-    document.getElementById('app').style.display='block';
-    document.getElementById('login-error').classList.remove('show');
-    showLoginForm();
-    renderSidebar();
-    if(user.role==='admin'){showView('dashboard');}
-    else{currentProjectId=user.projectId;currentTab='overview';showView('project');}
-  });
-}
-
-function showLoginScreen(){
-  currentUser=null;
-  document.getElementById('login-screen').style.display='flex';
-  document.getElementById('app').style.display='none';
-  document.getElementById('login-email').value='';
-  document.getElementById('login-pass').value='';
-  document.getElementById('login-error').classList.remove('show');
-  showLoginForm();
-}
-
-onAuthStateChanged(auth,async function(fbUser){
-  if(fbUser){
-    var profile=await ensureUserProfile(fbUser);
-    if(profile){startApp(profile);}
-    else{
-      await signOut(auth);
-      document.getElementById('login-error').textContent='חשבון לא רשום במערכת. פנה למנהל.';
-      document.getElementById('login-error').classList.add('show');
-    }
-  }else if(authBootstrapped){
-    showLoginScreen();
-  }
-  authBootstrapped=true;
-});
 
 function getData(){
   var d=localStorage.getItem('aronstein_v2');
   if(d)return JSON.parse(d);
   var def={
+    users:[{id:'admin',username:'admin',password:'admin123',name:'ארונשטיין',role:'admin',projectId:null}],
     projects:[{
       id:'proj1',name:'בית פרטי - רמת השרון',address:'רחוב הורדים, רמת השרון',houseNumber:'12',
       desc:'בניית בית פרטי דו-קומתי, 280 מ"ר',start:'2025-01-01',end:'2025-12-01',
@@ -447,60 +349,58 @@ function getData(){
 
 function saveData(d){localStorage.setItem('aronstein_v2',JSON.stringify(d));}
 
-window.showForgotPassword=function(){
+function showForgotPassword(){
   document.getElementById('login-form').style.display='none';
   document.getElementById('forgot-form').style.display='block';
   document.getElementById('login-error').classList.remove('show');
   document.getElementById('forgot-error').classList.remove('show');
   document.getElementById('forgot-success').classList.remove('show');
-  document.getElementById('forgot-email').value=document.getElementById('login-email').value.trim();
-};
-window.showLoginForm=function(){
+  document.getElementById('forgot-user').value=document.getElementById('login-user').value.trim();
+}
+function showLoginForm(){
   document.getElementById('login-form').style.display='block';
   document.getElementById('forgot-form').style.display='none';
   document.getElementById('forgot-error').classList.remove('show');
   document.getElementById('forgot-success').classList.remove('show');
-};
-window.submitForgotPassword=async function(){
-  var email=document.getElementById('forgot-email').value.trim();
+}
+function submitForgotPassword(){
+  var u=document.getElementById('forgot-user').value.trim();
   var err=document.getElementById('forgot-error');
   var ok=document.getElementById('forgot-success');
-  var btn=document.getElementById('forgot-btn');
   err.classList.remove('show');ok.classList.remove('show');
-  if(!email){err.textContent='יש להזין אימייל';err.classList.add('show');return;}
-  btn.disabled=true;btn.textContent='שולח...';
-  try{
-    await sendPasswordResetEmail(auth,email);
-    ok.classList.add('show');
-  }catch(e){
-    err.textContent=firebaseErrorToHebrew(e);
-    err.classList.add('show');
-  }finally{
-    btn.disabled=false;btn.textContent='שלח קישור לאיפוס';
-  }
-};
+  if(!u){err.textContent='יש להזין שם משתמש';err.classList.add('show');return;}
+  var data=getData();
+  var user=data.users.find(function(x){return x.username===u;});
+  if(!user){err.textContent='שם משתמש לא נמצא במערכת';err.classList.add('show');return;}
+  data.passwordResetRequests=data.passwordResetRequests||[];
+  data.passwordResetRequests.push({id:'pr'+Date.now(),username:u,name:user.name,date:new Date().toLocaleString('he-IL'),resolved:false});
+  saveData(data);
+  ok.classList.add('show');
+}
 
-window.doLogin=async function(){
-  var email=document.getElementById('login-email').value.trim();
-  var pass=document.getElementById('login-pass').value.trim();
-  var err=document.getElementById('login-error');
-  var btn=document.getElementById('login-btn');
-  err.classList.remove('show');
-  if(!email||!pass){err.textContent='יש למלא אימייל וסיסמה';err.classList.add('show');return;}
-  btn.disabled=true;btn.textContent='מתחבר...';
-  try{
-    await signInWithEmailAndPassword(auth,email,pass);
-  }catch(e){
-    err.textContent=firebaseErrorToHebrew(e);
-    err.classList.add('show');
-  }finally{
-    btn.disabled=false;btn.textContent='כניסה לחשבון';
-  }
-};
+function doLogin(){
+  var u=document.getElementById('login-user').value.trim();
+  var p=document.getElementById('login-pass').value.trim();
+  var data=getData();
+  var user=data.users.find(function(x){return x.username===u&&x.password===p;});
+  if(!user){document.getElementById('login-error').classList.add('show');return;}
+  currentUser=user;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  renderSidebar();
+  if(user.role==='admin'){showView('dashboard');}
+  else{currentProjectId=user.projectId;currentTab='overview';showView('project');}
+}
 
-window.doLogout=async function(){
-  try{await signOut(auth);}catch(e){console.error(e);}
-};
+function doLogout(){
+  currentUser=null;
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('login-error').classList.remove('show');
+  showLoginForm();
+}
 
 function renderSidebar(){
   document.getElementById('user-avatar-sb').textContent=currentUser.name.charAt(0);
@@ -563,7 +463,7 @@ function renderDashboard(el){
   var data=getData();
   var active=data.projects.filter(function(p){return p.status==='active';}).length;
   var done=data.projects.filter(function(p){return p.status==='done';}).length;
-  var clients=appUsers.filter(function(u){return u.role!=='admin';}).length;
+  var clients=data.users.filter(function(u){return u.role!=='admin';}).length;
   var totalPaid=data.projects.reduce(function(s,p){return s+p.payments.reduce(function(ss,pay){return ss+Number(pay.amount||0);},0);},0);
   el.innerHTML='<div class="page-header"><h1>👋 שלום, '+currentUser.name+'</h1><p>סקירה כללית של כל הפרויקטים</p></div>'+
     '<div class="stats-grid">'+
@@ -765,8 +665,8 @@ function switchTab(t){
 
 function renderClients(el){
   var data=getData();
-  var clients=appUsers.filter(function(u){return u.role!=='admin';});
-  el.innerHTML='<div class="page-header flex-between"><div><h1>👥 לקוחות</h1><p>ניהול משתמשי הלקוחות (Firebase Auth)</p></div>'+
+  var clients=data.users.filter(function(u){return u.role!=='admin';});
+  el.innerHTML='<div class="page-header flex-between"><div><h1>👥 לקוחות</h1><p>ניהול משתמשי הלקוחות</p></div>'+
     '<button class="btn btn-primary" onclick="openAddUserModal()">➕ לקוח חדש</button></div>'+
     '<div class="users-list">'+
     (clients.length===0?'<div class="empty-state card"><div class="empty-icon">👥</div><p>אין לקוחות עדיין</p></div>':'')+
@@ -775,7 +675,7 @@ function renderClients(el){
       return '<div class="user-row"><div class="user-row-info">'+
         '<div class="user-row-avatar">'+u.name.charAt(0)+'</div>'+
         '<div><div class="user-row-name">'+u.name+'</div>'+
-        '<div class="user-row-meta">אימייל: '+u.email+' · פרויקט: '+(proj?proj.name:'לא משויך')+'</div></div></div>'+
+        '<div class="user-row-meta">משתמש: '+u.username+' · סיסמה: '+u.password+' · פרויקט: '+(proj?proj.name:'לא משויך')+'</div></div></div>'+
         '<div class="flex-gap">'+
         (proj?'<button class="btn btn-outline btn-sm" onclick="showView(\'project\',\''+proj.id+'\')">צפה בפרויקט</button>':'')+
         '<button class="btn btn-danger btn-sm" onclick="deleteUser(\''+u.id+'\')">🗑️</button></div></div>';
@@ -785,12 +685,10 @@ function renderClients(el){
 function renderSettings(el){
   el.innerHTML='<div class="page-header"><h1>⚙️ הגדרות</h1></div>'+
     '<div class="card" style="max-width:480px">'+
-    '<div class="card-title">🔐 שינוי סיסמה</div>'+
-    '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">הסיסמה מנוהלת ב-Firebase Authentication</p>'+
+    '<div class="card-title">🔐 שינוי סיסמת אדמין</div>'+
     '<div class="form-group"><label>סיסמה חדשה</label><input type="password" id="new-admin-pass" placeholder="סיסמה חדשה"/></div>'+
     '<div class="form-group"><label>אימות סיסמה</label><input type="password" id="confirm-admin-pass" placeholder="הכנס שוב"/></div>'+
     '<button class="btn btn-primary" onclick="changeAdminPass()">שמור סיסמה</button>'+
-    '<button class="btn btn-outline" style="margin-top:10px;width:100%;justify-content:center" onclick="sendAdminResetEmail()">שלח קישור לאיפוס סיסמה לאימייל</button>'+
     '<div id="pass-msg" style="margin-top:10px;font-size:13px;display:none"></div></div>'+
     '<div class="card" style="max-width:480px;margin-top:20px">'+
     '<div class="card-title">🗑️ איפוס נתונים</div>'+
@@ -886,37 +784,25 @@ function openAddUserModal(){
   var data=getData();
   var sel=document.getElementById('new-user-project');
   sel.innerHTML=data.projects.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
-  ['new-user-name','new-user-email','new-user-pass'].forEach(function(id){document.getElementById(id).value='';});
+  ['new-user-name','new-user-username','new-user-pass'].forEach(function(id){document.getElementById(id).value='';});
   openModal('modal-user');
 }
-window.saveUser=async function(){
-  var name=document.getElementById('new-user-name').value.trim();
-  var email=document.getElementById('new-user-email').value.trim();
+function saveUser(){
+  var data=getData();
+  var name=document.getElementById('new-user-name').value;
+  var username=document.getElementById('new-user-username').value;
   var pass=document.getElementById('new-user-pass').value;
   var projectId=document.getElementById('new-user-project').value;
-  if(!name||!email||!pass)return alert('יש למלא את כל השדות');
-  if(appUsers.find(function(u){return u.email===email;}))return alert('אימייל כבר קיים במערכת');
-  try{
-    var cred=await createUserWithEmailAndPassword(secondaryAuth,email,pass);
-    await signOut(secondaryAuth);
-    var profile={uid:cred.user.uid,email:email,name:name,role:'client',projectId:projectId};
-    await setDoc(doc(db,'users',cred.user.uid),profile);
-    await refreshAppUsers();
-    closeModal('modal-user');showView('clients');
-  }catch(e){
-    alert(firebaseErrorToHebrew(e));
-  }
-};
-window.deleteUser=async function(id){
-  if(!confirm('למחוק משתמש זה מהמערכת?'))return;
-  try{
-    await deleteDoc(doc(db,'users',id));
-    await refreshAppUsers();
-    renderClients(document.getElementById('main-content'));
-  }catch(e){
-    alert(firebaseErrorToHebrew(e));
-  }
-};
+  if(!name||!username||!pass)return alert('יש למלא את כל השדות');
+  if(data.users.find(function(u){return u.username===username;}))return alert('שם משתמש כבר קיים');
+  data.users.push({id:'u'+Date.now(),username:username,password:pass,name:name,role:'client',projectId:projectId});
+  saveData(data);closeModal('modal-user');showView('clients');
+}
+function deleteUser(id){
+  if(!confirm('למחוק משתמש זה?'))return;
+  var data=getData();data.users=data.users.filter(function(u){return u.id!==id;});
+  saveData(data);renderClients(document.getElementById('main-content'));
+}
 
 function openEditPaymentModal(id){
   var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
@@ -1064,31 +950,14 @@ function uploadPhoto(event){
   reader.readAsDataURL(file);
 }
 
-window.changeAdminPass=async function(){
+function changeAdminPass(){
   var p1=document.getElementById('new-admin-pass').value;var p2=document.getElementById('confirm-admin-pass').value;
   var msg=document.getElementById('pass-msg');
   if(!p1){msg.style.display='block';msg.style.color='red';msg.textContent='הכנס סיסמה';return;}
   if(p1!==p2){msg.style.display='block';msg.style.color='red';msg.textContent='הסיסמאות אינן תואמות';return;}
-  if(p1.length<6){msg.style.display='block';msg.style.color='red';msg.textContent='הסיסמה חייבת להכיל לפחות 6 תווים';return;}
-  try{
-    await updatePassword(auth.currentUser,p1);
-    msg.style.display='block';msg.style.color='green';msg.textContent='✅ הסיסמה שונתה בהצלחה';
-    document.getElementById('new-admin-pass').value='';
-    document.getElementById('confirm-admin-pass').value='';
-  }catch(e){
-    msg.style.display='block';msg.style.color='red';msg.textContent=firebaseErrorToHebrew(e);
-  }
-};
-window.sendAdminResetEmail=async function(){
-  var msg=document.getElementById('pass-msg');
-  if(!auth.currentUser||!auth.currentUser.email){msg.style.display='block';msg.style.color='red';msg.textContent='לא נמצא אימייל מחובר';return;}
-  try{
-    await sendPasswordResetEmail(auth,auth.currentUser.email);
-    msg.style.display='block';msg.style.color='green';msg.textContent='✅ נשלח קישור לאיפוס סיסמה ל-'+auth.currentUser.email;
-  }catch(e){
-    msg.style.display='block';msg.style.color='red';msg.textContent=firebaseErrorToHebrew(e);
-  }
-};
+  var data=getData();data.users.find(function(u){return u.role==='admin';}).password=p1;
+  saveData(data);msg.style.display='block';msg.style.color='green';msg.textContent='✅ הסיסמה שונתה';
+}
 function resetData(){localStorage.removeItem('aronstein_v2');location.reload();}
 
 document.querySelectorAll('.modal-overlay').forEach(function(overlay){
@@ -1099,19 +968,8 @@ document.querySelectorAll('.modal-overlay').forEach(function(overlay){
     }
   });
 });
-document.getElementById('login-pass').addEventListener('keydown',function(e){if(e.key==='Enter')window.doLogin();});
-document.getElementById('login-email').addEventListener('keydown',function(e){if(e.key==='Enter')window.doLogin();});
-document.getElementById('forgot-email').addEventListener('keydown',function(e){if(e.key==='Enter')window.submitForgotPassword();});
-
-Object.assign(window,{
-  showView,switchTab,openModal,closeModal,
-  openNewProjectModal,openEditProjectModal,saveProject,
-  openAddUserModal,
-  openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,
-  openAddPhaseModal,openEditPhaseModal,savePhase,saveOverallProgress,
-  saveUpdate,deleteUpdate,sendMessage,
-  uploadDocFile,addDocLink,deleteDoc,uploadPhoto,resetData
-});
+document.getElementById('login-pass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+document.getElementById('forgot-user').addEventListener('keydown',function(e){if(e.key==='Enter')submitForgotPassword();});
 </script>
 </body>
 </html>
