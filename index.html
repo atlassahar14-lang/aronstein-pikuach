@@ -504,19 +504,27 @@ function showLoginScreen(){
   showLoginForm();
 }
 
-supabase.auth.onAuthStateChange(async function(event,session){
-  if(session&&session.user){
-    var profile=await ensureUserProfile(session.user);
-    if(profile){await startApp(profile);}
-    else{
-      await supabase.auth.signOut();
-      document.getElementById('login-error').textContent='חשבון לא רשום במערכת. פנה למנהל.';
+supabase.auth.onAuthStateChange(function(event,session){
+  setTimeout(async function(){
+    try{
+      if(session&&session.user){
+        var profile=await ensureUserProfile(session.user);
+        if(profile){await startApp(profile);}
+        else{
+          await supabase.auth.signOut();
+          document.getElementById('login-error').textContent='חשבון לא רשום במערכת. פנה למנהל.';
+          document.getElementById('login-error').classList.add('show');
+        }
+      }else if(authBootstrapped){
+        showLoginScreen();
+      }
+    }catch(e){
+      console.error(e);
+      document.getElementById('login-error').textContent=e.message||'שגיאה בטעינת המערכת';
       document.getElementById('login-error').classList.add('show');
     }
-  }else if(authBootstrapped){
-    showLoginScreen();
-  }
-  authBootstrapped=true;
+    authBootstrapped=true;
+  },0);
 });
 
 function showForgotPassword(){
@@ -555,9 +563,15 @@ async function doLogin(){
   err.classList.remove('show');
   if(!email||!pass){err.textContent='יש למלא אימייל וסיסמה';err.classList.add('show');return;}
   btn.disabled=true;btn.textContent='מתחבר...';
-  var res=await supabase.auth.signInWithPassword({email:email,password:pass});
-  if(res.error){err.textContent=supabaseErrorToHebrew(res.error.message);err.classList.add('show');}
-  btn.disabled=false;btn.textContent='כניסה לחשבון';
+  try{
+    var res=await supabase.auth.signInWithPassword({email:email,password:pass});
+    if(res.error){err.textContent=supabaseErrorToHebrew(res.error.message);err.classList.add('show');}
+  }catch(e){
+    err.textContent=e.message||'שגיאת רשת. נסה שוב';
+    err.classList.add('show');
+  }finally{
+    btn.disabled=false;btn.textContent='כניסה לחשבון';
+  }
 }
 
 async function doLogout(){
