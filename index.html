@@ -399,7 +399,7 @@ function supabaseErrorToHebrew(msg){
   if(m.includes('user already registered'))return 'כתובת האימייל כבר בשימוש';
   if(m.includes('password'))return 'הסיסמה חלשה מדי (לפחות 6 תווים)';
   if(m.includes('email'))return 'כתובת אימייל לא תקינה';
-  return 'אירעה שגיאה. נסה שוב';
+  return msg || 'no message';
 }
 
 function getDefaultProjects(){
