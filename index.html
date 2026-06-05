@@ -81,9 +81,12 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
 .back-btn{display:inline-flex;align-items:center;gap:6px;color:var(--text-muted);cursor:pointer;font-size:14px;margin-bottom:20px;transition:color .2s;background:none;border:none;font-family:'Heebo',sans-serif}
 .back-btn:hover{color:var(--primary)}
 .tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--card);padding:6px;border-radius:12px;border:1px solid var(--border);flex-wrap:wrap}
-.tab{padding:9px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-muted);transition:all .2s;border:none;background:none;font-family:'Heebo',sans-serif;display:flex;align-items:center;gap:6px}
+.tab{position:relative;padding:9px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-muted);transition:all .2s;border:none;background:none;font-family:'Heebo',sans-serif;display:flex;align-items:center;gap:6px}
 .tab:hover{color:var(--primary);background:var(--bg)}
 .tab.active{background:var(--primary);color:#fff;font-weight:600}
+.tab-badge{position:absolute;top:5px;left:8px;width:9px;height:9px;background:var(--danger);border-radius:50%;border:2px solid var(--card);display:none}
+.tab.active .tab-badge{border-color:var(--primary)}
+.tab-badge.show{display:block}
 .tab-content{display:none}
 .tab-content.active{display:block}
 .timeline-phases{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px}
@@ -377,6 +380,13 @@ function showView(view,pid){
 
 function fmtMoney(n){return '₪'+Number(n).toLocaleString('he-IL');}
 
+function countUnreadClientMessages(proj){
+  return (proj.messages||[]).filter(function(m){return m.sender==='client'&&!m.readByAdmin;}).length;
+}
+function markProjectMessagesRead(proj){
+  (proj.messages||[]).forEach(function(m){if(m.sender==='client')m.readByAdmin=true;});
+}
+
 function formatProjectAddress(p){
   var addr=p.address||'';
   if(p.houseNumber)addr+=(addr?' ':'')+p.houseNumber;
@@ -428,6 +438,9 @@ function renderProjectDetail(el){
   var paid=p.payments.reduce(function(s,x){return s+Number(x.amount||0);},0);
   var remaining=Number(p.budget||0)-paid;
 
+  var unreadMessages=isAdmin?countUnreadClientMessages(p):0;
+  var messagesTabBadge=unreadMessages?'<span class="tab-badge show"></span>':'';
+
   var html=(isAdmin?'<button class="back-btn" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>':'');
   html+='<div class="flex-between mb-24"><div><h1 style="font-size:24px;font-weight:800;color:var(--primary)">'+p.name+'</h1><p style="color:var(--text-muted);margin-top:4px">📍 '+formatProjectAddress(p)+'</p></div>';
   if(isAdmin)html+='<div class="flex-gap"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">✏️ עריכה</button><button class="btn btn-accent btn-sm" onclick="openModal(\'modal-update\')">🔔 עדכון חדש</button></div>';
@@ -440,7 +453,7 @@ function renderProjectDetail(el){
     '<button class="tab '+(currentTab==='docs'?'active':'')+'" onclick="switchTab(\'docs\')">📁 מסמכים</button>'+
     '<button class="tab '+(currentTab==='gallery'?'active':'')+'" onclick="switchTab(\'gallery\')">📷 גלריה</button>'+
     '<button class="tab '+(currentTab==='updates'?'active':'')+'" onclick="switchTab(\'updates\')">🔔 עדכונים</button>'+
-    '<button class="tab '+(currentTab==='messages'?'active':'')+'" onclick="switchTab(\'messages\')">💬 שאלות</button>'+
+    '<button class="tab '+(currentTab==='messages'?'active':'')+'" onclick="switchTab(\'messages\')">💬 שאלות'+messagesTabBadge+'</button>'+
     '</div>';
 
   // OVERVIEW TAB
@@ -587,7 +600,15 @@ function renderProjectDetail(el){
   setTimeout(function(){var ml=document.getElementById('messages-list');if(ml)ml.scrollTop=ml.scrollHeight;},50);
 }
 
-function switchTab(t){currentTab=t;renderProjectDetail(document.getElementById('main-content'));}
+function switchTab(t){
+  currentTab=t;
+  if(t==='messages'&&currentUser&&currentUser.role==='admin'){
+    var data=getData();
+    var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+    if(proj){markProjectMessagesRead(proj);saveData(data);}
+  }
+  renderProjectDetail(document.getElementById('main-content'));
+}
 
 function renderClients(el){
   var data=getData();
@@ -821,7 +842,9 @@ function deleteUpdate(id){
 function sendMessage(){
   var input=document.getElementById('msg-input');var text=input.value.trim();if(!text)return;
   var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
-  proj.messages.push({id:'m'+Date.now(),sender:currentUser.role,text:text,date:new Date().toLocaleDateString('he-IL')});
+  var msg={id:'m'+Date.now(),sender:currentUser.role,text:text,date:new Date().toLocaleDateString('he-IL')};
+  if(currentUser.role==='client')msg.readByAdmin=false;
+  proj.messages.push(msg);
   saveData(data);input.value='';renderProjectDetail(document.getElementById('main-content'));
   setTimeout(function(){var ml=document.getElementById('messages-list');if(ml)ml.scrollTop=ml.scrollHeight;},50);
 }
