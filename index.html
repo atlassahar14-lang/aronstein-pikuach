@@ -399,12 +399,14 @@ function projectCardHTML(p){
 function renderDashboard(el){
   var data=getData();
   var active=data.projects.filter(function(p){return p.status==='active';}).length;
+  var done=data.projects.filter(function(p){return p.status==='done';}).length;
   var clients=data.users.filter(function(u){return u.role!=='admin';}).length;
   var totalPaid=data.projects.reduce(function(s,p){return s+p.payments.reduce(function(ss,pay){return ss+Number(pay.amount||0);},0);},0);
   el.innerHTML='<div class="page-header"><h1>👋 שלום, '+currentUser.name+'</h1><p>סקירה כללית של כל הפרויקטים</p></div>'+
     '<div class="stats-grid">'+
     '<div class="stat-card"><div class="stat-icon">🏗️</div><div class="stat-value">'+data.projects.length+'</div><div class="stat-label">פרויקטים</div></div>'+
     '<div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-value">'+active+'</div><div class="stat-label">פעילים</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value">'+done+'</div><div class="stat-label">פרויקטים גמורים</div></div>'+
     '<div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value">'+clients+'</div><div class="stat-label">לקוחות</div></div>'+
     '<div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value">'+fmtMoney(totalPaid)+'</div><div class="stat-label">שולם סה"כ</div></div>'+
     '</div>'+
