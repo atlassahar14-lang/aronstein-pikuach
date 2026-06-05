@@ -3,977 +3,773 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ארונשטיין פיקוח</title>
-<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;500;700&family=Heebo:wght@300;400;500&display=swap" rel="stylesheet">
+<title>ארונשטיין פיקוח וניהול</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --cream: #f5f0e8;
-    --warm: #e8ddd0;
-    --brown: #8B7355;
-    --dark-brown: #5c4a2a;
-    --light-brown: #c4a882;
-    --text: #2c2416;
-    --text-muted: #7a6347;
-    --text-light: #a89070;
-    --border: #d9cfc0;
-    --white: #fdfaf5;
-    --green: #2d6a4f;
-    --green-light: #d4edda;
-    --yellow-light: #fff3cd;
-    --yellow: #856404;
-    --red-light: #f8d7da;
-    --red: #721c24;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'Heebo', sans-serif;
-    background: var(--cream);
-    color: var(--text);
-    min-height: 100vh;
-    direction: rtl;
-  }
-
-  /* ===== LOGIN ===== */
-  .login-page {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--cream);
-    background-image:
-      radial-gradient(ellipse at 20% 50%, rgba(196,168,130,0.15) 0%, transparent 60%),
-      radial-gradient(ellipse at 80% 20%, rgba(139,115,85,0.1) 0%, transparent 50%);
-    padding: 2rem;
-  }
-
-  .login-box {
-    width: 100%;
-    max-width: 420px;
-  }
-
-  .login-logo {
-    text-align: center;
-    margin-bottom: 2.5rem;
-  }
-
-  .login-logo-icon {
-    width: 70px;
-    height: 70px;
-    background: var(--brown);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 1rem;
-    font-size: 30px;
-  }
-
-  .login-logo h1 {
-    font-family: 'Frank Ruhl Libre', serif;
-    font-size: 28px;
-    font-weight: 500;
-    color: var(--dark-brown);
-    letter-spacing: 0.5px;
-  }
-
-  .login-logo p {
-    font-size: 14px;
-    color: var(--text-muted);
-    margin-top: 4px;
-    font-weight: 300;
-    letter-spacing: 1px;
-  }
-
-  .login-card {
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 2.5rem;
-    box-shadow: 0 4px 40px rgba(139,115,85,0.08);
-  }
-
-  .login-card h2 {
-    font-family: 'Frank Ruhl Libre', serif;
-    font-size: 20px;
-    font-weight: 400;
-    color: var(--dark-brown);
-    margin-bottom: 1.8rem;
-    text-align: center;
-  }
-
-  .field { margin-bottom: 1.2rem; }
-
-  .field label {
-    display: block;
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-bottom: 7px;
-    font-weight: 400;
-  }
-
-  .field input {
-    width: 100%;
-    height: 44px;
-    padding: 0 14px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    font-size: 15px;
-    font-family: 'Heebo', sans-serif;
-    background: var(--white);
-    color: var(--text);
-    transition: border-color 0.2s;
-    direction: rtl;
-  }
-
-  .field input:focus {
-    outline: none;
-    border-color: var(--brown);
-  }
-
-  .login-btn {
-    width: 100%;
-    height: 46px;
-    background: var(--brown);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-size: 15px;
-    font-family: 'Heebo', sans-serif;
-    font-weight: 500;
-    cursor: pointer;
-    margin-top: 0.5rem;
-    transition: background 0.2s, transform 0.1s;
-    letter-spacing: 0.5px;
-  }
-
-  .login-btn:hover { background: var(--dark-brown); }
-  .login-btn:active { transform: scale(0.99); }
-
-  .login-error {
-    background: var(--red-light);
-    color: var(--red);
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 13px;
-    margin-top: 1rem;
-    display: none;
-    text-align: center;
-  }
-
-  .login-hint {
-    text-align: center;
-    font-size: 12px;
-    color: var(--text-light);
-    margin-top: 1.2rem;
-  }
-
-  /* ===== DASHBOARD ===== */
-  .dashboard { display: none; min-height: 100vh; background: var(--cream); }
-
-  .topbar {
-    background: var(--white);
-    border-bottom: 1px solid var(--border);
-    padding: 0 2rem;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .topbar-brand {
-    font-family: 'Frank Ruhl Libre', serif;
-    font-size: 18px;
-    font-weight: 500;
-    color: var(--brown);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .topbar-brand span { font-size: 22px; }
-
-  .topbar-user {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .user-name {
-    font-size: 14px;
-    color: var(--text-muted);
-    font-weight: 400;
-  }
-
-  .avatar {
-    width: 34px;
-    height: 34px;
-    background: var(--warm);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--brown);
-    border: 1.5px solid var(--border);
-  }
-
-  .logout-btn {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 14px;
-    font-size: 13px;
-    color: var(--text-muted);
-    cursor: pointer;
-    font-family: 'Heebo', sans-serif;
-    transition: all 0.2s;
-  }
-  .logout-btn:hover { background: var(--warm); color: var(--dark-brown); }
-
-  .main { padding: 2rem; max-width: 1000px; margin: 0 auto; }
-
-  /* HERO */
-  .hero-card {
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1.8rem 2rem;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background-image: linear-gradient(135deg, #fdfaf5 0%, #f5f0e8 100%);
-  }
-
-  .hero-title {
-    font-family: 'Frank Ruhl Libre', serif;
-    font-size: 22px;
-    font-weight: 500;
-    color: var(--dark-brown);
-    margin-bottom: 6px;
-  }
-
-  .hero-sub {
-    font-size: 13px;
-    color: var(--text-muted);
-    font-weight: 300;
-  }
-
-  .status-pill {
-    background: var(--green-light);
-    color: var(--green);
-    border-radius: 20px;
-    padding: 6px 18px;
-    font-size: 13px;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
-  /* TABS */
-  .tabs {
-    display: flex;
-    gap: 4px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 1.5rem;
-    background: var(--white);
-    border-radius: 12px 12px 0 0;
-    padding: 0 1rem;
-    border: 1px solid var(--border);
-    border-bottom: none;
-  }
-
-  .tab {
-    padding: 14px 18px;
-    font-size: 14px;
-    color: var(--text-muted);
-    cursor: pointer;
-    border: none;
-    background: none;
-    font-family: 'Heebo', sans-serif;
-    border-bottom: 2.5px solid transparent;
-    margin-bottom: -1px;
-    transition: color 0.2s;
-    font-weight: 400;
-  }
-
-  .tab.active {
-    color: var(--brown);
-    border-bottom-color: var(--brown);
-    font-weight: 500;
-  }
-
-  .tab:hover:not(.active) { color: var(--dark-brown); }
-
-  /* TAB CONTENT */
-  .tab-content {
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-top: none;
-    border-radius: 0 0 12px 12px;
-    padding: 1.8rem;
-  }
-
-  .section { display: none; }
-  .section.active { display: block; }
-
-  /* METRICS */
-  .metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: 12px;
-    margin-bottom: 1.8rem;
-  }
-
-  .metric {
-    background: var(--cream);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1rem 1.2rem;
-  }
-
-  .metric-label {
-    font-size: 12px;
-    color: var(--text-light);
-    margin-bottom: 8px;
-    font-weight: 400;
-  }
-
-  .metric-value {
-    font-family: 'Frank Ruhl Libre', serif;
-    font-size: 22px;
-    color: var(--dark-brown);
-    font-weight: 500;
-  }
-
-  .metric-sub {
-    font-size: 11px;
-    color: var(--text-light);
-    margin-top: 4px;
-  }
-
-  /* PROGRESS */
-  .progress-wrap { margin-bottom: 1.8rem; }
-  .progress-header {
-    display: flex;
-    justify-content: space-between;
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-bottom: 8px;
-  }
-  .progress-track {
-    height: 8px;
-    background: var(--warm);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--light-brown), var(--brown));
-    border-radius: 4px;
-    transition: width 1s ease;
-  }
-
-  /* TIMELINE */
-  .section-title {
-    font-family: 'Frank Ruhl Libre', serif;
-    font-size: 16px;
-    font-weight: 400;
-    color: var(--dark-brown);
-    margin-bottom: 1rem;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .timeline { position: relative; }
-
-  .tl-item {
-    display: flex;
-    gap: 14px;
-    padding: 10px 0;
-    align-items: flex-start;
-  }
-
-  .tl-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    margin-top: 4px;
-    flex-shrink: 0;
-    border: 2px solid transparent;
-  }
-
-  .tl-dot.done { background: var(--green); }
-  .tl-dot.active { background: var(--brown); border-color: var(--light-brown); box-shadow: 0 0 0 3px rgba(139,115,85,0.2); }
-  .tl-dot.future { background: var(--border); }
-
-  .tl-text { font-size: 14px; color: var(--text); }
-  .tl-date { font-size: 12px; color: var(--text-light); margin-top: 3px; }
-
-  /* BUDGET */
-  .budget-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-
-  .budget-table th {
-    text-align: right;
-    padding: 10px 14px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-light);
-    background: var(--cream);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .budget-table td {
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text);
-  }
-
-  .budget-table tr:last-child td { border-bottom: none; }
-  .budget-table tr:hover td { background: var(--cream); }
-
-  .badge {
-    font-size: 11px;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-weight: 500;
-    display: inline-block;
-  }
-
-  .badge-green { background: var(--green-light); color: var(--green); }
-  .badge-yellow { background: var(--yellow-light); color: var(--yellow); }
-  .badge-red { background: var(--red-light); color: var(--red); }
-
-  /* DOCS */
-  .docs-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
-  }
-
-  .doc-card {
-    background: var(--cream);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1.2rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .doc-card:hover {
-    background: var(--warm);
-    border-color: var(--light-brown);
-    transform: translateY(-2px);
-  }
-
-  .doc-icon { font-size: 32px; margin-bottom: 8px; }
-  .doc-name { font-size: 13px; color: var(--dark-brown); font-weight: 500; margin-bottom: 4px; }
-  .doc-date { font-size: 11px; color: var(--text-light); }
-
-  /* UPDATES */
-  .update-item {
-    display: flex;
-    gap: 14px;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--border);
-    align-items: flex-start;
-  }
-
-  .update-item:last-child { border-bottom: none; }
-
-  .update-dot {
-    width: 36px;
-    height: 36px;
-    background: var(--cream);
-    border: 1px solid var(--border);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    flex-shrink: 0;
-  }
-
-  .update-text { font-size: 14px; color: var(--text); line-height: 1.5; }
-  .update-time { font-size: 12px; color: var(--text-light); margin-top: 3px; }
-
-  /* LOADING */
-  .loading {
-    text-align: center;
-    padding: 3rem;
-    color: var(--text-light);
-    font-size: 14px;
-  }
-
-  /* ADMIN PANEL */
-  .admin-notice {
-    background: var(--yellow-light);
-    border: 1px solid #ffc107;
-    border-radius: 10px;
-    padding: 12px 16px;
-    font-size: 13px;
-    color: var(--yellow);
-    margin-bottom: 1.5rem;
-    display: none;
-  }
-
-  @media (max-width: 600px) {
-    .main { padding: 1rem; }
-    .hero-card { flex-direction: column; gap: 1rem; align-items: flex-start; }
-    .topbar { padding: 0 1rem; }
-    .tab { padding: 12px 12px; font-size: 13px; }
-    .tab-content { padding: 1.2rem; }
-  }
+:root{--primary:#1a3c5e;--primary-light:#2563a8;--accent:#e8a020;--bg:#f0f4f8;--card:#fff;--text:#1a2332;--text-muted:#6b7a8d;--border:#dde3ea;--success:#22c55e;--warning:#f59e0b;--danger:#ef4444;--sidebar:240px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f2744,#1a3c5e,#2563a8);position:relative;overflow:hidden}
+#login-screen::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:rgba(255,255,255,.04);top:-200px;left:-200px}
+.login-card{background:#fff;border-radius:20px;padding:48px 40px;width:420px;max-width:95vw;box-shadow:0 24px 64px rgba(0,0,0,.25);position:relative;z-index:1}
+.login-logo{text-align:center;margin-bottom:32px}
+.login-logo .icon{font-size:48px;display:block;margin-bottom:12px}
+.login-logo h1{font-size:26px;font-weight:800;color:var(--primary)}
+.login-logo p{font-size:14px;color:var(--text-muted);margin-top:4px}
+.form-group{margin-bottom:18px}
+.form-group label{display:block;font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:6px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:12px 16px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:15px;color:var(--text);transition:border-color .2s;background:#fff;direction:rtl}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--primary-light)}
+.form-group textarea{min-height:80px;resize:vertical}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border:none;border-radius:10px;font-family:'Heebo',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:var(--primary);color:#fff;width:100%;justify-content:center}
+.btn-primary:hover{background:var(--primary-light);transform:translateY(-1px)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{background:#d4911a}
+.btn-outline{background:transparent;border:2px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--primary-light);color:var(--primary-light)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-sm{padding:7px 14px;font-size:13px}
+.btn-icon{width:auto;padding:7px 12px}
+.error-msg{background:#fef2f2;color:var(--danger);padding:10px 14px;border-radius:8px;font-size:13px;margin-top:10px;display:none}
+.error-msg.show{display:block}
+#app{display:none;min-height:100vh}
+.app-layout{display:flex;min-height:100vh}
+.sidebar{width:var(--sidebar);background:var(--primary);color:#fff;display:flex;flex-direction:column;position:fixed;top:0;right:0;height:100vh;z-index:100;overflow-y:auto}
+.sidebar-logo{padding:24px 20px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sidebar-logo .logo-icon{font-size:28px}
+.sidebar-logo h2{font-size:16px;font-weight:700;margin-top:6px}
+.sidebar-logo p{font-size:11px;opacity:.6;margin-top:2px}
+.sidebar-nav{padding:16px 12px;flex:1}
+.nav-section-title{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;opacity:.4;padding:12px 8px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:500;transition:all .2s;margin-bottom:2px;opacity:.75}
+.nav-item:hover{background:rgba(255,255,255,.1);opacity:1}
+.nav-item.active{background:rgba(255,255,255,.15);opacity:1;font-weight:600}
+.nav-item .nav-icon{font-size:18px;width:24px;text-align:center}
+.sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,.1)}
+.user-info{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.user-name{font-size:13px;font-weight:600}
+.user-role{font-size:11px;opacity:.6}
+.btn-logout{width:100%;padding:8px;background:rgba(255,255,255,.1);border:none;border-radius:8px;color:#fff;font-family:'Heebo',sans-serif;font-size:13px;cursor:pointer;transition:background .2s}
+.btn-logout:hover{background:rgba(255,255,255,.2)}
+.main-content{flex:1;margin-right:var(--sidebar);padding:32px;min-height:100vh}
+.page-header{margin-bottom:28px}
+.page-header h1{font-size:26px;font-weight:800;color:var(--primary)}
+.page-header p{font-size:14px;color:var(--text-muted);margin-top:4px}
+.card{background:var(--card);border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,.06);border:1px solid var(--border)}
+.card-title{font-size:16px;font-weight:700;color:var(--primary);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--card);border-radius:14px;padding:20px;border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.stat-icon{font-size:28px;margin-bottom:10px}
+.stat-value{font-size:28px;font-weight:800;color:var(--primary)}
+.stat-label{font-size:12px;color:var(--text-muted);margin-top:4px}
+.projects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+.project-card{background:var(--card);border-radius:16px;padding:22px;border:1px solid var(--border);cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.project-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.1);border-color:var(--primary-light)}
+.project-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.project-name{font-size:17px;font-weight:700;color:var(--primary)}
+.project-address{font-size:12px;color:var(--text-muted);margin-top:3px}
+.status-badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.status-active{background:#dcfce7;color:#166534}
+.status-paused{background:#fef9c3;color:#854d0e}
+.status-done{background:#dbeafe;color:#1e40af}
+.progress-bar-wrap{background:var(--bg);border-radius:8px;height:8px;margin:14px 0 8px;overflow:hidden}
+.progress-bar{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--primary-light),var(--accent));transition:width .5s ease}
+.progress-label{display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted)}
+.project-meta{display:flex;gap:12px;margin-top:14px;font-size:12px;color:var(--text-muted)}
+.back-btn{display:inline-flex;align-items:center;gap:6px;color:var(--text-muted);cursor:pointer;font-size:14px;margin-bottom:20px;transition:color .2s;background:none;border:none;font-family:'Heebo',sans-serif}
+.back-btn:hover{color:var(--primary)}
+.tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--card);padding:6px;border-radius:12px;border:1px solid var(--border);flex-wrap:wrap}
+.tab{padding:9px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-muted);transition:all .2s;border:none;background:none;font-family:'Heebo',sans-serif;display:flex;align-items:center;gap:6px}
+.tab:hover{color:var(--primary);background:var(--bg)}
+.tab.active{background:var(--primary);color:#fff;font-weight:600}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.timeline-phases{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.phase-card{background:var(--card);border-radius:14px;padding:18px;border:2px solid var(--border);transition:border-color .2s}
+.phase-card.done{border-color:var(--success)}
+.phase-card.active{border-color:var(--accent)}
+.phase-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.phase-name{font-size:15px;font-weight:700}
+.phase-status{font-size:11px;font-weight:600;padding:3px 8px;border-radius:12px}
+.phase-status.done{background:#dcfce7;color:#166534}
+.phase-status.active{background:#fef9c3;color:#854d0e}
+.phase-status.pending{background:#f1f5f9;color:#64748b}
+.budget-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+.budget-item{background:var(--card);border-radius:14px;padding:18px;border:1px solid var(--border);text-align:center}
+.budget-item .amount{font-size:22px;font-weight:800;margin-top:8px}
+.amount.total{color:var(--primary)}
+.amount.paid{color:var(--success)}
+.amount.remaining{color:var(--warning)}
+.budget-item .label{font-size:12px;color:var(--text-muted)}
+.payments-table{width:100%;border-collapse:collapse}
+.payments-table th{text-align:right;padding:10px 14px;font-size:12px;font-weight:600;color:var(--text-muted);border-bottom:2px solid var(--border);background:var(--bg)}
+.payments-table td{padding:12px 14px;font-size:14px;border-bottom:1px solid var(--border)}
+.payments-table tr:last-child td{border-bottom:none}
+.doc-categories{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.doc-category{background:var(--card);border-radius:14px;padding:20px;border:1px solid var(--border)}
+.doc-category-title{font-size:15px;font-weight:700;color:var(--primary);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.doc-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.doc-item:last-child{border-bottom:none}
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.gallery-item{aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;cursor:pointer;transition:transform .2s}
+.gallery-item:hover{transform:scale(1.02)}
+.gallery-item img{width:100%;height:100%;object-fit:cover}
+.messages-list{display:flex;flex-direction:column;gap:12px;max-height:450px;overflow-y:auto;margin-bottom:20px;padding:4px}
+.message-bubble{padding:12px 16px;border-radius:14px;max-width:80%;font-size:14px;line-height:1.5}
+.message-bubble.admin{background:var(--primary);color:#fff;align-self:flex-start;border-radius:4px 14px 14px 14px}
+.message-bubble.client{background:var(--card);border:1px solid var(--border);align-self:flex-end;border-radius:14px 4px 14px 14px}
+.message-meta{font-size:11px;opacity:.6;margin-top:6px}
+.message-input-wrap{display:flex;gap:10px}
+.message-input-wrap input{flex:1;padding:12px 16px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl}
+.message-input-wrap input:focus{outline:none;border-color:var(--primary-light)}
+.users-list{display:flex;flex-direction:column;gap:10px}
+.user-row{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--card);border-radius:12px;border:1px solid var(--border)}
+.user-row-info{display:flex;align-items:center;gap:12px}
+.user-row-avatar{width:40px;height:40px;border-radius:50%;background:var(--primary-light);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.user-row-name{font-size:15px;font-weight:600}
+.user-row-meta{font-size:12px;color:var(--text-muted)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1000}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:20px;padding:32px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.2)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+.modal-title{font-size:20px;font-weight:700;color:var(--primary)}
+.modal-close{background:var(--bg);border:none;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.modal-footer{display:flex;gap:10px;margin-top:24px;justify-content:flex-end}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.flex-between{display:flex;justify-content:space-between;align-items:center}
+.flex-gap{display:flex;gap:10px;align-items:center}
+.mb-16{margin-bottom:16px}
+.mb-24{margin-bottom:24px}
+.empty-state{text-align:center;padding:48px 24px;color:var(--text-muted)}
+.empty-state .empty-icon{font-size:48px;margin-bottom:12px}
+.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-blue{background:#dbeafe;color:#1e40af}
+.section-actions{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.section-title{font-size:16px;font-weight:700;color:var(--primary)}
+.upload-label{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:10px;font-family:'Heebo',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.upload-label:hover{background:var(--primary-light)}
+.upload-label input{display:none}
+@media(max-width:768px){:root{--sidebar:200px}.main-content{padding:16px}}
+@media(max-width:560px){.sidebar{display:none}.main-content{margin-right:0}}
 </style>
 </head>
 <body>
-
-<!-- LOGIN -->
-<div class="login-page" id="loginPage">
-  <div class="login-box">
+<div id="login-screen">
+  <div class="login-card">
     <div class="login-logo">
-      <div class="login-logo-icon">🏗️</div>
-      <h1>ארונשטיין פיקוח</h1>
-      <p>ניהול פרויקטי בנייה</p>
+      <span class="icon">🏗️</span>
+      <h1>ארונשטיין פיקוח וניהול</h1>
+      <p>מערכת ניהול פרויקטי בנייה</p>
     </div>
-    <div class="login-card">
-      <h2>כניסה לאזור האישי</h2>
-      <div class="field">
-        <label>שם משתמש</label>
-        <input type="text" id="usernameInput" placeholder="הכנס שם משתמש" />
+    <div class="form-group"><label>שם משתמש</label><input type="text" id="login-user" placeholder="הכנס שם משתמש"/></div>
+    <div class="form-group"><label>סיסמה</label><input type="password" id="login-pass" placeholder="הכנס סיסמה"/></div>
+    <button class="btn btn-primary" onclick="doLogin()">כניסה לחשבון</button>
+    <div class="error-msg" id="login-error">שם משתמש או סיסמה שגויים</div>
+    <p style="text-align:center;margin-top:20px;font-size:12px;color:var(--text-muted)">פרטי הגישה מסופקים על ידי ארונשטיין פיקוח וניהול</p>
+  </div>
+</div>
+
+<div id="app">
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">🏗️</div>
+        <h2>ארונשטיין פיקוח וניהול</h2>
+        <p>מערכת ניהול</p>
       </div>
-      <div class="field">
-        <label>סיסמה</label>
-        <input type="password" id="passwordInput" placeholder="••••••••" />
+      <nav class="sidebar-nav" id="sidebar-nav"></nav>
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar" id="user-avatar-sb">א</div>
+          <div><div class="user-name" id="user-name-sb">משתמש</div><div class="user-role" id="user-role-sb">תפקיד</div></div>
+        </div>
+        <button class="btn-logout" onclick="doLogout()">🚪 יציאה</button>
       </div>
-      <button class="login-btn" onclick="doLogin()">כניסה לחשבון</button>
-      <div class="login-error" id="loginError">שם משתמש או סיסמה שגויים</div>
-      <p class="login-hint">פרטי הגישה מסופקים על ידי ארונשטיין פיקוח</p>
+    </aside>
+    <main class="main-content" id="main-content"></main>
+  </div>
+</div>
+
+<!-- Modal: Project -->
+<div class="modal-overlay" id="modal-project">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="modal-proj-title">פרויקט חדש</div><button class="modal-close" onclick="closeModal('modal-project')">✕</button></div>
+    <div class="form-group"><label>שם הפרויקט</label><input type="text" id="proj-name" placeholder="לדוגמה: בית פרטי - כפר סבא"/></div>
+    <div class="form-group"><label>כתובת</label><input type="text" id="proj-addr" placeholder="רחוב, עיר"/></div>
+    <div class="form-group"><label>תיאור</label><textarea id="proj-desc" placeholder="תיאור קצר"></textarea></div>
+    <div class="grid-2">
+      <div class="form-group"><label>תאריך התחלה</label><input type="date" id="proj-start"/></div>
+      <div class="form-group"><label>תאריך סיום משוער</label><input type="date" id="proj-end"/></div>
+    </div>
+    <div class="form-group"><label>תקציב כולל (₪)</label><input type="number" id="proj-budget" placeholder="0"/></div>
+    <div class="form-group"><label>סטטוס</label><select id="proj-status"><option value="active">בביצוע</option><option value="paused">מושהה</option><option value="done">הושלם</option></select></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-project')">ביטול</button>
+      <button class="btn btn-primary" style="width:auto" onclick="saveProject()">שמור פרויקט</button>
     </div>
   </div>
 </div>
 
-<!-- DASHBOARD -->
-<div class="dashboard" id="dashboard">
-  <div class="topbar">
-    <div class="topbar-brand">
-      <span>🏗️</span>
-      ארונשטיין פיקוח
-    </div>
-    <div class="topbar-user">
-      <div class="user-name" id="userNameLabel"></div>
-      <div class="avatar" id="userAvatar"></div>
-      <button class="logout-btn" onclick="doLogout()">יציאה</button>
-    </div>
-  </div>
-
-  <div class="main">
-    <div class="admin-notice" id="adminNotice">
-      ⚙️ אתה מחובר כמנהל — אתה רואה את כל הפרויקטים במערכת
-    </div>
-
-    <div class="hero-card">
-      <div>
-        <div class="hero-title" id="projectTitle">טוען...</div>
-        <div class="hero-sub" id="projectDates"></div>
-      </div>
-      <div class="status-pill" id="projectStatus">בביצוע</div>
-    </div>
-
-    <div class="tabs">
-      <button class="tab active" onclick="showTab('overview', this)">📊 סקירה</button>
-      <button class="tab" onclick="showTab('budget', this)">💰 תקציב</button>
-      <button class="tab" onclick="showTab('docs', this)">📁 מסמכים</button>
-      <button class="tab" onclick="showTab('updates', this)">🔔 עדכונים</button>
-    </div>
-
-    <div class="tab-content">
-
-      <!-- OVERVIEW -->
-      <div class="section active" id="sec-overview">
-        <div class="metrics" id="metricsContainer">
-          <div class="loading">טוען נתונים...</div>
-        </div>
-        <div class="progress-wrap">
-          <div class="progress-header">
-            <span>התקדמות כללית</span>
-            <span id="progressLabel">0%</span>
-          </div>
-          <div class="progress-track">
-            <div class="progress-fill" id="progressFill" style="width:0%"></div>
-          </div>
-        </div>
-        <div class="section-title">לוח זמנים</div>
-        <div class="timeline" id="timelineContainer">
-          <div class="loading">טוען...</div>
-        </div>
-      </div>
-
-      <!-- BUDGET -->
-      <div class="section" id="sec-budget">
-        <div class="metrics" id="budgetMetrics">
-          <div class="loading">טוען...</div>
-        </div>
-        <table class="budget-table" id="budgetTable">
-          <thead>
-            <tr>
-              <th>פריט</th>
-              <th>תקציב</th>
-              <th>בוצע</th>
-              <th>סטטוס</th>
-            </tr>
-          </thead>
-          <tbody id="budgetBody"></tbody>
-        </table>
-      </div>
-
-      <!-- DOCS -->
-      <div class="section" id="sec-docs">
-        <div class="docs-grid" id="docsGrid">
-          <div class="loading">טוען...</div>
-        </div>
-      </div>
-
-      <!-- UPDATES -->
-      <div class="section" id="sec-updates">
-        <div id="updatesContainer">
-          <div class="loading">טוען...</div>
-        </div>
-      </div>
-
+<!-- Modal: User -->
+<div class="modal-overlay" id="modal-user">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">הוספת לקוח</div><button class="modal-close" onclick="closeModal('modal-user')">✕</button></div>
+    <div class="form-group"><label>שם מלא</label><input type="text" id="new-user-name" placeholder="שם הלקוח"/></div>
+    <div class="form-group"><label>שם משתמש</label><input type="text" id="new-user-username" placeholder="שם כניסה"/></div>
+    <div class="form-group"><label>סיסמה</label><input type="text" id="new-user-pass" placeholder="סיסמה"/></div>
+    <div class="form-group"><label>פרויקט משויך</label><select id="new-user-project"></select></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-user')">ביטול</button>
+      <button class="btn btn-primary" style="width:auto" onclick="saveUser()">הוסף לקוח</button>
     </div>
   </div>
 </div>
 
-<!-- FIREBASE -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+<!-- Modal: Payment -->
+<div class="modal-overlay" id="modal-payment">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">תשלום חדש</div><button class="modal-close" onclick="closeModal('modal-payment')">✕</button></div>
+    <div class="form-group"><label>תיאור התשלום</label><input type="text" id="pay-desc" placeholder="לדוגמה: תשלום לקבלן שלד"/></div>
+    <div class="form-group"><label>סכום (₪)</label><input type="number" id="pay-amount" placeholder="0"/></div>
+    <div class="form-group"><label>תאריך</label><input type="date" id="pay-date"/></div>
+    <div class="form-group"><label>נמען</label><input type="text" id="pay-to" placeholder="שם הקבלן / ספק"/></div>
+    <div class="form-group"><label>קטגוריה</label><select id="pay-category"><option>שלד</option><option>טיח</option><option>חשמל</option><option>אינסטלציה</option><option>ריצוף</option><option>גמר</option><option>אחר</option></select></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-payment')">ביטול</button>
+      <button class="btn btn-primary" style="width:auto" onclick="savePayment()">שמור תשלום</button>
+    </div>
+  </div>
+</div>
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBsSDCAWSKGV0bOsi4lLQcCABf4hjOLI0k",
-    authDomain: "aronstein-pikuach.firebaseapp.com",
-    projectId: "aronstein-pikuach",
-    storageBucket: "aronstein-pikuach.firebasestorage.app",
-    messagingSenderId: "333478812777",
-    appId: "1:333478812777:web:3073b8d866cc841e9516f8",
-    measurementId: "G-LC1B9G1P95"
-  };
+<!-- Modal: Phase -->
+<div class="modal-overlay" id="modal-phase">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="modal-phase-title">שלב חדש</div><button class="modal-close" onclick="closeModal('modal-phase')">✕</button></div>
+    <div class="form-group"><label>שם השלב</label><input type="text" id="phase-name"/></div>
+    <div class="grid-2">
+      <div class="form-group"><label>תאריך התחלה</label><input type="date" id="phase-start"/></div>
+      <div class="form-group"><label>תאריך סיום</label><input type="date" id="phase-end"/></div>
+    </div>
+    <div class="form-group"><label>אחוז השלמה: <span id="phase-pv">0%</span></label><input type="range" id="phase-prog" min="0" max="100" value="0" oninput="document.getElementById('phase-pv').textContent=this.value+'%'" style="width:100%;margin-top:8px"/></div>
+    <div class="form-group"><label>סטטוס</label><select id="phase-status"><option value="pending">טרם התחיל</option><option value="active">בביצוע</option><option value="done">הושלם</option></select></div>
+    <div class="form-group"><label>הערות</label><textarea id="phase-notes" placeholder="הערות לשלב זה"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-phase')">ביטול</button>
+      <button class="btn btn-primary" style="width:auto" onclick="savePhase()">שמור</button>
+    </div>
+  </div>
+</div>
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  window.db = db;
-  window.getDoc = getDoc;
-  window.doc = doc;
-  window.collection = collection;
-  window.getDocs = getDocs;
-
-  // seed demo data
-  window.seedDemoData = async function() {
-    const { setDoc } = await import("https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js");
-
-    const users = {
-      "cohen123": {
-        name: "משפחת כהן",
-        password: "1234",
-        initials: "כ",
-        isAdmin: false,
-        project: {
-          title: "פרויקט בית כהן – רחובות",
-          dates: "התחלה: ינואר 2025  |  סיום משוער: דצמבר 2025",
-          status: "בביצוע",
-          progress: 62,
-          metrics: [
-            { label: "אחוז ביצוע", value: "62%", sub: "עמידה בלוח זמנים" },
-            { label: "תקציב מנוצל", value: "₪820K", sub: "מתוך ₪1.4M" },
-            { label: "שבועות לסיום", value: "24", sub: "~דצמבר 2025" },
-            { label: "פגישות השבוע", value: "2", sub: "יום ג׳ + יום ה׳" }
-          ],
-          timeline: [
-            { text: "עבודות עפר ויסודות", date: "הושלם – מרץ 2025", status: "done" },
-            { text: "שלד קומה א׳", date: "הושלם – מאי 2025", status: "done" },
-            { text: "שלד קומה ב׳ + גג", date: "בביצוע – יוני–אוגוסט 2025", status: "active" },
-            { text: "עבודות חשמל ואינסטלציה", date: "מתוכנן – ספטמבר 2025", status: "future" },
-            { text: "גמר פנים ומסירה", date: "מתוכנן – דצמבר 2025", status: "future" }
-          ],
-          budgetMetrics: [
-            { label: "תקציב כולל", value: "₪1.4M", sub: "" },
-            { label: "שולם עד כה", value: "₪820K", sub: "" },
-            { label: "יתרה", value: "₪580K", sub: "" }
-          ],
-          budget: [
-            { item: "עפר ויסודות", planned: "₪180K", done: "₪180K", status: "הושלם", badge: "green" },
-            { item: "שלד", planned: "₪420K", done: "₪390K", status: "בתקציב", badge: "green" },
-            { item: "חשמל", planned: "₪150K", done: "₪90K", status: "בתהליך", badge: "yellow" },
-            { item: "אינסטלציה", planned: "₪120K", done: "₪80K", status: "בתהליך", badge: "yellow" },
-            { item: "גמר פנים", planned: "₪280K", done: "₪80K", status: "בתהליך", badge: "yellow" },
-            { item: "שונות", planned: "₪250K", done: "₪0", status: "רזרבה", badge: "green" }
-          ],
-          docs: [
-            { icon: "📐", name: "תכנית קומה א׳", date: "עודכן: 12.5.2025" },
-            { icon: "📐", name: "תכנית קומה ב׳", date: "עודכן: 20.5.2025" },
-            { icon: "📄", name: "חוזה קבלן ראשי", date: "נחתם: 15.1.2025" },
-            { icon: "💰", name: "סיכום תקציב מאי", date: "עודכן: 1.6.2025" },
-            { icon: "📷", name: "תמונות מהשטח", date: "עודכן: 3.6.2025" },
-            { icon: "📋", name: "היתר בנייה", date: "אושר: 20.12.2024" }
-          ],
-          updates: [
-            { icon: "🏗️", text: "יציקת גג קומה ב׳ בוצעה בהצלחה", time: "היום, 09:30" },
-            { icon: "📄", text: "חשבון מספר 6 מהקבלן הועלה לאישורך", time: "אתמול, 14:00" },
-            { icon: "📅", text: "פגישת ביקורת שטח קבועה ליום ג׳ 10.6 בשעה 10:00", time: "2.6.2025" },
-            { icon: "📷", text: "12 תמונות חדשות מהשטח הועלו לגלריה", time: "1.6.2025" },
-            { icon: "✅", text: "עבודות עפר ויסודות אושרו על ידי המפקח", time: "28.5.2025" }
-          ]
-        }
-      },
-      "levi456": {
-        name: "משפחת לוי",
-        password: "5678",
-        initials: "ל",
-        isAdmin: false,
-        project: {
-          title: "פרויקט בית לוי – נס ציונה",
-          dates: "התחלה: מרץ 2025  |  סיום משוער: פברואר 2026",
-          status: "בביצוע",
-          progress: 35,
-          metrics: [
-            { label: "אחוז ביצוע", value: "35%", sub: "עמידה בלוח זמנים" },
-            { label: "תקציב מנוצל", value: "₪490K", sub: "מתוך ₪1.2M" },
-            { label: "שבועות לסיום", value: "38", sub: "~פברואר 2026" },
-            { label: "פגישות השבוע", value: "1", sub: "יום ד׳" }
-          ],
-          timeline: [
-            { text: "עבודות עפר ויסודות", date: "הושלם – מאי 2025", status: "done" },
-            { text: "שלד קומה א׳", date: "בביצוע – יוני–ספטמבר 2025", status: "active" },
-            { text: "שלד קומה ב׳ + גג", date: "מתוכנן – אוקטובר–נובמבר 2025", status: "future" },
-            { text: "עבודות חשמל ואינסטלציה", date: "מתוכנן – דצמבר 2025", status: "future" },
-            { text: "גמר פנים ומסירה", date: "מתוכנן – פברואר 2026", status: "future" }
-          ],
-          budgetMetrics: [
-            { label: "תקציב כולל", value: "₪1.2M", sub: "" },
-            { label: "שולם עד כה", value: "₪490K", sub: "" },
-            { label: "יתרה", value: "₪710K", sub: "" }
-          ],
-          budget: [
-            { item: "עפר ויסודות", planned: "₪160K", done: "₪160K", status: "הושלם", badge: "green" },
-            { item: "שלד", planned: "₪380K", done: "₪180K", status: "בתהליך", badge: "yellow" },
-            { item: "חשמל", planned: "₪130K", done: "₪0", status: "טרם החל", badge: "yellow" },
-            { item: "אינסטלציה", planned: "₪100K", done: "₪0", status: "טרם החל", badge: "yellow" },
-            { item: "גמר פנים", planned: "₪230K", done: "₪0", status: "טרם החל", badge: "yellow" },
-            { item: "שונות", planned: "₪200K", done: "₪150K", status: "בתהליך", badge: "yellow" }
-          ],
-          docs: [
-            { icon: "📐", name: "תכנית יסודות", date: "עודכן: 10.3.2025" },
-            { icon: "📄", name: "חוזה קבלן ראשי", date: "נחתם: 1.3.2025" },
-            { icon: "📋", name: "היתר בנייה", date: "אושר: 15.2.2025" },
-            { icon: "📷", name: "תמונות מהשטח", date: "עודכן: 4.6.2025" }
-          ],
-          updates: [
-            { icon: "🏗️", text: "יציקת עמודי שלד קומה א׳ החלה", time: "היום, 08:00" },
-            { icon: "📅", text: "פגישת תכנון עם הקבלן ביום ד׳ 11.6", time: "3.6.2025" },
-            { icon: "✅", text: "יסודות אושרו על ידי מהנדס הפיקוח", time: "30.5.2025" }
-          ]
-        }
-      },
-      "admin": {
-        name: "ארונשטיין פיקוח",
-        password: "admin2025",
-        initials: "מ",
-        isAdmin: true,
-        project: {
-          title: "לוח ניהול – כל הפרויקטים",
-          dates: "2 פרויקטים פעילים",
-          status: "מנהל",
-          progress: 0,
-          metrics: [
-            { label: "לקוחות פעילים", value: "2", sub: "" },
-            { label: "פרוייקטים", value: "2", sub: "" },
-            { label: "תהליך התקדמות", value: "49%", sub: "" }
-          ],
-          timeline: [],
-          budgetMetrics: [],
-          budget: [],
-          docs: [],
-          updates: []
-        }
-      }
-    };
-
-    for (const [username, data] of Object.entries(users)) {
-      await setDoc(doc(db, "users", username), data);
-    }
-    alert("נתוני הדמו נטענו בהצלחה!");
-  };
-</script>
+<!-- Modal: Update -->
+<div class="modal-overlay" id="modal-update">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">עדכון חדש ללקוח</div><button class="modal-close" onclick="closeModal('modal-update')">✕</button></div>
+    <div class="form-group"><label>כותרת</label><input type="text" id="upd-title" placeholder="לדוגמה: סיום שלב השלד"/></div>
+    <div class="form-group"><label>תוכן</label><textarea id="upd-body" placeholder="פרטי העדכון..."></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-update')">ביטול</button>
+      <button class="btn btn-primary" style="width:auto" onclick="saveUpdate()">שלח עדכון</button>
+    </div>
+  </div>
+</div>
 
 <script>
-  let currentUser = null;
+var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
 
-  async function doLogin() {
-    const username = document.getElementById('usernameInput').value.trim();
-    const password = document.getElementById('passwordInput').value.trim();
+function getData(){
+  var d=localStorage.getItem('aronstein_v2');
+  if(d)return JSON.parse(d);
+  var def={
+    users:[{id:'admin',username:'admin',password:'admin123',name:'ארונשטיין',role:'admin',projectId:null}],
+    projects:[{
+      id:'proj1',name:'בית פרטי - רמת השרון',address:'רחוב הורדים 12, רמת השרון',
+      desc:'בניית בית פרטי דו-קומתי, 280 מ"ר',start:'2025-01-01',end:'2025-12-01',
+      budget:2500000,status:'active',progress:35,
+      phases:[
+        {id:'ph1',name:'שלד',status:'done',start:'2025-01-01',end:'2025-03-01',progress:100,notes:'הושלם בהצלחה'},
+        {id:'ph2',name:'טיח וגבס',status:'active',start:'2025-03-15',end:'2025-05-30',progress:60,notes:'בתהליך'},
+        {id:'ph3',name:'חשמל ואינסטלציה',status:'active',start:'2025-04-01',end:'2025-06-01',progress:40,notes:''},
+        {id:'ph4',name:'ריצוף',status:'pending',start:'2025-06-01',end:'2025-08-01',progress:0,notes:''},
+        {id:'ph5',name:'גמר',status:'pending',start:'2025-08-01',end:'2025-11-01',progress:0,notes:''}
+      ],
+      payments:[
+        {id:'p1',desc:'תשלום ראשון - שלד',amount:400000,date:'2025-01-15',to:'קבלן שלד בע"מ',category:'שלד'},
+        {id:'p2',desc:'תשלום שני - שלד',amount:350000,date:'2025-02-20',to:'קבלן שלד בע"מ',category:'שלד'},
+        {id:'p3',desc:'טיח חיצוני',amount:120000,date:'2025-04-01',to:'צבעון עבודות',category:'טיח'}
+      ],
+      documents:[
+        {id:'d1',name:'תוכניות אדריכלות',category:'תוכניות',date:'2025-01-01'},
+        {id:'d2',name:'היתר בנייה',category:'היתרים',date:'2025-01-05'},
+        {id:'d3',name:'חוזה עם קבלן שלד',category:'הסכמים',date:'2025-01-10'}
+      ],
+      photos:[],
+      updates:[
+        {id:'u1',title:'סיום שלב השלד',body:'שלב השלד הושלם בהצלחה וניתן לעבור לשלב הטיח.',date:'05/03/2025'},
+        {id:'u2',title:'עדכון שבועי',body:'עבודות הטיח בשלב טוב, צפי לסיום בסוף מאי.',date:'20/04/2025'}
+      ],
+      messages:[
+        {id:'m1',sender:'admin',text:'ברוך הבא למערכת! כאן תוכל לפנות אלינו בכל שאלה.',date:'01/01/2025'}
+      ]
+    }]
+  };
+  localStorage.setItem('aronstein_v2',JSON.stringify(def));
+  return def;
+}
 
-    if (!username || !password) {
-      showError();
-      return;
-    }
+function saveData(d){localStorage.setItem('aronstein_v2',JSON.stringify(d));}
 
-    try {
-      const userDoc = await window.getDoc(window.doc(window.db, "users", username));
+function doLogin(){
+  var u=document.getElementById('login-user').value.trim();
+  var p=document.getElementById('login-pass').value.trim();
+  var data=getData();
+  var user=data.users.find(function(x){return x.username===u&&x.password===p;});
+  if(!user){document.getElementById('login-error').classList.add('show');return;}
+  currentUser=user;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  renderSidebar();
+  if(user.role==='admin'){showView('dashboard');}
+  else{currentProjectId=user.projectId;currentTab='overview';showView('project');}
+}
 
-      if (!userDoc.exists()) {
-        // First time — seed data then try again
-        await window.seedDemoData();
-        const retryDoc = await window.getDoc(window.doc(window.db, "users", username));
-        if (!retryDoc.exists()) { showError(); return; }
-        const data = retryDoc.data();
-        if (data.password !== password) { showError(); return; }
-        login(username, data);
-      } else {
-        const data = userDoc.data();
-        if (data.password !== password) { showError(); return; }
-        login(username, data);
-      }
-    } catch (e) {
-      console.error(e);
-      showError();
-    }
+function doLogout(){
+  currentUser=null;
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('login-error').classList.remove('show');
+}
+
+function renderSidebar(){
+  document.getElementById('user-avatar-sb').textContent=currentUser.name.charAt(0);
+  document.getElementById('user-name-sb').textContent=currentUser.name;
+  document.getElementById('user-role-sb').textContent=currentUser.role==='admin'?'מנהל מערכת':'לקוח';
+  var nav=document.getElementById('sidebar-nav');
+  if(currentUser.role==='admin'){
+    nav.innerHTML='<div class="nav-section-title">ניהול</div>'+
+      '<div class="nav-item '+(currentView==='dashboard'?'active':'')+'" onclick="showView(\'dashboard\')"><span class="nav-icon">📊</span> לוח בקרה</div>'+
+      '<div class="nav-item '+(currentView==='projects'?'active':'')+'" onclick="showView(\'projects\')"><span class="nav-icon">🏗️</span> פרויקטים</div>'+
+      '<div class="nav-section-title">מערכת</div>'+
+      '<div class="nav-item '+(currentView==='clients'?'active':'')+'" onclick="showView(\'clients\')"><span class="nav-icon">👥</span> לקוחות</div>'+
+      '<div class="nav-item '+(currentView==='settings'?'active':'')+'" onclick="showView(\'settings\')"><span class="nav-icon">⚙️</span> הגדרות</div>';
+  } else {
+    nav.innerHTML='<div class="nav-section-title">הפרויקט שלי</div><div class="nav-item active"><span class="nav-icon">🏠</span> הפרויקט שלי</div>';
   }
+}
 
-  function login(username, data) {
-    currentUser = { username, ...data };
-    document.getElementById('loginPage').style.display = 'none';
-    document.getElementById('dashboard').style.display = 'block';
+function showView(view,pid){
+  currentView=view;
+  if(pid)currentProjectId=pid;
+  renderSidebar();
+  var el=document.getElementById('main-content');
+  if(view==='dashboard')renderDashboard(el);
+  else if(view==='projects')renderProjectsList(el);
+  else if(view==='project'){currentTab='overview';renderProjectDetail(el);}
+  else if(view==='clients')renderClients(el);
+  else if(view==='settings')renderSettings(el);
+}
 
-    document.getElementById('userNameLabel').textContent = data.name;
-    document.getElementById('userAvatar').textContent = data.initials;
+function fmtMoney(n){return '₪'+Number(n).toLocaleString('he-IL');}
 
-    if (data.isAdmin) {
-      document.getElementById('adminNotice').style.display = 'block';
-    }
+function projectCardHTML(p){
+  var paid=p.payments.reduce(function(s,x){return s+Number(x.amount||0);},0);
+  var sm={'active':['status-active','בביצוע'],'paused':['status-paused','מושהה'],'done':['status-done','הושלם']};
+  var sc=sm[p.status]||sm.active;
+  return '<div class="project-card" onclick="showView(\'project\',\''+p.id+'\')">'+
+    '<div class="project-card-header"><div><div class="project-name">'+p.name+'</div><div class="project-address">📍 '+p.address+'</div></div>'+
+    '<span class="status-badge '+sc[0]+'">'+sc[1]+'</span></div>'+
+    '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+(p.progress||0)+'%"></div></div>'+
+    '<div class="progress-label"><span>התקדמות</span><span>'+(p.progress||0)+'%</span></div>'+
+    '<div class="project-meta"><span>💰 '+(p.budget/1000000).toFixed(1)+'M</span><span>📄 '+p.documents.length+' מסמכים</span><span>🔔 '+p.updates.length+' עדכונים</span></div>'+
+    '</div>';
+}
 
-    const p = data.project;
-    document.getElementById('projectTitle').textContent = p.title;
-    document.getElementById('projectDates').textContent = p.dates;
-    document.getElementById('projectStatus').textContent = p.status;
+function renderDashboard(el){
+  var data=getData();
+  var active=data.projects.filter(function(p){return p.status==='active';}).length;
+  var clients=data.users.filter(function(u){return u.role!=='admin';}).length;
+  var totalPaid=data.projects.reduce(function(s,p){return s+p.payments.reduce(function(ss,pay){return ss+Number(pay.amount||0);},0);},0);
+  el.innerHTML='<div class="page-header"><h1>👋 שלום, '+currentUser.name+'</h1><p>סקירה כללית של כל הפרויקטים</p></div>'+
+    '<div class="stats-grid">'+
+    '<div class="stat-card"><div class="stat-icon">🏗️</div><div class="stat-value">'+data.projects.length+'</div><div class="stat-label">פרויקטים</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-value">'+active+'</div><div class="stat-label">פעילים</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value">'+clients+'</div><div class="stat-label">לקוחות</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value">'+fmtMoney(totalPaid)+'</div><div class="stat-label">שולם סה"כ</div></div>'+
+    '</div>'+
+    '<div class="card"><div class="section-actions"><div class="section-title">🏗️ פרויקטים</div><button class="btn btn-primary btn-sm" onclick="openNewProjectModal()">➕ פרויקט חדש</button></div>'+
+    '<div class="projects-grid">'+data.projects.map(projectCardHTML).join('')+'</div></div>';
+}
 
-    // Metrics
-    const mc = document.getElementById('metricsContainer');
-    mc.innerHTML = p.metrics.map(m => `
-      <div class="metric">
-        <div class="metric-label">${m.label}</div>
-        <div class="metric-value">${m.value}</div>
-        <div class="metric-sub">${m.sub}</div>
-      </div>
-    `).join('');
+function renderProjectsList(el){
+  var data=getData();
+  el.innerHTML='<div class="page-header flex-between"><div><h1>🏗️ פרויקטים</h1><p>ניהול כל הפרויקטים</p></div><button class="btn btn-primary" onclick="openNewProjectModal()">➕ פרויקט חדש</button></div>'+
+    '<div class="projects-grid">'+data.projects.map(projectCardHTML).join('')+'</div>';
+}
 
-    // Progress
-    if (p.progress > 0) {
-      document.getElementById('progressLabel').textContent = p.progress + '%';
-      setTimeout(() => {
-        document.getElementById('progressFill').style.width = p.progress + '%';
-      }, 100);
-    } else {
-      document.querySelector('.progress-wrap').style.display = 'none';
-    }
+function renderProjectDetail(el){
+  var data=getData();
+  var p=data.projects.find(function(x){return x.id===currentProjectId;});
+  if(!p){el.innerHTML='<p>פרויקט לא נמצא</p>';return;}
+  var isAdmin=currentUser.role==='admin';
+  var paid=p.payments.reduce(function(s,x){return s+Number(x.amount||0);},0);
+  var remaining=Number(p.budget||0)-paid;
 
-    // Timeline
-    const tc = document.getElementById('timelineContainer');
-    if (p.timeline.length > 0) {
-      tc.innerHTML = p.timeline.map(t => `
-        <div class="tl-item">
-          <div class="tl-dot ${t.status}"></div>
-          <div>
-            <div class="tl-text">${t.text}</div>
-            <div class="tl-date">${t.date}</div>
-          </div>
-        </div>
-      `).join('');
-    } else {
-      tc.innerHTML = '';
-      document.querySelector('.section-title').style.display = 'none';
-    }
+  var html=(isAdmin?'<button class="back-btn" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>':'');
+  html+='<div class="flex-between mb-24"><div><h1 style="font-size:24px;font-weight:800;color:var(--primary)">'+p.name+'</h1><p style="color:var(--text-muted);margin-top:4px">📍 '+p.address+'</p></div>';
+  if(isAdmin)html+='<div class="flex-gap"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">✏️ עריכה</button><button class="btn btn-accent btn-sm" onclick="openModal(\'modal-update\')">🔔 עדכון חדש</button></div>';
+  html+='</div>';
 
-    // Budget metrics
-    const bm = document.getElementById('budgetMetrics');
-    bm.innerHTML = p.budgetMetrics.map(m => `
-      <div class="metric">
-        <div class="metric-label">${m.label}</div>
-        <div class="metric-value">${m.value}</div>
-      </div>
-    `).join('');
+  html+='<div class="tabs">'+
+    '<button class="tab '+(currentTab==='overview'?'active':'')+'" onclick="switchTab(\'overview\')">📊 סקירה</button>'+
+    '<button class="tab '+(currentTab==='timeline'?'active':'')+'" onclick="switchTab(\'timeline\')">📅 לוח זמנים</button>'+
+    '<button class="tab '+(currentTab==='budget'?'active':'')+'" onclick="switchTab(\'budget\')">💰 תקציב</button>'+
+    '<button class="tab '+(currentTab==='docs'?'active':'')+'" onclick="switchTab(\'docs\')">📁 מסמכים</button>'+
+    '<button class="tab '+(currentTab==='gallery'?'active':'')+'" onclick="switchTab(\'gallery\')">📷 גלריה</button>'+
+    '<button class="tab '+(currentTab==='updates'?'active':'')+'" onclick="switchTab(\'updates\')">🔔 עדכונים</button>'+
+    '<button class="tab '+(currentTab==='messages'?'active':'')+'" onclick="switchTab(\'messages\')">💬 שאלות</button>'+
+    '</div>';
 
-    // Budget table
-    const bb = document.getElementById('budgetBody');
-    bb.innerHTML = p.budget.map(b => `
-      <tr>
-        <td>${b.item}</td>
-        <td>${b.planned}</td>
-        <td>${b.done}</td>
-        <td><span class="badge badge-${b.badge}">${b.status}</span></td>
-      </tr>
-    `).join('');
+  // OVERVIEW TAB
+  html+='<div id="tab-overview" class="tab-content '+(currentTab==='overview'?'active':'')+'">'+
+    '<div class="stats-grid">'+
+    '<div class="stat-card"><div class="stat-icon">📈</div><div class="stat-value">'+(p.progress||0)+'%</div><div class="stat-label">התקדמות כללית</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value">'+fmtMoney(paid)+'</div><div class="stat-label">שולם עד כה</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">📅</div><div class="stat-value">'+p.phases.filter(function(x){return x.status==='done';}).length+'/'+p.phases.length+'</div><div class="stat-label">שלבים הושלמו</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">📄</div><div class="stat-value">'+p.documents.length+'</div><div class="stat-label">מסמכים</div></div>'+
+    '</div>'+
+    '<div class="grid-2" style="gap:20px">'+
+    '<div class="card"><div class="card-title">📝 פרטי הפרויקט</div>'+
+    '<p style="font-size:14px;color:var(--text-muted);margin-bottom:12px">'+(p.desc||'אין תיאור')+'</p>'+
+    '<div style="display:flex;flex-direction:column;gap:8px;font-size:13px">'+
+    '<div class="flex-between"><span style="color:var(--text-muted)">תחילת עבודה:</span><span style="font-weight:600">'+p.start+'</span></div>'+
+    '<div class="flex-between"><span style="color:var(--text-muted)">צפי סיום:</span><span style="font-weight:600">'+p.end+'</span></div>'+
+    '<div class="flex-between"><span style="color:var(--text-muted)">תקציב:</span><span style="font-weight:600">'+fmtMoney(p.budget)+'</span></div>'+
+    '</div></div>'+
+    '<div class="card"><div class="card-title">📊 תקציב</div>'+
+    '<div style="margin-bottom:14px"><div class="flex-between" style="margin-bottom:6px;font-size:13px"><span style="color:var(--text-muted)">שולם</span><span style="font-weight:600;color:var(--success)">'+fmtMoney(paid)+'</span></div>'+
+    '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+(p.budget?Math.min(100,Math.round(paid/p.budget*100)):0)+'%;background:var(--success)"></div></div></div>'+
+    '<div class="flex-between" style="font-size:13px"><span style="color:var(--text-muted)">נותר:</span><span style="font-weight:700;color:var(--warning)">'+fmtMoney(remaining)+'</span></div>'+
+    '</div></div></div>';
 
-    // Docs
-    const dg = document.getElementById('docsGrid');
-    dg.innerHTML = p.docs.map(d => `
-      <div class="doc-card">
-        <div class="doc-icon">${d.icon}</div>
-        <div class="doc-name">${d.name}</div>
-        <div class="doc-date">${d.date}</div>
-      </div>
-    `).join('');
+  // TIMELINE TAB
+  html+='<div id="tab-timeline" class="tab-content '+(currentTab==='timeline'?'active':'')+'">'+
+    '<div class="section-actions"><div class="section-title">📅 שלבי הפרויקט</div>'+
+    (isAdmin?'<button class="btn btn-primary btn-sm" onclick="openAddPhaseModal()">➕ שלב חדש</button>':'')+
+    '</div><div class="timeline-phases">'+
+    p.phases.map(function(ph){
+      return '<div class="phase-card '+ph.status+'">'+
+        '<div class="phase-header"><div class="phase-name">'+ph.name+'</div>'+
+        '<span class="phase-status '+ph.status+'">'+(ph.status==='done'?'✅ הושלם':ph.status==='active'?'🔨 בביצוע':'⏳ ממתין')+'</span></div>'+
+        '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+ph.progress+'%"></div></div>'+
+        '<div class="flex-between" style="font-size:12px;color:var(--text-muted);margin-top:6px"><span>'+ph.progress+'%</span><span>'+ph.end+'</span></div>'+
+        (ph.notes?'<p style="font-size:12px;color:var(--text-muted);margin-top:8px">'+ph.notes+'</p>':'')+
+        (isAdmin?'<button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%" onclick="openEditPhaseModal(\''+ph.id+'\')">✏️ עריכה</button>':'')+
+        '</div>';
+    }).join('')+
+    '</div>'+
+    (isAdmin?'<div class="card" style="margin-top:20px"><div class="card-title">📈 התקדמות כללית</div>'+
+    '<div style="display:flex;align-items:center;gap:12px">'+
+    '<input type="range" min="0" max="100" value="'+(p.progress||0)+'" id="overall-prog" style="flex:1" oninput="document.getElementById(\'overall-prog-val\').textContent=this.value+\'%\'"/>'+
+    '<span id="overall-prog-val" style="font-weight:700;color:var(--primary);min-width:40px">'+(p.progress||0)+'%</span>'+
+    '<button class="btn btn-primary btn-sm" onclick="saveOverallProgress()">שמור</button></div></div>':'')+
+    '</div>';
 
-    // Updates
-    const uc = document.getElementById('updatesContainer');
-    uc.innerHTML = p.updates.map(u => `
-      <div class="update-item">
-        <div class="update-dot">${u.icon}</div>
-        <div>
-          <div class="update-text">${u.text}</div>
-          <div class="update-time">${u.time}</div>
-        </div>
-      </div>
-    `).join('');
-  }
+  // BUDGET TAB
+  html+='<div id="tab-budget" class="tab-content '+(currentTab==='budget'?'active':'')+'">'+
+    '<div class="budget-summary">'+
+    '<div class="budget-item"><div class="label">תקציב כולל</div><div class="amount total">'+fmtMoney(p.budget)+'</div></div>'+
+    '<div class="budget-item"><div class="label">שולם</div><div class="amount paid">'+fmtMoney(paid)+'</div></div>'+
+    '<div class="budget-item"><div class="label">נותר</div><div class="amount remaining">'+fmtMoney(remaining)+'</div></div>'+
+    '<div class="budget-item"><div class="label">אחוז ניצול</div><div class="amount total">'+(p.budget?Math.round(paid/p.budget*100):0)+'%</div></div>'+
+    '</div><div class="card"><div class="section-actions"><div class="section-title">💳 תשלומים</div>'+
+    (isAdmin?'<button class="btn btn-primary btn-sm" onclick="openAddPaymentModal()">➕ תשלום חדש</button>':'')+
+    '</div>'+
+    (p.payments.length===0?'<div class="empty-state"><div class="empty-icon">💰</div><p>אין תשלומים עדיין</p></div>':
+    '<table class="payments-table"><thead><tr><th>תיאור</th><th>נמען</th><th>קטגוריה</th><th>תאריך</th><th>סכום</th></tr></thead><tbody>'+
+    p.payments.map(function(pay){
+      return '<tr><td style="font-weight:600">'+pay.desc+'</td><td style="color:var(--text-muted)">'+pay.to+'</td>'+
+        '<td><span class="badge badge-blue">'+pay.category+'</span></td>'+
+        '<td style="color:var(--text-muted)">'+pay.date+'</td>'+
+        '<td style="font-weight:700;color:var(--primary)">'+fmtMoney(pay.amount)+'</td></tr>';
+    }).join('')+'</tbody></table>')+
+    '</div></div>';
 
-  function showError() {
-    const err = document.getElementById('loginError');
-    err.style.display = 'block';
-    setTimeout(() => err.style.display = 'none', 3000);
-  }
+  // DOCS TAB
+  html+='<div id="tab-docs" class="tab-content '+(currentTab==='docs'?'active':'')+'">'+
+    '<div class="section-actions"><div class="section-title">📁 מסמכים ותוכניות</div>'+
+    (isAdmin?'<button class="btn btn-primary btn-sm" onclick="addDocument()">➕ הוסף מסמך</button>':'')+
+    '</div><div class="doc-categories">'+
+    ['תוכניות','היתרים','הסכמים','אחר'].map(function(cat){
+      var catIcon={'תוכניות':'📐','היתרים':'📋','הסכמים':'📝','אחר':'📄'};
+      var docs=p.documents.filter(function(d){return d.category===cat;});
+      return '<div class="doc-category"><div class="doc-category-title">'+catIcon[cat]+' '+cat+'</div>'+
+        (docs.length===0?'<p style="font-size:13px;color:var(--text-muted)">אין מסמכים</p>':'')+
+        docs.map(function(d){
+          return '<div class="doc-item"><span>📄 '+d.name+'</span><div style="display:flex;gap:6px">'+
+            (isAdmin?'<button class="btn btn-danger btn-sm" onclick="deleteDoc(\''+d.id+'\')">🗑️</button>':'')+
+            '</div></div>';
+        }).join('')+
+        (isAdmin?'<button class="btn btn-outline btn-sm" style="margin-top:12px;width:100%" onclick="uploadDoc(\''+cat+'\')">📤 הוסף ל'+cat+'</button>':'')+
+        '</div>';
+    }).join('')+'</div></div>';
 
-  function doLogout() {
-    currentUser = null;
-    document.getElementById('dashboard').style.display = 'none';
-    document.getElementById('loginPage').style.display = 'flex';
-    document.getElementById('usernameInput').value = '';
-    document.getElementById('passwordInput').value = '';
-    document.getElementById('adminNotice').style.display = 'none';
-    showTab('overview', document.querySelector('.tab'));
-  }
+  // GALLERY TAB
+  html+='<div id="tab-gallery" class="tab-content '+(currentTab==='gallery'?'active':'')+'">'+
+    '<div class="section-actions"><div class="section-title">📷 גלריית תמונות מהשטח</div>'+
+    (isAdmin?'<label class="upload-label">📷 העלה תמונה<input type="file" accept="image/*" onchange="uploadPhoto(event)"/></label>':'')+
+    '</div>'+
+    (p.photos.length===0?'<div class="empty-state card"><div class="empty-icon">📷</div><p>אין תמונות עדיין'+(isAdmin?' — העלה את הראשונה':'')+' </p></div>':
+    '<div class="gallery-grid">'+p.photos.map(function(photo){
+      return '<div class="gallery-item"><img src="'+photo.url+'" alt="'+photo.name+'"/></div>';
+    }).join('')+'</div>')+
+    '</div>';
 
-  function showTab(id, btn) {
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.getElementById('sec-' + id).classList.add('active');
-    btn.classList.add('active');
-  }
+  // UPDATES TAB
+  html+='<div id="tab-updates" class="tab-content '+(currentTab==='updates'?'active':'')+'">'+
+    '<div class="section-actions"><div class="section-title">🔔 עדכונים</div>'+
+    (isAdmin?'<button class="btn btn-primary btn-sm" onclick="openModal(\'modal-update\')">➕ עדכון חדש</button>':'')+
+    '</div>'+
+    (p.updates.length===0?'<div class="empty-state card"><div class="empty-icon">🔔</div><p>אין עדכונים עדיין</p></div>':
+    '<div style="display:flex;flex-direction:column;gap:14px">'+
+    p.updates.slice().reverse().map(function(u){
+      return '<div class="card"><div class="flex-between" style="margin-bottom:8px">'+
+        '<div style="font-size:16px;font-weight:700;color:var(--primary)">'+u.title+'</div>'+
+        '<div style="font-size:12px;color:var(--text-muted)">'+u.date+'</div></div>'+
+        '<p style="font-size:14px;line-height:1.6">'+u.body+'</p>'+
+        (isAdmin?'<button class="btn btn-danger btn-sm" style="margin-top:10px" onclick="deleteUpdate(\''+u.id+'\')">🗑️ מחק</button>':'')+
+        '</div>';
+    }).join('')+'</div>')+
+    '</div>';
 
-  document.getElementById('passwordInput').addEventListener('keypress', e => {
-    if (e.key === 'Enter') doLogin();
-  });
+  // MESSAGES TAB
+  html+='<div id="tab-messages" class="tab-content '+(currentTab==='messages'?'active':'')+'">'+
+    '<div class="section-title mb-16">💬 ערוץ שאלות ובקשות</div>'+
+    '<div class="card">'+
+    '<div class="messages-list" id="messages-list">'+
+    p.messages.map(function(m){
+      return '<div><div class="message-bubble '+m.sender+'">'+m.text+
+        '<div class="message-meta">'+(m.sender==='admin'?'ארונשטיין פיקוח וניהול':'לקוח')+' · '+m.date+'</div></div></div>';
+    }).join('')+
+    '</div><hr class="divider"/>'+
+    '<div class="message-input-wrap">'+
+    '<input type="text" id="msg-input" placeholder="כתוב הודעה..." onkeydown="if(event.key===\'Enter\')sendMessage()"/>'+
+    '<button class="btn btn-primary btn-sm" onclick="sendMessage()">שלח</button></div></div></div>';
+
+  el.innerHTML=html;
+  setTimeout(function(){var ml=document.getElementById('messages-list');if(ml)ml.scrollTop=ml.scrollHeight;},50);
+}
+
+function switchTab(t){currentTab=t;renderProjectDetail(document.getElementById('main-content'));}
+
+function renderClients(el){
+  var data=getData();
+  var clients=data.users.filter(function(u){return u.role!=='admin';});
+  el.innerHTML='<div class="page-header flex-between"><div><h1>👥 לקוחות</h1><p>ניהול משתמשי הלקוחות</p></div>'+
+    '<button class="btn btn-primary" onclick="openAddUserModal()">➕ לקוח חדש</button></div>'+
+    '<div class="users-list">'+
+    (clients.length===0?'<div class="empty-state card"><div class="empty-icon">👥</div><p>אין לקוחות עדיין</p></div>':'')+
+    clients.map(function(u){
+      var proj=data.projects.find(function(p){return p.id===u.projectId;});
+      return '<div class="user-row"><div class="user-row-info">'+
+        '<div class="user-row-avatar">'+u.name.charAt(0)+'</div>'+
+        '<div><div class="user-row-name">'+u.name+'</div>'+
+        '<div class="user-row-meta">משתמש: '+u.username+' · סיסמה: '+u.password+' · פרויקט: '+(proj?proj.name:'לא משויך')+'</div></div></div>'+
+        '<div class="flex-gap">'+
+        (proj?'<button class="btn btn-outline btn-sm" onclick="showView(\'project\',\''+proj.id+'\')">צפה בפרויקט</button>':'')+
+        '<button class="btn btn-danger btn-sm" onclick="deleteUser(\''+u.id+'\')">🗑️</button></div></div>';
+    }).join('')+'</div>';
+}
+
+function renderSettings(el){
+  el.innerHTML='<div class="page-header"><h1>⚙️ הגדרות</h1></div>'+
+    '<div class="card" style="max-width:480px">'+
+    '<div class="card-title">🔐 שינוי סיסמת אדמין</div>'+
+    '<div class="form-group"><label>סיסמה חדשה</label><input type="password" id="new-admin-pass" placeholder="סיסמה חדשה"/></div>'+
+    '<div class="form-group"><label>אימות סיסמה</label><input type="password" id="confirm-admin-pass" placeholder="הכנס שוב"/></div>'+
+    '<button class="btn btn-primary" onclick="changeAdminPass()">שמור סיסמה</button>'+
+    '<div id="pass-msg" style="margin-top:10px;font-size:13px;display:none"></div></div>'+
+    '<div class="card" style="max-width:480px;margin-top:20px">'+
+    '<div class="card-title">🗑️ איפוס נתונים</div>'+
+    '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">מחיקת כל הנתונים — פעולה בלתי הפיכה!</p>'+
+    '<button class="btn btn-danger" onclick="if(confirm(\'בטוח? כל הנתונים יימחקו!\'))resetData()">איפוס מלא</button></div>';
+}
+
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+function openNewProjectModal(){
+  editingProjectId=null;
+  document.getElementById('modal-proj-title').textContent='פרויקט חדש';
+  ['proj-name','proj-addr','proj-desc','proj-start','proj-end','proj-budget'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('proj-status').value='active';
+  openModal('modal-project');
+}
+function openEditProjectModal(id){
+  var data=getData();
+  var p=data.projects.find(function(x){return x.id===id;});
+  if(!p)return;
+  editingProjectId=id;
+  document.getElementById('modal-proj-title').textContent='עריכת פרויקט';
+  document.getElementById('proj-name').value=p.name;
+  document.getElementById('proj-addr').value=p.address;
+  document.getElementById('proj-desc').value=p.desc||'';
+  document.getElementById('proj-start').value=p.start;
+  document.getElementById('proj-end').value=p.end;
+  document.getElementById('proj-budget').value=p.budget;
+  document.getElementById('proj-status').value=p.status;
+  openModal('modal-project');
+}
+function saveProject(){
+  var data=getData();
+  var proj={name:document.getElementById('proj-name').value,address:document.getElementById('proj-addr').value,desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,budget:document.getElementById('proj-budget').value,status:document.getElementById('proj-status').value};
+  if(!proj.name)return alert('יש להזין שם פרויקט');
+  if(editingProjectId){var idx=data.projects.findIndex(function(p){return p.id===editingProjectId;});data.projects[idx]=Object.assign({},data.projects[idx],proj);}
+  else{data.projects.push(Object.assign({},proj,{id:'proj'+Date.now(),progress:0,phases:[],payments:[],documents:[],photos:[],updates:[],messages:[]}));}
+  saveData(data);closeModal('modal-project');showView(currentView);
+}
+
+function openAddUserModal(){
+  var data=getData();
+  var sel=document.getElementById('new-user-project');
+  sel.innerHTML=data.projects.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
+  ['new-user-name','new-user-username','new-user-pass'].forEach(function(id){document.getElementById(id).value='';});
+  openModal('modal-user');
+}
+function saveUser(){
+  var data=getData();
+  var name=document.getElementById('new-user-name').value;
+  var username=document.getElementById('new-user-username').value;
+  var pass=document.getElementById('new-user-pass').value;
+  var projectId=document.getElementById('new-user-project').value;
+  if(!name||!username||!pass)return alert('יש למלא את כל השדות');
+  if(data.users.find(function(u){return u.username===username;}))return alert('שם משתמש כבר קיים');
+  data.users.push({id:'u'+Date.now(),username:username,password:pass,name:name,role:'client',projectId:projectId});
+  saveData(data);closeModal('modal-user');showView('clients');
+}
+function deleteUser(id){
+  if(!confirm('למחוק משתמש זה?'))return;
+  var data=getData();data.users=data.users.filter(function(u){return u.id!==id;});
+  saveData(data);renderClients(document.getElementById('main-content'));
+}
+
+function openAddPaymentModal(){
+  document.getElementById('pay-desc').value='';document.getElementById('pay-amount').value='';
+  document.getElementById('pay-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('pay-to').value='';
+  openModal('modal-payment');
+}
+function savePayment(){
+  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  var pay={id:'p'+Date.now(),desc:document.getElementById('pay-desc').value,amount:document.getElementById('pay-amount').value,date:document.getElementById('pay-date').value,to:document.getElementById('pay-to').value,category:document.getElementById('pay-category').value};
+  if(!pay.desc||!pay.amount)return alert('יש למלא תיאור וסכום');
+  proj.payments.push(pay);saveData(data);closeModal('modal-payment');renderProjectDetail(document.getElementById('main-content'));
+}
+
+function openAddPhaseModal(){
+  editingPhaseId=null;
+  document.getElementById('modal-phase-title').textContent='שלב חדש';
+  ['phase-name','phase-start','phase-end','phase-notes'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('phase-prog').value=0;document.getElementById('phase-pv').textContent='0%';
+  document.getElementById('phase-status').value='pending';
+  openModal('modal-phase');
+}
+function openEditPhaseModal(phId){
+  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  var ph=proj.phases.find(function(x){return x.id===phId;});if(!ph)return;
+  editingPhaseId=phId;
+  document.getElementById('modal-phase-title').textContent='עריכת שלב';
+  document.getElementById('phase-name').value=ph.name;document.getElementById('phase-start').value=ph.start;
+  document.getElementById('phase-end').value=ph.end;document.getElementById('phase-prog').value=ph.progress;
+  document.getElementById('phase-pv').textContent=ph.progress+'%';
+  document.getElementById('phase-status').value=ph.status;document.getElementById('phase-notes').value=ph.notes||'';
+  openModal('modal-phase');
+}
+function savePhase(){
+  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  var ph={name:document.getElementById('phase-name').value,start:document.getElementById('phase-start').value,end:document.getElementById('phase-end').value,progress:Number(document.getElementById('phase-prog').value),status:document.getElementById('phase-status').value,notes:document.getElementById('phase-notes').value};
+  if(!ph.name)return alert('יש להזין שם שלב');
+  if(editingPhaseId){var idx=proj.phases.findIndex(function(x){return x.id===editingPhaseId;});proj.phases[idx]=Object.assign({},proj.phases[idx],ph);}
+  else{proj.phases.push(Object.assign({},ph,{id:'ph'+Date.now()}));}
+  saveData(data);closeModal('modal-phase');renderProjectDetail(document.getElementById('main-content'));
+}
+function saveOverallProgress(){
+  var val=document.getElementById('overall-prog').value;
+  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  proj.progress=Number(val);saveData(data);alert('ההתקדמות עודכנה!');
+}
+
+function saveUpdate(){
+  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  var upd={id:'u'+Date.now(),title:document.getElementById('upd-title').value,body:document.getElementById('upd-body').value,date:new Date().toLocaleDateString('he-IL'),sender:'admin'};
+  if(!upd.title||!upd.body)return alert('יש למלא כותרת ותוכן');
+  proj.updates.push(upd);saveData(data);closeModal('modal-update');
+  document.getElementById('upd-title').value='';document.getElementById('upd-body').value='';
+  renderProjectDetail(document.getElementById('main-content'));
+}
+function deleteUpdate(id){
+  if(!confirm('למחוק עדכון זה?'))return;
+  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  proj.updates=proj.updates.filter(function(u){return u.id!==id;});
+  saveData(data);renderProjectDetail(document.getElementById('main-content'));
+}
+
+function sendMessage(){
+  var input=document.getElementById('msg-input');var text=input.value.trim();if(!text)return;
+  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  proj.messages.push({id:'m'+Date.now(),sender:currentUser.role,text:text,date:new Date().toLocaleDateString('he-IL')});
+  saveData(data);input.value='';renderProjectDetail(document.getElementById('main-content'));
+  setTimeout(function(){var ml=document.getElementById('messages-list');if(ml)ml.scrollTop=ml.scrollHeight;},50);
+}
+
+function addDocument(){
+  var name=prompt('שם המסמך:');if(!name)return;
+  var cat=prompt('קטגוריה:\n1. תוכניות\n2. היתרים\n3. הסכמים\n4. אחר\n\nהכנס את שם הקטגוריה:')||'אחר';
+  var cats=['תוכניות','היתרים','הסכמים','אחר'];
+  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  proj.documents.push({id:'d'+Date.now(),name:name,category:cats.includes(cat)?cat:'אחר',date:new Date().toLocaleDateString('he-IL')});
+  saveData(data);renderProjectDetail(document.getElementById('main-content'));
+}
+function uploadDoc(cat){
+  var name=prompt('שם המסמך (קטגוריה: '+cat+'):');if(!name)return;
+  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  proj.documents.push({id:'d'+Date.now(),name:name,category:cat,date:new Date().toLocaleDateString('he-IL')});
+  saveData(data);renderProjectDetail(document.getElementById('main-content'));
+}
+function deleteDoc(id){
+  if(!confirm('למחוק מסמך זה?'))return;
+  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  proj.documents=proj.documents.filter(function(d){return d.id!==id;});
+  saveData(data);renderProjectDetail(document.getElementById('main-content'));
+}
+function uploadPhoto(event){
+  var file=event.target.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+    proj.photos.push({id:'img'+Date.now(),name:file.name,url:e.target.result,date:new Date().toLocaleDateString('he-IL')});
+    saveData(data);renderProjectDetail(document.getElementById('main-content'));
+  };
+  reader.readAsDataURL(file);
+}
+
+function changeAdminPass(){
+  var p1=document.getElementById('new-admin-pass').value;var p2=document.getElementById('confirm-admin-pass').value;
+  var msg=document.getElementById('pass-msg');
+  if(!p1){msg.style.display='block';msg.style.color='red';msg.textContent='הכנס סיסמה';return;}
+  if(p1!==p2){msg.style.display='block';msg.style.color='red';msg.textContent='הסיסמאות אינן תואמות';return;}
+  var data=getData();data.users.find(function(u){return u.role==='admin';}).password=p1;
+  saveData(data);msg.style.display='block';msg.style.color='green';msg.textContent='✅ הסיסמה שונתה';
+}
+function resetData(){localStorage.removeItem('aronstein_v2');location.reload();}
+
+document.querySelectorAll('.modal-overlay').forEach(function(overlay){
+  overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open');});
+});
+document.getElementById('login-pass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 </script>
 </body>
 </html>
