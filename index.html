@@ -200,6 +200,7 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
     <div class="modal-header"><div class="modal-title" id="modal-proj-title">פרויקט חדש</div><button class="modal-close" onclick="closeModal('modal-project')">✕</button></div>
     <div class="form-group"><label>שם הפרויקט</label><input type="text" id="proj-name" placeholder="לדוגמה: בית פרטי - כפר סבא"/></div>
     <div class="form-group"><label>כתובת</label><input type="text" id="proj-addr" placeholder="רחוב, עיר"/></div>
+    <div class="form-group"><label>מספר בית</label><input type="text" id="proj-house" placeholder="לדוגמה: 12"/></div>
     <div class="form-group"><label>תיאור</label><textarea id="proj-desc" placeholder="תיאור קצר"></textarea></div>
     <div class="grid-2">
       <div class="form-group"><label>תאריך התחלה</label><input type="date" id="proj-start"/></div>
@@ -286,7 +287,7 @@ function getData(){
   var def={
     users:[{id:'admin',username:'admin',password:'admin123',name:'ארונשטיין',role:'admin',projectId:null}],
     projects:[{
-      id:'proj1',name:'בית פרטי - רמת השרון',address:'רחוב הורדים 12, רמת השרון',
+      id:'proj1',name:'בית פרטי - רמת השרון',address:'רחוב הורדים, רמת השרון',houseNumber:'12',
       desc:'בניית בית פרטי דו-קומתי, 280 מ"ר',start:'2025-01-01',end:'2025-12-01',
       budget:2500000,status:'active',progress:35,
       phases:[
@@ -376,12 +377,18 @@ function showView(view,pid){
 
 function fmtMoney(n){return '₪'+Number(n).toLocaleString('he-IL');}
 
+function formatProjectAddress(p){
+  var addr=p.address||'';
+  if(p.houseNumber)addr+=(addr?' ':'')+p.houseNumber;
+  return addr;
+}
+
 function projectCardHTML(p){
   var paid=p.payments.reduce(function(s,x){return s+Number(x.amount||0);},0);
   var sm={'active':['status-active','בביצוע'],'paused':['status-paused','מושהה'],'done':['status-done','הושלם']};
   var sc=sm[p.status]||sm.active;
   return '<div class="project-card" onclick="showView(\'project\',\''+p.id+'\')">'+
-    '<div class="project-card-header"><div><div class="project-name">'+p.name+'</div><div class="project-address">📍 '+p.address+'</div></div>'+
+    '<div class="project-card-header"><div><div class="project-name">'+p.name+'</div><div class="project-address">📍 '+formatProjectAddress(p)+'</div></div>'+
     '<span class="status-badge '+sc[0]+'">'+sc[1]+'</span></div>'+
     '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+(p.progress||0)+'%"></div></div>'+
     '<div class="progress-label"><span>התקדמות</span><span>'+(p.progress||0)+'%</span></div>'+
@@ -420,7 +427,7 @@ function renderProjectDetail(el){
   var remaining=Number(p.budget||0)-paid;
 
   var html=(isAdmin?'<button class="back-btn" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>':'');
-  html+='<div class="flex-between mb-24"><div><h1 style="font-size:24px;font-weight:800;color:var(--primary)">'+p.name+'</h1><p style="color:var(--text-muted);margin-top:4px">📍 '+p.address+'</p></div>';
+  html+='<div class="flex-between mb-24"><div><h1 style="font-size:24px;font-weight:800;color:var(--primary)">'+p.name+'</h1><p style="color:var(--text-muted);margin-top:4px">📍 '+formatProjectAddress(p)+'</p></div>';
   if(isAdmin)html+='<div class="flex-gap"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">✏️ עריכה</button><button class="btn btn-accent btn-sm" onclick="openModal(\'modal-update\')">🔔 עדכון חדש</button></div>';
   html+='</div>';
 
@@ -668,7 +675,7 @@ initDraggableModals();
 function openNewProjectModal(){
   editingProjectId=null;
   document.getElementById('modal-proj-title').textContent='פרויקט חדש';
-  ['proj-name','proj-addr','proj-desc','proj-start','proj-end','proj-budget'].forEach(function(id){document.getElementById(id).value='';});
+  ['proj-name','proj-addr','proj-house','proj-desc','proj-start','proj-end','proj-budget'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('proj-status').value='active';
   openModal('modal-project');
 }
@@ -680,6 +687,7 @@ function openEditProjectModal(id){
   document.getElementById('modal-proj-title').textContent='עריכת פרויקט';
   document.getElementById('proj-name').value=p.name;
   document.getElementById('proj-addr').value=p.address;
+  document.getElementById('proj-house').value=p.houseNumber||'';
   document.getElementById('proj-desc').value=p.desc||'';
   document.getElementById('proj-start').value=p.start;
   document.getElementById('proj-end').value=p.end;
@@ -689,7 +697,7 @@ function openEditProjectModal(id){
 }
 function saveProject(){
   var data=getData();
-  var proj={name:document.getElementById('proj-name').value,address:document.getElementById('proj-addr').value,desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,budget:document.getElementById('proj-budget').value,status:document.getElementById('proj-status').value};
+  var proj={name:document.getElementById('proj-name').value,address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,budget:document.getElementById('proj-budget').value,status:document.getElementById('proj-status').value};
   if(!proj.name)return alert('יש להזין שם פרויקט');
   if(editingProjectId){var idx=data.projects.findIndex(function(p){return p.id===editingProjectId;});data.projects[idx]=Object.assign({},data.projects[idx],proj);}
   else{data.projects.push(Object.assign({},proj,{id:'proj'+Date.now(),progress:0,phases:[],payments:[],documents:[],photos:[],updates:[],messages:[]}));}
