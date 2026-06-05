@@ -504,20 +504,30 @@ function renderProjectDetail(el){
 
   // DOCS TAB
   html+='<div id="tab-docs" class="tab-content '+(currentTab==='docs'?'active':'')+'">'+
-    '<div class="section-actions"><div class="section-title">📁 מסמכים ותוכניות</div>'+
-    (isAdmin?'<button class="btn btn-primary btn-sm" onclick="addDocument()">➕ הוסף מסמך</button>':'')+
-    '</div><div class="doc-categories">'+
-    ['תוכניות','היתרים','הסכמים','אחר'].map(function(cat){
-      var catIcon={'תוכניות':'📐','היתרים':'📋','הסכמים':'📝','אחר':'📄'};
+    '<div class="section-title" style="margin-bottom:16px">📁 מסמכים ותוכניות</div>'+
+    '<div class="doc-categories">'+
+    ['תוכניות אדריכלות','קונסטרוקטור','היתרים','הסכמים','אחר'].map(function(cat){
+      var catIcon={'תוכניות אדריכלות':'📐','קונסטרוקטור':'🔩','היתרים':'📋','הסכמים':'📝','אחר':'📄'};
       var docs=p.documents.filter(function(d){return d.category===cat;});
       return '<div class="doc-category"><div class="doc-category-title">'+catIcon[cat]+' '+cat+'</div>'+
-        (docs.length===0?'<p style="font-size:13px;color:var(--text-muted)">אין מסמכים</p>':'')+
+        (docs.length===0?'<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px">אין מסמכים</p>':'')+
         docs.map(function(d){
-          return '<div class="doc-item"><span>📄 '+d.name+'</span><div style="display:flex;gap:6px">'+
+          var isLink=d.url&&d.url!=='#'&&d.url.startsWith('http');
+          var isFile=d.url&&d.url.startsWith('data:');
+          return '<div class="doc-item">'+
+            '<div style="display:flex;align-items:center;gap:6px;font-size:13px">'+
+            (isLink?'🔗':isFile?'📎':'📄')+' <span>'+d.name+'</span></div>'+
+            '<div style="display:flex;gap:4px">'+
+            (isLink?'<a href="'+d.url+'" target="_blank" class="btn btn-outline btn-sm">פתח</a>':'')+
+            (isFile?'<a href="'+d.url+'" download="'+d.name+'" class="btn btn-outline btn-sm">⬇️</a>':'')+
             (isAdmin?'<button class="btn btn-danger btn-sm" onclick="deleteDoc(\''+d.id+'\')">🗑️</button>':'')+
             '</div></div>';
         }).join('')+
-        (isAdmin?'<button class="btn btn-outline btn-sm" style="margin-top:12px;width:100%" onclick="uploadDoc(\''+cat+'\')">📤 הוסף ל'+cat+'</button>':'')+
+        (isAdmin?
+          '<div style="display:flex;gap:6px;margin-top:12px">'+
+          '<label class="btn btn-outline btn-sm" style="cursor:pointer;flex:1;justify-content:center">📎 העלה קובץ<input type="file" style="display:none" onchange="uploadDocFile(event,\''+cat+'\')"/></label>'+
+          '<button class="btn btn-outline btn-sm" style="flex:1" onclick="addDocLink(\''+cat+'\')">🔗 הוסף לינק</button>'+
+          '</div>':'')+
         '</div>';
     }).join('')+'</div></div>';
 
@@ -756,18 +766,35 @@ function sendMessage(){
   setTimeout(function(){var ml=document.getElementById('messages-list');if(ml)ml.scrollTop=ml.scrollHeight;},50);
 }
 
+function uploadDocFile(event,cat){
+  var file=event.target.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+    proj.documents.push({id:'d'+Date.now(),name:file.name,category:cat,date:new Date().toLocaleDateString('he-IL'),url:e.target.result});
+    saveData(data);renderProjectDetail(document.getElementById('main-content'));
+  };
+  reader.readAsDataURL(file);
+}
+function addDocLink(cat){
+  var name=prompt('שם המסמך:');if(!name)return;
+  var url=prompt('הכנס לינק (Google Drive / Dropbox וכו\')\n\nחשוב: לינק שיתוף ציבורי!');if(!url)return;
+  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  proj.documents.push({id:'d'+Date.now(),name:name,category:cat,date:new Date().toLocaleDateString('he-IL'),url:url});
+  saveData(data);renderProjectDetail(document.getElementById('main-content'));
+}
 function addDocument(){
   var name=prompt('שם המסמך:');if(!name)return;
-  var cat=prompt('קטגוריה:\n1. תוכניות\n2. היתרים\n3. הסכמים\n4. אחר\n\nהכנס את שם הקטגוריה:')||'אחר';
-  var cats=['תוכניות','היתרים','הסכמים','אחר'];
+  var cat=prompt('קטגוריה:\nתוכניות אדריכלות / קונסטרוקטור / היתרים / הסכמים / אחר:')||'אחר';
+  var cats=['תוכניות אדריכלות','קונסטרוקטור','היתרים','הסכמים','אחר'];
   var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
-  proj.documents.push({id:'d'+Date.now(),name:name,category:cats.includes(cat)?cat:'אחר',date:new Date().toLocaleDateString('he-IL')});
+  proj.documents.push({id:'d'+Date.now(),name:name,category:cats.includes(cat)?cat:'אחר',date:new Date().toLocaleDateString('he-IL'),url:'#'});
   saveData(data);renderProjectDetail(document.getElementById('main-content'));
 }
 function uploadDoc(cat){
   var name=prompt('שם המסמך (קטגוריה: '+cat+'):');if(!name)return;
   var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
-  proj.documents.push({id:'d'+Date.now(),name:name,category:cat,date:new Date().toLocaleDateString('he-IL')});
+  proj.documents.push({id:'d'+Date.now(),name:name,category:cat,date:new Date().toLocaleDateString('he-IL'),url:'#'});
   saveData(data);renderProjectDetail(document.getElementById('main-content'));
 }
 function deleteDoc(id){
