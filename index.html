@@ -324,10 +324,10 @@ const secondaryApp=initializeApp(firebaseConfig,"Secondary");
 const secondaryAuth=getAuth(secondaryApp);
 
 const ADMIN_EMAIL='atlassahar14@gmail.com';
-const ADMIN_UID='4zlaqOl4YqOkCNcbu7JPHC9';
+const ADMIN_UID='4zIaqOl4YqOkCNcbu7JPHC9Sptv2';
 
 function isDesignatedAdmin(fbUser){
-  return fbUser.email===ADMIN_EMAIL||fbUser.uid.startsWith(ADMIN_UID);
+  return fbUser.uid===ADMIN_UID;
 }
 
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
