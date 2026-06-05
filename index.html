@@ -303,6 +303,10 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
       <div class="form-group"><label>תאריך התחלה</label><input type="date" id="proj-start"/></div>
       <div class="form-group"><label>תאריך סיום משוער</label><input type="date" id="proj-end"/></div>
     </div>
+    <div class="grid-2">
+      <div class="form-group"><label>שטח בנוי (מ"ר)</label><input type="number" id="proj-built" placeholder="לדוגמה: 280" min="0"/></div>
+      <div class="form-group"><label>שטח הבית עצמו (מ"ר)</label><input type="number" id="proj-property" placeholder="לדוגמה: 500" min="0"/></div>
+    </div>
     <div class="form-group"><label>תקציב כולל (₪)</label><input type="number" id="proj-budget" placeholder="0"/></div>
     <div class="form-group"><label>סטטוס</label><select id="proj-status"><option value="active">בביצוע</option><option value="paused">מושהה</option><option value="done">הושלם</option></select></div>
     <div class="modal-footer">
@@ -386,7 +390,7 @@ function getData(){
     projects:[{
       id:'proj1',name:'בית פרטי - רמת השרון',address:'רחוב הורדים, רמת השרון',houseNumber:'12',
       desc:'בניית בית פרטי דו-קומתי, 280 מ"ר',start:'2025-01-01',end:'2025-12-01',
-      budget:2500000,status:'active',progress:35,
+      builtArea:280,propertyArea:500,budget:2500000,status:'active',progress:35,
       budgetPlan:{שלד:900000,טיח:350000,חשמל:400000,אינסטלציה:350000,ריצוף:300000,גמר:450000,אחר:250000},
       phases:[
         {id:'ph1',name:'שלד',status:'done',start:'2025-01-01',end:'2025-03-01',progress:100,notes:'הושלם בהצלחה'},
@@ -614,6 +618,8 @@ function renderProjectDetail(el){
     '<div class="flex-between"><span style="color:var(--text-muted)">תחילת עבודה:</span><span style="font-weight:600">'+p.start+'</span></div>'+
     '<div class="flex-between"><span style="color:var(--text-muted)">צפי סיום:</span><span style="font-weight:600">'+p.end+'</span></div>'+
     '<div class="flex-between"><span style="color:var(--text-muted)">תקציב:</span><span style="font-weight:600">'+fmtMoney(p.budget)+'</span></div>'+
+    (p.builtArea?'<div class="flex-between"><span style="color:var(--text-muted)">שטח בנוי:</span><span style="font-weight:600">'+p.builtArea+' מ"ר</span></div>':'')+
+    (p.propertyArea?'<div class="flex-between"><span style="color:var(--text-muted)">שטח הבית עצמו:</span><span style="font-weight:600">'+p.propertyArea+' מ"ר</span></div>':'')+
     '</div></div>'+
     '<div class="card"><div class="card-title">📊 תקציב</div>'+
     '<div style="margin-bottom:14px"><div class="flex-between" style="margin-bottom:6px;font-size:13px"><span style="color:var(--text-muted)">שולם</span><span style="font-weight:600;color:var(--success)">'+fmtMoney(paid)+'</span></div>'+
@@ -946,7 +952,7 @@ initDraggableModals();
 function openNewProjectModal(){
   editingProjectId=null;
   document.getElementById('modal-proj-title').textContent='פרויקט חדש';
-  ['proj-name','proj-addr','proj-house','proj-desc','proj-start','proj-end','proj-budget'].forEach(function(id){document.getElementById(id).value='';});
+  ['proj-name','proj-addr','proj-house','proj-desc','proj-start','proj-end','proj-built','proj-property','proj-budget'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('proj-status').value='active';
   openModal('modal-project');
 }
@@ -962,13 +968,15 @@ function openEditProjectModal(id){
   document.getElementById('proj-desc').value=p.desc||'';
   document.getElementById('proj-start').value=p.start;
   document.getElementById('proj-end').value=p.end;
+  document.getElementById('proj-built').value=p.builtArea||'';
+  document.getElementById('proj-property').value=p.propertyArea||'';
   document.getElementById('proj-budget').value=p.budget;
   document.getElementById('proj-status').value=p.status;
   openModal('modal-project');
 }
 function saveProject(){
   var data=getData();
-  var proj={name:document.getElementById('proj-name').value,address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,budget:document.getElementById('proj-budget').value,status:document.getElementById('proj-status').value};
+  var proj={name:document.getElementById('proj-name').value,address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:document.getElementById('proj-budget').value,status:document.getElementById('proj-status').value};
   if(!proj.name)return alert('יש להזין שם פרויקט');
   if(editingProjectId){var idx=data.projects.findIndex(function(p){return p.id===editingProjectId;});data.projects[idx]=Object.assign({},data.projects[idx],proj);}
   else{
