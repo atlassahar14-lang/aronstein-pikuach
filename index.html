@@ -323,6 +323,13 @@ const db=getFirestore(app);
 const secondaryApp=initializeApp(firebaseConfig,"Secondary");
 const secondaryAuth=getAuth(secondaryApp);
 
+const ADMIN_EMAIL='atlassahar14@gmail.com';
+const ADMIN_UID='4zlaqOl4YqOkCNcbu7JPHC9';
+
+function isDesignatedAdmin(fbUser){
+  return fbUser.email===ADMIN_EMAIL||fbUser.uid.startsWith(ADMIN_UID);
+}
+
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
 var appUsers=[],authBootstrapped=false;
 
@@ -351,15 +358,13 @@ async function refreshAppUsers(){
 
 async function ensureUserProfile(fbUser){
   var ref=doc(db,'users',fbUser.uid);
+  if(isDesignatedAdmin(fbUser)){
+    var adminProfile={uid:fbUser.uid,email:ADMIN_EMAIL,name:'ארונשטיין',role:'admin',projectId:null};
+    await setDoc(ref,adminProfile,{merge:true});
+    return Object.assign({id:fbUser.uid},adminProfile);
+  }
   var snap=await getDoc(ref);
   if(snap.exists())return Object.assign({id:fbUser.uid},snap.data());
-  var allSnap=await getDocs(collection(db,'users'));
-  var hasAdmin=allSnap.docs.some(function(d){return d.data().role==='admin';});
-  if(!hasAdmin){
-    var profile={uid:fbUser.uid,email:fbUser.email,name:'ארונשטיין',role:'admin',projectId:null};
-    await setDoc(ref,profile);
-    return Object.assign({id:fbUser.uid},profile);
-  }
   return null;
 }
 
