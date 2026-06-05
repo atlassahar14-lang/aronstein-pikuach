@@ -389,7 +389,7 @@ const ADMIN_EMAIL='atlassahar14@gmail.com';
 const supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
-var appDataCache={projects:[]},appUsers=[],authBootstrapped=false;
+var appDataCache={projects:[]},appUsers=[],authBootstrapped=false,skipAuthHandler=false;
 
 function supabaseErrorToHebrew(msg){
   var m=(msg||'').toLowerCase();
@@ -504,18 +504,22 @@ function showLoginScreen(){
   showLoginForm();
 }
 
+async function handleAuthSession(user){
+  var profile=await ensureUserProfile(user);
+  if(profile){await startApp(profile);return true;}
+  await supabase.auth.signOut();
+  document.getElementById('login-error').textContent='חשבון לא רשום במערכת. פנה למנהל.';
+  document.getElementById('login-error').classList.add('show');
+  return false;
+}
+
 supabase.auth.onAuthStateChange(function(event,session){
+  if(event==='SIGNED_IN'&&skipAuthHandler)return;
   setTimeout(async function(){
     try{
-      if(session&&session.user){
-        var profile=await ensureUserProfile(session.user);
-        if(profile){await startApp(profile);}
-        else{
-          await supabase.auth.signOut();
-          document.getElementById('login-error').textContent='חשבון לא רשום במערכת. פנה למנהל.';
-          document.getElementById('login-error').classList.add('show');
-        }
-      }else if(authBootstrapped){
+      if((event==='INITIAL_SESSION'||event==='SIGNED_IN')&&session&&session.user){
+        await handleAuthSession(session.user);
+      }else if(event==='SIGNED_OUT'&&authBootstrapped){
         showLoginScreen();
       }
     }catch(e){
@@ -563,13 +567,16 @@ async function doLogin(){
   err.classList.remove('show');
   if(!email||!pass){err.textContent='יש למלא אימייל וסיסמה';err.classList.add('show');return;}
   btn.disabled=true;btn.textContent='מתחבר...';
+  skipAuthHandler=true;
   try{
     var res=await supabase.auth.signInWithPassword({email:email,password:pass});
     if(res.error){err.textContent=supabaseErrorToHebrew(res.error.message);err.classList.add('show');}
+    else if(res.data&&res.data.user){await handleAuthSession(res.data.user);}
   }catch(e){
     err.textContent=e.message||'שגיאת רשת. נסה שוב';
     err.classList.add('show');
   }finally{
+    skipAuthHandler=false;
     btn.disabled=false;btn.textContent='כניסה לחשבון';
   }
 }
