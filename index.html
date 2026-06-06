@@ -394,6 +394,11 @@ const SUPABASE_URL='https://knbbbrnwzbkywkrcponi.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtuYmJicm53emJreXdrcmNwb25pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2ODg2MjksImV4cCI6MjA5NjI2NDYyOX0.FQ34u5GL47EemB3ibmZ5EP5mkoSdivvoxPVVRpxZYxw';
 const ADMIN_EMAIL='atlassahar14@gmail.com';
 const LOGIN_ERROR_MSG='פרטי ההתחברות אינם נכונים';
+const LOGIN_LOCKOUT_MSG='חשבונך ננעל זמנית. נסה שוב בעוד 15 דקות';
+const LOGIN_MAX_ATTEMPTS=5;
+const LOGIN_LOCKOUT_MS=15*60*1000;
+const LOGIN_LOCK_KEY='aronstein_login_lock';
+var loginLockTimer=null;
 
 const supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
@@ -402,6 +407,66 @@ function refreshIcons(root){if(window.lucide)lucide.createIcons(root?{root:root}
 
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
 var appDataCache={projects:[]},appUsers=[],authBootstrapped=false,skipAuthHandler=false;
+
+function getLoginLockData(){
+  try{
+    var d=JSON.parse(localStorage.getItem(LOGIN_LOCK_KEY)||'{}');
+    if(d.lockedUntil&&Date.now()>=d.lockedUntil){
+      localStorage.removeItem(LOGIN_LOCK_KEY);
+      return {fails:0,lockedUntil:null};
+    }
+    return {fails:d.fails||0,lockedUntil:d.lockedUntil||null};
+  }catch(e){return {fails:0,lockedUntil:null};}
+}
+function saveLoginLockData(d){
+  if(!d.fails&&!d.lockedUntil)localStorage.removeItem(LOGIN_LOCK_KEY);
+  else localStorage.setItem(LOGIN_LOCK_KEY,JSON.stringify(d));
+}
+function isLoginLocked(){
+  var d=getLoginLockData();
+  return !!(d.lockedUntil&&Date.now()<d.lockedUntil);
+}
+function recordLoginFailure(){
+  var d=getLoginLockData();
+  if(d.lockedUntil)return;
+  d.fails=(d.fails||0)+1;
+  if(d.fails>=LOGIN_MAX_ATTEMPTS){
+    d.lockedUntil=Date.now()+LOGIN_LOCKOUT_MS;
+    d.fails=0;
+  }
+  saveLoginLockData(d);
+}
+function clearLoginLockout(){
+  localStorage.removeItem(LOGIN_LOCK_KEY);
+  if(loginLockTimer){clearTimeout(loginLockTimer);loginLockTimer=null;}
+}
+function updateLoginLockUI(){
+  var locked=isLoginLocked();
+  var email=document.getElementById('login-email');
+  var pass=document.getElementById('login-pass');
+  var btn=document.getElementById('login-btn');
+  var err=document.getElementById('login-error');
+  email.disabled=locked;
+  pass.disabled=locked;
+  if(locked){
+    btn.disabled=true;
+    err.textContent=LOGIN_LOCKOUT_MSG;
+    err.classList.add('show');
+    if(loginLockTimer)clearTimeout(loginLockTimer);
+    var remaining=getLoginLockData().lockedUntil-Date.now();
+    loginLockTimer=setTimeout(function(){
+      clearLoginLockout();
+      btn.disabled=false;
+      email.disabled=false;
+      pass.disabled=false;
+      if(err.textContent===LOGIN_LOCKOUT_MSG)err.classList.remove('show');
+    },Math.max(0,remaining));
+  }else{
+    if(loginLockTimer){clearTimeout(loginLockTimer);loginLockTimer=null;}
+    if(btn.textContent!=='מתחבר...')btn.disabled=false;
+    if(err.textContent===LOGIN_LOCKOUT_MSG)err.classList.remove('show');
+  }
+}
 
 function supabaseErrorToHebrew(msg){
   var m=(msg||'').toLowerCase();
@@ -514,11 +579,12 @@ function showLoginScreen(){
   document.getElementById('login-pass').value='';
   document.getElementById('login-error').classList.remove('show');
   showLoginForm();
+  updateLoginLockUI();
 }
 
 async function handleAuthSession(user){
   var profile=await ensureUserProfile(user);
-  if(profile){await startApp(profile);return true;}
+  if(profile){clearLoginLockout();await startApp(profile);return true;}
   await supabase.auth.signOut();
   document.getElementById('login-error').textContent=LOGIN_ERROR_MSG;
   document.getElementById('login-error').classList.add('show');
@@ -556,6 +622,7 @@ function showLoginForm(){
   document.getElementById('forgot-form').style.display='none';
   document.getElementById('forgot-error').classList.remove('show');
   document.getElementById('forgot-success').classList.remove('show');
+  updateLoginLockUI();
 }
 async function submitForgotPassword(){
   var email=document.getElementById('forgot-email').value.trim();
@@ -572,6 +639,7 @@ async function submitForgotPassword(){
 }
 
 async function doLogin(){
+  if(isLoginLocked()){updateLoginLockUI();return;}
   var email=document.getElementById('login-email').value.trim();
   var pass=document.getElementById('login-pass').value.trim();
   var err=document.getElementById('login-error');
@@ -580,20 +648,23 @@ async function doLogin(){
   if(!email||!pass){err.textContent='יש למלא אימייל וסיסמה';err.classList.add('show');return;}
   btn.disabled=true;btn.textContent='מתחבר...';
   skipAuthHandler=true;
+  var failed=false;
   try{
     var res=await supabase.auth.signInWithPassword({email:email,password:pass});
-    if(res.error){err.textContent=LOGIN_ERROR_MSG;err.classList.add('show');}
+    if(res.error){failed=true;}
     else if(res.data&&res.data.user){
       var ok=await handleAuthSession(res.data.user);
-      if(!ok){err.textContent=LOGIN_ERROR_MSG;err.classList.add('show');}
+      if(!ok)failed=true;
     }
   }catch(e){
     console.error(e);
-    err.textContent=LOGIN_ERROR_MSG;
-    err.classList.add('show');
+    failed=true;
   }finally{
     skipAuthHandler=false;
-    btn.disabled=false;btn.textContent='כניסה לחשבון';
+    btn.textContent='כניסה לחשבון';
+    if(failed)recordLoginFailure();
+    updateLoginLockUI();
+    if(failed&&!isLoginLocked()){err.textContent=LOGIN_ERROR_MSG;err.classList.add('show');}
   }
 }
 
@@ -1344,6 +1415,7 @@ window.addEventListener('resize',function(){
 });
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMobileSidebar();});
 refreshIcons();
+updateLoginLockUI();
 </script>
 </body>
 </html>
