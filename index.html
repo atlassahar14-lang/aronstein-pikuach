@@ -1505,6 +1505,7 @@ async function saveUser(){
     proj.messages.push({id:'m'+Date.now(),sender:'admin',text:'ברוך הבא למערכת, '+name+'! כאן תוכל לעקוב אחר הפרויקט שלך ולפנות אלינו בכל שאלה.',date:new Date().toLocaleDateString('he-IL')});
     logActivity('יצירת לקוח',name+' ('+email+') → פרויקט: '+proj.name);
     if(!await saveData(getData()))return;
+    notifyAdminNewClient(name,email,proj.name);
     await refreshAppUsers();
     if(!appUsers.find(function(u){return u.id===userId;}))mergeAppUser({id:userId,email:email,name:name,role:'client',projectId:projectId});
     closeModal('modal-user');
@@ -1670,6 +1671,24 @@ async function deleteUpdate(id){
   renderProjectDetail(document.getElementById('main-content'));
 }
 
+async function notifyAdminClientQuestion(clientName,projectName,questionText){
+  try{
+    var res=await supabase.functions.invoke('notify-client-question',{
+      body:{clientName:clientName||'',projectName:projectName||'',questionText:questionText||''}
+    });
+    if(res.error)console.warn('שליחת התראת אימייל נכשלה:',res.error.message||res.error);
+    else if(res.data&&res.data.error)console.warn('שליחת התראת אימייל נכשלה:',res.data.error);
+  }catch(e){console.warn('שליחת התראת אימייל נכשלה:',e);}
+}
+async function notifyAdminNewClient(clientName,clientEmail,projectName){
+  try{
+    var res=await supabase.functions.invoke('notify-new-client',{
+      body:{clientName:clientName||'',clientEmail:clientEmail||'',projectName:projectName||''}
+    });
+    if(res.error)console.warn('שליחת התראת לקוח חדש נכשלה:',res.error.message||res.error);
+    else if(res.data&&res.data.error)console.warn('שליחת התראת לקוח חדש נכשלה:',res.data.error);
+  }catch(e){console.warn('שליחת התראת לקוח חדש נכשלה:',e);}
+}
 async function sendMessage(){
   if(!requireProjectAccess())return;
   var input=document.getElementById('msg-input');var text=input.value.trim();if(!text)return;
@@ -1678,6 +1697,7 @@ async function sendMessage(){
   if(currentUser.role==='client')msg.readByAdmin=false;
   proj.messages.push(msg);
   if(!await saveData(data))return;
+  if(currentUser.role==='client')notifyAdminClientQuestion(currentUser.name,proj.name,text);
   input.value='';renderProjectDetail(document.getElementById('main-content'));
   setTimeout(function(){var ml=document.getElementById('messages-list');if(ml)ml.scrollTop=ml.scrollHeight;},50);
 }

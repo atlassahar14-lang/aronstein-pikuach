@@ -1,0 +1,5 @@
+[functions.notify-client-question]
+verify_jwt = true
+
+[functions.notify-new-client]
+verify_jwt = true

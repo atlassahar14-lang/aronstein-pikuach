@@ -104,3 +104,17 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- =============================================================================
+-- התראות אימייל (Edge Functions + Resend)
+-- =============================================================================
+-- Secrets ב-Supabase Dashboard → Edge Functions → Secrets:
+--   RESEND_API_KEY = re_xxxxxxxx
+--   NOTIFY_FROM_EMAIL = onboarding@resend.dev   (או דומיין מאומת משלך)
+--
+-- פריסה:
+--   supabase functions deploy notify-client-question --project-ref knbbbrnwzbkywkrcponi
+--   supabase functions deploy notify-new-client --project-ref knbbbrnwzbkywkrcponi
+--
+-- notify-client-question — אימייל ל-atlassahar14@gmail.com כשלקוח שולח שאלה
+-- notify-new-client — אימייל ל-atlassahar14@gmail.com כשנוצר לקוח חדש
