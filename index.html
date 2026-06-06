@@ -606,13 +606,25 @@ async function saveData(d){
   return true;
 }
 
+function mapProfileRow(p){
+  return {id:p.id,email:p.email,name:p.name,role:p.role,projectId:p.project_id};
+}
+
+function mergeAppUser(user){
+  var idx=appUsers.findIndex(function(u){return u.id===user.id||(user.email&&u.email===user.email);});
+  if(idx>=0)appUsers[idx]=user;
+  else appUsers.push(user);
+}
+
 async function refreshAppUsers(){
-  if(!isAdmin()){appUsers=currentUser?[currentUser]:[];return;}
-  var res=await supabase.from('profiles').select('*');
-  if(res.error){console.error(res.error);appUsers=[];return;}
-  appUsers=(res.data||[]).map(function(p){
-    return {id:p.id,email:p.email,name:p.name,role:p.role,projectId:p.project_id};
-  });
+  if(!isAdmin()){appUsers=currentUser?[currentUser]:[];return true;}
+  var res=await supabase.from('profiles').select('*').order('created_at',{ascending:false});
+  if(res.error){
+    console.error('refreshAppUsers',res.error);
+    return false;
+  }
+  appUsers=(res.data||[]).map(mapProfileRow);
+  return true;
 }
 
 async function ensureUserProfile(authUser){
@@ -1162,13 +1174,15 @@ async function switchTab(t){
   renderProjectDetail(document.getElementById('main-content'));
 }
 
-function renderClients(el){
+async function renderClients(el){
   if(!isAdmin()){renderClientNoProject(el);return;}
+  var loaded=await refreshAppUsers();
   var data=getData();
   var clients=appUsers.filter(function(u){return u.role!=='admin';});
   el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('users')+' לקוחות</h1><p>ניהול משתמשי הלקוחות (Supabase)</p></div>'+
     '<button class="btn btn-primary" onclick="openAddUserModal()">'+ic('plus')+' לקוח חדש</button></div>'+
     '<div class="users-list">'+
+    (!loaded?'<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינת רשימת הלקוחות. הרץ את supabase-setup.sql המעודכן (פונקציית is_admin).</div>':'')+
     (clients.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('users')+'</div><p>אין לקוחות עדיין</p></div>':'')+
     clients.map(function(u){
       var proj=data.projects.find(function(p){return p.id===u.projectId;});
@@ -1349,19 +1363,25 @@ async function saveUser(){
     });
     if(res.error){alert(supabaseErrorToHebrew(res.error.message));return;}
     if(!res.data||!res.data.user){alert('שגיאה ביצירת המשתמש');return;}
+    var userId=res.data.user.id;
     var profileRes=await supabase.from('profiles').upsert({
-      id:res.data.user.id,email:email,name:name,role:'client',project_id:projectId
-    });
+      id:userId,email:email,name:name,role:'client',project_id:projectId
+    },{onConflict:'id'});
+    if(profileRes.error){
+      profileRes=await supabase.from('profiles').update({email:email,name:name,role:'client',project_id:projectId}).eq('id',userId);
+    }
     if(profileRes.error){
       console.error(profileRes.error);
-      alert('המשתמש נוצר אך שיוך הפרויקט נכשל.\n\nהרץ ב-Supabase SQL Editor את מדיניות profiles_update_admin (ראה supabase-setup.sql), ואז עדכן ידנית את project_id בטבלת profiles.');
+      alert('המשתמש נוצר אך שיוך הפרויקט נכשל.\n\nהרץ ב-Supabase SQL Editor את supabase-setup.sql המעודכן (פונקציית is_admin).');
       return;
     }
+    mergeAppUser({id:userId,email:email,name:name,role:'client',projectId:projectId});
     proj.messages=proj.messages||[];
     proj.messages.push({id:'m'+Date.now(),sender:'admin',text:'ברוך הבא למערכת, '+name+'! כאן תוכל לעקוב אחר הפרויקט שלך ולפנות אלינו בכל שאלה.',date:new Date().toLocaleDateString('he-IL')});
     logActivity('יצירת לקוח',name+' ('+email+') → פרויקט: '+proj.name);
     if(!await saveData(getData()))return;
     await refreshAppUsers();
+    if(!appUsers.find(function(u){return u.id===userId;}))mergeAppUser({id:userId,email:email,name:name,role:'client',projectId:projectId});
     closeModal('modal-user');
     showView('clients');
     alert('הלקוח נוצר בהצלחה!\n\nאימייל: '+email+'\nסיסמה: '+pass+'\nפרויקט: '+proj.name+'\n\nשלח ללקוח את פרטי ההתחברות.\nאם ב-Supabase מופעל "Confirm email", הלקוח יצטרך לאשר את האימייל לפני הכניסה הראשונה.');
