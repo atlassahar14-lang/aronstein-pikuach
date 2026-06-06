@@ -186,6 +186,8 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
 .modal-title{font-size:20px;font-weight:700;color:var(--primary);pointer-events:none}
 .modal-close{background:var(--bg);border:none;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .modal-footer{display:flex;gap:10px;margin-top:24px;justify-content:flex-end}
+.modal-footer.phase-modal-footer{align-items:center;flex-wrap:wrap}
+.modal-footer-actions{display:flex;gap:10px}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .flex-between{display:flex;justify-content:space-between;align-items:center}
 .flex-gap{display:flex;gap:10px;align-items:center}
@@ -419,9 +421,12 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
     <div class="form-group"><label>אחוז השלמה: <span id="phase-pv">0%</span></label><input type="range" id="phase-prog" min="0" max="100" value="0" oninput="document.getElementById('phase-pv').textContent=this.value+'%'" style="width:100%;margin-top:8px"/></div>
     <div class="form-group"><label>סטטוס</label><select id="phase-status"><option value="pending">טרם התחיל</option><option value="active">בביצוע</option><option value="done">הושלם</option></select></div>
     <div class="form-group"><label>הערות</label><textarea id="phase-notes" placeholder="הערות לשלב זה"></textarea></div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('modal-phase')">ביטול</button>
-      <button class="btn btn-primary" style="width:auto" onclick="savePhase()">שמור</button>
+    <div class="modal-footer phase-modal-footer">
+      <button class="btn btn-danger" id="phase-delete-btn" style="display:none;width:auto" onclick="deletePhaseFromModal()"><i data-lucide="trash-2"></i> מחק שלב</button>
+      <div class="modal-footer-actions">
+        <button class="btn btn-outline" onclick="closeModal('modal-phase')">ביטול</button>
+        <button class="btn btn-primary" style="width:auto" onclick="savePhase()">שמור</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1031,7 +1036,9 @@ function renderProjectDetail(el){
         '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+ph.progress+'%"></div></div>'+
         '<div class="flex-between" style="font-size:12px;color:var(--text-muted);margin-top:6px"><span>'+ph.progress+'%</span><span>'+ph.end+'</span></div>'+
         (ph.notes?'<p style="font-size:12px;color:var(--text-muted);margin-top:8px">'+ph.notes+'</p>':'')+
-        (isAdminUser?'<button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%" onclick="openEditPhaseModal(\''+ph.id+'\')">'+ic('pencil')+' עריכה</button>':'')+
+        (isAdminUser?'<div style="display:flex;gap:8px;margin-top:10px">'+
+        '<button class="btn btn-outline btn-sm" style="flex:1" onclick="openEditPhaseModal(\''+ph.id+'\')">'+ic('pencil')+' עריכה</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="deletePhase(\''+ph.id+'\')">'+ic('trash-2')+'</button></div>':'')+
         '</div>';
     }).join('')+
     '</div>'+
@@ -1559,6 +1566,8 @@ function openAddPhaseModal(){
   if(!requireAdmin())return;
   editingPhaseId=null;
   document.getElementById('modal-phase-title').textContent='שלב חדש';
+  document.getElementById('phase-delete-btn').style.display='none';
+  document.querySelector('#modal-phase .phase-modal-footer').style.justifyContent='flex-end';
   ['phase-name','phase-start','phase-end','phase-notes'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('phase-prog').value=0;document.getElementById('phase-pv').textContent='0%';
   document.getElementById('phase-status').value='pending';
@@ -1570,11 +1579,31 @@ function openEditPhaseModal(phId){
   var ph=proj.phases.find(function(x){return x.id===phId;});if(!ph)return;
   editingPhaseId=phId;
   document.getElementById('modal-phase-title').textContent='עריכת שלב';
+  document.getElementById('phase-delete-btn').style.display='inline-flex';
+  document.querySelector('#modal-phase .phase-modal-footer').style.justifyContent='space-between';
   document.getElementById('phase-name').value=ph.name;document.getElementById('phase-start').value=ph.start;
   document.getElementById('phase-end').value=ph.end;document.getElementById('phase-prog').value=ph.progress;
   document.getElementById('phase-pv').textContent=ph.progress+'%';
   document.getElementById('phase-status').value=ph.status;document.getElementById('phase-notes').value=ph.notes||'';
   openModal('modal-phase');
+  refreshIcons();
+}
+function deletePhaseFromModal(){
+  if(!editingPhaseId)return;
+  deletePhase(editingPhaseId);
+}
+async function deletePhase(id){
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var proj=getCurrentProject();if(!proj)return;
+  var removed=proj.phases.find(function(x){return x.id===id;});
+  if(!removed)return;
+  if(!confirm('למחוק את השלב "'+removed.name+'"?'))return;
+  var data=getData();
+  proj.phases=proj.phases.filter(function(x){return x.id!==id;});
+  logActivity('מחיקת שלב','פרויקט: '+proj.name+' · '+removed.name);
+  if(editingPhaseId===id){editingPhaseId=null;closeModal('modal-phase');}
+  if(!await saveData(data))return;
+  renderProjectDetail(document.getElementById('main-content'));
 }
 async function savePhase(){
   if(!requireAdmin()||!requireProjectAccess())return;
@@ -1758,7 +1787,7 @@ Object.assign(window,{
   showView,switchTab,openModal,closeModal,toggleMobileSidebar,closeMobileSidebar,
   openNewProjectModal,openEditProjectModal,saveProject,openAddUserModal,
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,
-  openAddPhaseModal,openEditPhaseModal,savePhase,saveOverallProgress,
+  openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
   saveUpdate,deleteUpdate,sendMessage,
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,uploadPhoto
 });
