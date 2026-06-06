@@ -401,6 +401,7 @@ const LOGIN_LOCK_KEY='aronstein_login_lock';
 var loginLockTimer=null;
 
 const supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const supabaseHelper=createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:false,autoRefreshToken:false,storageKey:'aronstein-helper-auth'}});
 
 function ic(n){return '<i data-lucide="'+n+'"></i>';}
 function refreshIcons(root){if(window.lucide)lucide.createIcons(root?{root:root}:undefined);}
@@ -512,7 +513,26 @@ function getDefaultProjects(){
     }];
 }
 
-function getData(){return appDataCache;}
+function isAdmin(){return !!(currentUser&&currentUser.role==='admin');}
+function clientCanAccessProject(projectId){
+  if(!projectId||!currentUser)return false;
+  if(isAdmin())return true;
+  return currentUser.projectId===projectId;
+}
+function getData(){
+  if(isAdmin())return appDataCache;
+  if(!currentUser||!currentUser.projectId)return {projects:[]};
+  return {projects:appDataCache.projects.filter(function(p){return p.id===currentUser.projectId;})};
+}
+function getCurrentProject(){
+  if(!currentProjectId||!clientCanAccessProject(currentProjectId))return null;
+  return appDataCache.projects.find(function(p){return p.id===currentProjectId;})||null;
+}
+function requireAdmin(){if(!isAdmin()){alert('פעולה זו זמינה למנהל בלבד');return false;}return true;}
+function requireProjectAccess(){
+  if(!getCurrentProject()){alert('אין לך גישה לפרויקט זה');return false;}
+  return true;
+}
 
 async function refreshAppData(){
   var res=await supabase.from('app_data').select('projects').eq('id','main').maybeSingle();
@@ -525,13 +545,22 @@ async function refreshAppData(){
 }
 
 function saveData(d){
-  appDataCache=d;
-  supabase.from('app_data').upsert({id:'main',projects:d.projects,updated_at:new Date().toISOString()}).then(function(res){
+  if(isAdmin()){
+    appDataCache=d;
+  }else{
+    var proj=d.projects&&d.projects.find(function(p){return p.id===currentUser.projectId;});
+    if(!proj)return;
+    var idx=appDataCache.projects.findIndex(function(p){return p.id===currentUser.projectId;});
+    if(idx<0)return;
+    appDataCache.projects[idx]=proj;
+  }
+  supabase.from('app_data').upsert({id:'main',projects:appDataCache.projects,updated_at:new Date().toISOString()}).then(function(res){
     if(res.error)console.error(res.error);
   });
 }
 
 async function refreshAppUsers(){
+  if(!isAdmin()){appUsers=currentUser?[currentUser]:[];return;}
   var res=await supabase.from('profiles').select('*');
   if(res.error){console.error(res.error);appUsers=[];return;}
   appUsers=(res.data||[]).map(function(p){
@@ -546,16 +575,26 @@ async function ensureUserProfile(authUser){
       await supabase.from('profiles').update({role:'admin'}).eq('id',authUser.id);
       res.data.role='admin';
     }
-    return {id:res.data.id,email:res.data.email,name:res.data.name,role:res.data.role,projectId:res.data.project_id};
+    var projectId=res.data.project_id||authUser.user_metadata?.project_id||null;
+    return {id:res.data.id,email:res.data.email,name:res.data.name,role:res.data.role,projectId:projectId};
   }
   if(authUser.email===ADMIN_EMAIL){
     var adminProfile={id:authUser.id,email:authUser.email,name:'ארונשטיין',role:'admin',project_id:null};
     await supabase.from('profiles').upsert(adminProfile);
     return {id:adminProfile.id,email:adminProfile.email,name:adminProfile.name,role:'admin',projectId:null};
   }
-  var clientProfile={id:authUser.id,email:authUser.email,name:authUser.user_metadata?.name||authUser.email.split('@')[0],role:'client',project_id:null};
+  var clientProjectId=authUser.user_metadata?.project_id||null;
+  var clientProfile={id:authUser.id,email:authUser.email,name:authUser.user_metadata?.name||authUser.email.split('@')[0],role:'client',project_id:clientProjectId};
   await supabase.from('profiles').upsert(clientProfile);
-  return {id:clientProfile.id,email:clientProfile.email,name:clientProfile.name,role:'client',projectId:null};
+  return {id:clientProfile.id,email:clientProfile.email,name:clientProfile.name,role:'client',projectId:clientProjectId};
+}
+
+function renderClientNoProject(el){
+  el.innerHTML='<div class="page-header"><h1>'+ic('house')+' הפרויקט שלי</h1></div>'+
+    '<div class="card empty-state" style="padding:40px"><div class="empty-icon">'+ic('construction')+'</div>'+
+    '<p style="font-size:16px;font-weight:600;margin-bottom:8px">לא שויך אליך פרויקט עדיין</p>'+
+    '<p style="font-size:14px;color:var(--text-muted)">פנה למנהל המערכת כדי לשייך אותך לפרויקט.</p></div>';
+  refreshIcons(el);
 }
 
 async function startApp(user){
@@ -567,8 +606,9 @@ async function startApp(user){
   document.getElementById('login-error').classList.remove('show');
   showLoginForm();
   renderSidebar();
-  if(user.role==='admin'){showView('dashboard');}
-  else{currentProjectId=user.projectId;currentTab='overview';showView('project');}
+  if(isAdmin()){showView('dashboard');}
+  else if(!user.projectId){renderClientNoProject(document.getElementById('main-content'));}
+  else{currentProjectId=user.projectId;currentTab='overview';showView('project',user.projectId);}
 }
 
 function showLoginScreen(){
@@ -708,13 +748,19 @@ function closeMobileSidebar(){
 
 function showView(view,pid){
   closeMobileSidebar();
+  var el=document.getElementById('main-content');
+  if(!isAdmin()){
+    if(!currentUser.projectId){renderClientNoProject(el);return;}
+    view='project';
+    pid=currentUser.projectId;
+  }
+  if(view==='project'&&pid&&!clientCanAccessProject(pid))pid=currentUser.projectId;
   currentView=view;
   if(pid)currentProjectId=pid;
   renderSidebar();
-  var el=document.getElementById('main-content');
   if(view==='dashboard')renderDashboard(el);
   else if(view==='projects')renderProjectsList(el);
-  else if(view==='project'){currentTab='overview';renderProjectDetail(el);}
+  else if(view==='project')renderProjectDetail(el);
   else if(view==='clients')renderClients(el);
   else if(view==='settings')renderSettings(el);
   refreshIcons(el);
@@ -749,6 +795,7 @@ function projectCardHTML(p){
 }
 
 function renderDashboard(el){
+  if(!isAdmin()){renderClientNoProject(el);return;}
   var data=getData();
   var active=data.projects.filter(function(p){return p.status==='active';}).length;
   var done=data.projects.filter(function(p){return p.status==='done';}).length;
@@ -767,25 +814,30 @@ function renderDashboard(el){
 }
 
 function renderProjectsList(el){
+  if(!isAdmin()){renderClientNoProject(el);return;}
   var data=getData();
   el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('construction')+' פרויקטים</h1><p>ניהול כל הפרויקטים</p></div><button class="btn btn-primary" onclick="openNewProjectModal()">'+ic('plus')+' פרויקט חדש</button></div>'+
     '<div class="projects-grid">'+data.projects.map(projectCardHTML).join('')+'</div>';
 }
 
 function renderProjectDetail(el){
-  var data=getData();
-  var p=data.projects.find(function(x){return x.id===currentProjectId;});
-  if(!p){el.innerHTML='<p>פרויקט לא נמצא</p>';return;}
-  var isAdmin=currentUser.role==='admin';
+  if(!isAdmin()&&!currentUser.projectId){renderClientNoProject(el);return;}
+  var p=getCurrentProject();
+  if(!p){
+    if(!isAdmin()){renderClientNoProject(el);return;}
+    el.innerHTML='<p>פרויקט לא נמצא</p>';return;
+  }
+  currentProjectId=p.id;
+  var isAdminUser=isAdmin();
   var paid=p.payments.reduce(function(s,x){return s+Number(x.amount||0);},0);
   var remaining=Number(p.budget||0)-paid;
 
-  var unreadMessages=isAdmin?countUnreadClientMessages(p):0;
+  var unreadMessages=isAdminUser?countUnreadClientMessages(p):0;
   var messagesTabBadge=unreadMessages?'<span class="tab-badge show"></span>':'';
 
-  var html=(isAdmin?'<button class="back-btn" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>':'');
+  var html=(isAdminUser?'<button class="back-btn" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>':'');
   html+='<div class="flex-between responsive-stack mb-24"><div><h1 style="font-size:24px;font-weight:800;color:var(--primary)">'+p.name+'</h1><p style="color:var(--text-muted);margin-top:4px">'+ic('map-pin')+' '+formatProjectAddress(p)+'</p></div>';
-  if(isAdmin)html+='<div class="flex-gap"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-accent btn-sm" onclick="openModal(\'modal-update\')">'+ic('bell')+' עדכון חדש</button></div>';
+  if(isAdminUser)html+='<div class="flex-gap"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-accent btn-sm" onclick="openModal(\'modal-update\')">'+ic('bell')+' עדכון חדש</button></div>';
   html+='</div>';
 
   html+='<div class="tabs-scroll"><div class="tabs">'+
@@ -826,7 +878,7 @@ function renderProjectDetail(el){
   // TIMELINE TAB
   html+='<div id="tab-timeline" class="tab-content '+(currentTab==='timeline'?'active':'')+'">'+
     '<div class="section-actions"><div class="section-title">'+ic('calendar')+' שלבי הפרויקט</div>'+
-    (isAdmin?'<button class="btn btn-primary btn-sm" onclick="openAddPhaseModal()">'+ic('plus')+' שלב חדש</button>':'')+
+    (isAdminUser?'<button class="btn btn-primary btn-sm" onclick="openAddPhaseModal()">'+ic('plus')+' שלב חדש</button>':'')+
     '</div><div class="timeline-phases">'+
     p.phases.map(function(ph){
       return '<div class="phase-card '+ph.status+'">'+
@@ -835,11 +887,11 @@ function renderProjectDetail(el){
         '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+ph.progress+'%"></div></div>'+
         '<div class="flex-between" style="font-size:12px;color:var(--text-muted);margin-top:6px"><span>'+ph.progress+'%</span><span>'+ph.end+'</span></div>'+
         (ph.notes?'<p style="font-size:12px;color:var(--text-muted);margin-top:8px">'+ph.notes+'</p>':'')+
-        (isAdmin?'<button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%" onclick="openEditPhaseModal(\''+ph.id+'\')">'+ic('pencil')+' עריכה</button>':'')+
+        (isAdminUser?'<button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%" onclick="openEditPhaseModal(\''+ph.id+'\')">'+ic('pencil')+' עריכה</button>':'')+
         '</div>';
     }).join('')+
     '</div>'+
-    (isAdmin?'<div class="card" style="margin-top:20px"><div class="card-title">'+ic('trending-up')+' התקדמות כללית</div>'+
+    (isAdminUser?'<div class="card" style="margin-top:20px"><div class="card-title">'+ic('trending-up')+' התקדמות כללית</div>'+
     '<div style="display:flex;align-items:center;gap:12px">'+
     '<input type="range" min="0" max="100" value="'+(p.progress||0)+'" id="overall-prog" style="flex:1" oninput="document.getElementById(\'overall-prog-val\').textContent=this.value+\'%\'"/>'+
     '<span id="overall-prog-val" style="font-weight:700;color:var(--primary);min-width:40px">'+(p.progress||0)+'%</span>'+
@@ -854,7 +906,7 @@ function renderProjectDetail(el){
     '<div class="budget-item"><div class="label">נותר</div><div class="amount remaining">'+fmtMoney(remaining)+'</div></div>'+
     '<div class="budget-item"><div class="label">אחוז ניצול</div><div class="amount total">'+(p.budget?Math.round(paid/p.budget*100):0)+'%</div></div>'+
     '</div><div class="card"><div class="section-actions"><div class="section-title">'+ic('credit-card')+' תשלומים</div>'+
-    (isAdmin?'<button class="btn btn-primary btn-sm" onclick="openAddPaymentModal()">'+ic('plus')+' תשלום חדש</button>':'')+
+    (isAdminUser?'<button class="btn btn-primary btn-sm" onclick="openAddPaymentModal()">'+ic('plus')+' תשלום חדש</button>':'')+
     '</div>'+
     (p.payments.length===0?'<div class="empty-state"><div class="empty-icon">'+ic('banknote')+'</div><p>אין תשלומים עדיין</p></div>':
     '<div class="table-scroll"><table class="payments-table"><thead><tr><th>תיאור</th><th>נמען</th><th>קטגוריה</th><th>תאריך</th><th>סכום</th><th></th></tr></thead><tbody>'+
@@ -864,7 +916,7 @@ function renderProjectDetail(el){
         '<td style="color:var(--text-muted)">'+pay.date+'</td>'+
         '<td style="font-weight:700;color:var(--primary)">'+fmtMoney(pay.amount)+'</td>'+
         '<td><div style="display:flex;gap:6px">'+
-        (isAdmin?'<button class="btn btn-outline btn-sm" onclick="openEditPaymentModal(\''+pay.id+'\')">'+ic('pencil')+'</button>'+
+        (isAdminUser?'<button class="btn btn-outline btn-sm" onclick="openEditPaymentModal(\''+pay.id+'\')">'+ic('pencil')+'</button>'+
         '<button class="btn btn-danger btn-sm" onclick="deletePayment(\''+pay.id+'\')">'+ic('trash-2')+'</button>':'')+
         '</div></td></tr>';
     }).join('')+'</tbody></table></div>')+
@@ -909,10 +961,10 @@ function renderProjectDetail(el){
             '<div style="display:flex;gap:4px">'+
             (isLink?'<a href="'+d.url+'" target="_blank" class="btn btn-outline btn-sm">פתח</a>':'')+
             (isFile?'<a href="'+d.url+'" download="'+d.name+'" class="btn btn-outline btn-sm">'+ic('download')+'</a>':'')+
-            (isAdmin?'<button class="btn btn-danger btn-sm" onclick="deleteDoc(\''+d.id+'\')">'+ic('trash-2')+'</button>':'')+
+            (isAdminUser?'<button class="btn btn-danger btn-sm" onclick="deleteDoc(\''+d.id+'\')">'+ic('trash-2')+'</button>':'')+
             '</div></div>';
         }).join('')+
-        (isAdmin?
+        (isAdminUser?
           '<div style="display:flex;gap:6px;margin-top:12px">'+
           '<label class="btn btn-outline btn-sm" style="cursor:pointer;flex:1;justify-content:center">'+ic('paperclip')+' העלה קובץ<input type="file" style="display:none" onchange="uploadDocFile(event,\''+cat+'\')"/></label>'+
           '<button class="btn btn-outline btn-sm" style="flex:1" onclick="addDocLink(\''+cat+'\')">'+ic('link')+' הוסף לינק</button>'+
@@ -923,9 +975,9 @@ function renderProjectDetail(el){
   // GALLERY TAB
   html+='<div id="tab-gallery" class="tab-content '+(currentTab==='gallery'?'active':'')+'">'+
     '<div class="section-actions"><div class="section-title">'+ic('camera')+' גלריית תמונות מהשטח</div>'+
-    (isAdmin?'<label class="upload-label">'+ic('camera')+' העלה תמונה<input type="file" accept="image/*" onchange="uploadPhoto(event)"/></label>':'')+
+    (isAdminUser?'<label class="upload-label">'+ic('camera')+' העלה תמונה<input type="file" accept="image/*" onchange="uploadPhoto(event)"/></label>':'')+
     '</div>'+
-    (p.photos.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('camera')+'</div><p>אין תמונות עדיין'+(isAdmin?' — העלה את הראשונה':'')+' </p></div>':
+    (p.photos.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('camera')+'</div><p>אין תמונות עדיין'+(isAdminUser?' — העלה את הראשונה':'')+' </p></div>':
     '<div class="gallery-grid">'+p.photos.map(function(photo){
       return '<div class="gallery-item"><img src="'+photo.url+'" alt="'+photo.name+'"/></div>';
     }).join('')+'</div>')+
@@ -934,7 +986,7 @@ function renderProjectDetail(el){
   // UPDATES TAB
   html+='<div id="tab-updates" class="tab-content '+(currentTab==='updates'?'active':'')+'">'+
     '<div class="section-actions"><div class="section-title">'+ic('bell')+' עדכונים</div>'+
-    (isAdmin?'<button class="btn btn-primary btn-sm" onclick="openModal(\'modal-update\')">'+ic('plus')+' עדכון חדש</button>':'')+
+    (isAdminUser?'<button class="btn btn-primary btn-sm" onclick="openModal(\'modal-update\')">'+ic('plus')+' עדכון חדש</button>':'')+
     '</div>'+
     (p.updates.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('bell')+'</div><p>אין עדכונים עדיין</p></div>':
     '<div style="display:flex;flex-direction:column;gap:14px">'+
@@ -943,7 +995,7 @@ function renderProjectDetail(el){
         '<div style="font-size:16px;font-weight:700;color:var(--primary)">'+u.title+'</div>'+
         '<div style="font-size:12px;color:var(--text-muted)">'+u.date+'</div></div>'+
         '<p style="font-size:14px;line-height:1.6">'+u.body+'</p>'+
-        (isAdmin?'<button class="btn btn-danger btn-sm" style="margin-top:10px" onclick="deleteUpdate(\''+u.id+'\')">'+ic('trash-2')+' מחק</button>':'')+
+        (isAdminUser?'<button class="btn btn-danger btn-sm" style="margin-top:10px" onclick="deleteUpdate(\''+u.id+'\')">'+ic('trash-2')+' מחק</button>':'')+
         '</div>';
     }).join('')+'</div>')+
     '</div>';
@@ -1051,16 +1103,17 @@ function renderFinancialCharts(p){
 }
 
 function switchTab(t){
+  if(!clientCanAccessProject(currentProjectId))return;
   currentTab=t;
-  if(t==='messages'&&currentUser&&currentUser.role==='admin'){
-    var data=getData();
-    var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  if(t==='messages'&&isAdmin()){
+    var data=getData();var proj=getCurrentProject();
     if(proj){markProjectMessagesRead(proj);saveData(data);}
   }
   renderProjectDetail(document.getElementById('main-content'));
 }
 
 function renderClients(el){
+  if(!isAdmin()){renderClientNoProject(el);return;}
   var data=getData();
   var clients=appUsers.filter(function(u){return u.role!=='admin';});
   el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('users')+' לקוחות</h1><p>ניהול משתמשי הלקוחות (Supabase)</p></div>'+
@@ -1080,6 +1133,7 @@ function renderClients(el){
 }
 
 function renderSettings(el){
+  if(!isAdmin()){renderClientNoProject(el);return;}
   el.innerHTML='<div class="page-header"><h1>'+ic('settings')+' הגדרות</h1></div>'+
     '<div class="card" style="max-width:480px">'+
     '<div class="card-title">'+ic('lock')+' שינוי סיסמה</div>'+
@@ -1148,6 +1202,7 @@ function initDraggableModals(){
 initDraggableModals();
 
 function openNewProjectModal(){
+  if(!requireAdmin())return;
   editingProjectId=null;
   document.getElementById('modal-proj-title').textContent='פרויקט חדש';
   ['proj-name','proj-addr','proj-house','proj-desc','proj-start','proj-end','proj-built','proj-property','proj-budget'].forEach(function(id){document.getElementById(id).value='';});
@@ -1155,6 +1210,7 @@ function openNewProjectModal(){
   openModal('modal-project');
 }
 function openEditProjectModal(id){
+  if(!requireAdmin())return;
   var data=getData();
   var p=data.projects.find(function(x){return x.id===id;});
   if(!p)return;
@@ -1173,6 +1229,7 @@ function openEditProjectModal(id){
   openModal('modal-project');
 }
 function saveProject(){
+  if(!requireAdmin())return;
   var data=getData();
   var proj={name:document.getElementById('proj-name').value,address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:document.getElementById('proj-budget').value,status:document.getElementById('proj-status').value};
   if(!proj.name)return alert('יש להזין שם פרויקט');
@@ -1186,27 +1243,60 @@ function saveProject(){
 }
 
 function openAddUserModal(){
-  var data=getData();
+  if(!requireAdmin())return;
+  if(!appDataCache.projects.length){alert('יש ליצור פרויקט לפני הוספת לקוח');return;}
   var sel=document.getElementById('new-user-project');
-  sel.innerHTML=data.projects.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
+  sel.innerHTML=appDataCache.projects.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
   ['new-user-name','new-user-email','new-user-pass'].forEach(function(id){document.getElementById(id).value='';});
   openModal('modal-user');
 }
 async function saveUser(){
+  if(!requireAdmin())return;
   var name=document.getElementById('new-user-name').value.trim();
   var email=document.getElementById('new-user-email').value.trim();
   var pass=document.getElementById('new-user-pass').value;
   var projectId=document.getElementById('new-user-project').value;
   if(!name||!email||!pass)return alert('יש למלא את כל השדות');
+  if(!projectId)return alert('יש לבחור פרויקט משויך ללקוח');
+  if(pass.length<6)return alert('הסיסמה חייבת להכיל לפחות 6 תווים');
   if(appUsers.find(function(u){return u.email===email;}))return alert('אימייל כבר קיים במערכת');
-  var res=await supabase.auth.signUp({email:email,password:pass,options:{data:{name:name,role:'client'}}});
-  await supabase.auth.signOut();
-  if(res.error){alert(supabaseErrorToHebrew(res.error.message));return;}
-  await supabase.from('profiles').upsert({id:res.data.user.id,email:email,name:name,role:'client',project_id:projectId});
-  await refreshAppUsers();
-  closeModal('modal-user');showView('clients');
+  var proj=appDataCache.projects.find(function(p){return p.id===projectId;});
+  if(!proj)return alert('הפרויקט שנבחר לא קיים');
+  var btn=document.querySelector('#modal-user .btn-primary');
+  var origText=btn.textContent;
+  btn.disabled=true;btn.textContent='יוצר לקוח...';
+  try{
+    var res=await supabaseHelper.auth.signUp({
+      email:email,
+      password:pass,
+      options:{
+        data:{name:name,role:'client',project_id:projectId},
+        emailRedirectTo:window.location.origin+window.location.pathname
+      }
+    });
+    if(res.error){alert(supabaseErrorToHebrew(res.error.message));return;}
+    if(!res.data||!res.data.user){alert('שגיאה ביצירת המשתמש');return;}
+    var profileRes=await supabase.from('profiles').upsert({
+      id:res.data.user.id,email:email,name:name,role:'client',project_id:projectId
+    });
+    if(profileRes.error){
+      console.error(profileRes.error);
+      alert('המשתמש נוצר אך שיוך הפרויקט נכשל.\n\nהרץ ב-Supabase SQL Editor את מדיניות profiles_update_admin (ראה supabase-setup.sql), ואז עדכן ידנית את project_id בטבלת profiles.');
+      return;
+    }
+    proj.messages=proj.messages||[];
+    proj.messages.push({id:'m'+Date.now(),sender:'admin',text:'ברוך הבא למערכת, '+name+'! כאן תוכל לעקוב אחר הפרויקט שלך ולפנות אלינו בכל שאלה.',date:new Date().toLocaleDateString('he-IL')});
+    saveData(getData());
+    await refreshAppUsers();
+    closeModal('modal-user');
+    showView('clients');
+    alert('הלקוח נוצר בהצלחה!\n\nאימייל: '+email+'\nסיסמה: '+pass+'\nפרויקט: '+proj.name+'\n\nשלח ללקוח את פרטי ההתחברות.\nאם ב-Supabase מופעל "Confirm email", הלקוח יצטרך לאשר את האימייל לפני הכניסה הראשונה.');
+  }finally{
+    btn.disabled=false;btn.textContent=origText;
+  }
 }
 async function deleteUser(id){
+  if(!requireAdmin())return;
   if(!confirm('למחוק משתמש זה מהמערכת?'))return;
   var res=await supabase.from('profiles').delete().eq('id',id);
   if(res.error){alert(supabaseErrorToHebrew(res.error.message));return;}
@@ -1215,7 +1305,8 @@ async function deleteUser(id){
 }
 
 function openEditPaymentModal(id){
-  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var proj=getCurrentProject();if(!proj)return;
   var pay=proj.payments.find(function(x){return x.id===id;});if(!pay)return;
   document.getElementById('pay-desc').value=pay.desc;
   document.getElementById('pay-amount').value=pay.amount;
@@ -1227,12 +1318,14 @@ function openEditPaymentModal(id){
   openModal('modal-payment');
 }
 function deletePayment(id){
+  if(!requireAdmin()||!requireProjectAccess())return;
   if(!confirm('למחוק תשלום זה?'))return;
-  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  var data=getData();var proj=getCurrentProject();if(!proj)return;
   proj.payments=proj.payments.filter(function(x){return x.id!==id;});
   saveData(data);renderProjectDetail(document.getElementById('main-content'));
 }
 function openAddPaymentModal(){
+  if(!requireAdmin())return;
   delete document.getElementById('modal-payment').dataset.editId;
   document.getElementById('pay-desc').value='';document.getElementById('pay-amount').value='';
   document.getElementById('pay-date').value=new Date().toISOString().split('T')[0];
@@ -1240,7 +1333,8 @@ function openAddPaymentModal(){
   openModal('modal-payment');
 }
 function savePayment(){
-  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var data=getData();var proj=getCurrentProject();if(!proj)return;
   var pay={desc:document.getElementById('pay-desc').value,amount:document.getElementById('pay-amount').value,date:document.getElementById('pay-date').value,to:document.getElementById('pay-to').value,category:document.getElementById('pay-category').value};
   if(!pay.desc||!pay.amount)return alert('יש למלא תיאור וסכום');
   var editId=document.getElementById('modal-payment').dataset.editId;
@@ -1255,6 +1349,7 @@ function savePayment(){
 }
 
 function openAddPhaseModal(){
+  if(!requireAdmin())return;
   editingPhaseId=null;
   document.getElementById('modal-phase-title').textContent='שלב חדש';
   ['phase-name','phase-start','phase-end','phase-notes'].forEach(function(id){document.getElementById(id).value='';});
@@ -1263,7 +1358,8 @@ function openAddPhaseModal(){
   openModal('modal-phase');
 }
 function openEditPhaseModal(phId){
-  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var proj=getCurrentProject();if(!proj)return;
   var ph=proj.phases.find(function(x){return x.id===phId;});if(!ph)return;
   editingPhaseId=phId;
   document.getElementById('modal-phase-title').textContent='עריכת שלב';
@@ -1274,7 +1370,8 @@ function openEditPhaseModal(phId){
   openModal('modal-phase');
 }
 function savePhase(){
-  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var data=getData();var proj=getCurrentProject();if(!proj)return;
   var ph={name:document.getElementById('phase-name').value,start:document.getElementById('phase-start').value,end:document.getElementById('phase-end').value,progress:Number(document.getElementById('phase-prog').value),status:document.getElementById('phase-status').value,notes:document.getElementById('phase-notes').value};
   if(!ph.name)return alert('יש להזין שם שלב');
   if(editingPhaseId){var idx=proj.phases.findIndex(function(x){return x.id===editingPhaseId;});proj.phases[idx]=Object.assign({},proj.phases[idx],ph);}
@@ -1282,13 +1379,15 @@ function savePhase(){
   saveData(data);closeModal('modal-phase');renderProjectDetail(document.getElementById('main-content'));
 }
 function saveOverallProgress(){
+  if(!requireAdmin()||!requireProjectAccess())return;
   var val=document.getElementById('overall-prog').value;
-  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  var data=getData();var proj=getCurrentProject();if(!proj)return;
   proj.progress=Number(val);saveData(data);alert('ההתקדמות עודכנה!');
 }
 
 function saveUpdate(){
-  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var data=getData();var proj=getCurrentProject();if(!proj)return;
   var upd={id:'u'+Date.now(),title:document.getElementById('upd-title').value,body:document.getElementById('upd-body').value,date:new Date().toLocaleDateString('he-IL'),sender:'admin'};
   if(!upd.title||!upd.body)return alert('יש למלא כותרת ותוכן');
   proj.updates.push(upd);saveData(data);closeModal('modal-update');
@@ -1296,15 +1395,17 @@ function saveUpdate(){
   renderProjectDetail(document.getElementById('main-content'));
 }
 function deleteUpdate(id){
+  if(!requireAdmin()||!requireProjectAccess())return;
   if(!confirm('למחוק עדכון זה?'))return;
-  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  var data=getData();var proj=getCurrentProject();if(!proj)return;
   proj.updates=proj.updates.filter(function(u){return u.id!==id;});
   saveData(data);renderProjectDetail(document.getElementById('main-content'));
 }
 
 function sendMessage(){
+  if(!requireProjectAccess())return;
   var input=document.getElementById('msg-input');var text=input.value.trim();if(!text)return;
-  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  var data=getData();var proj=getCurrentProject();if(!proj)return;
   var msg={id:'m'+Date.now(),sender:currentUser.role,text:text,date:new Date().toLocaleDateString('he-IL')};
   if(currentUser.role==='client')msg.readByAdmin=false;
   proj.messages.push(msg);
@@ -1313,47 +1414,53 @@ function sendMessage(){
 }
 
 function uploadDocFile(event,cat){
+  if(!requireAdmin()||!requireProjectAccess())return;
   var file=event.target.files[0];if(!file)return;
   var reader=new FileReader();
   reader.onload=function(e){
-    var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+    var data=getData();var proj=getCurrentProject();if(!proj)return;
     proj.documents.push({id:'d'+Date.now(),name:file.name,category:cat,date:new Date().toLocaleDateString('he-IL'),url:e.target.result});
     saveData(data);renderProjectDetail(document.getElementById('main-content'));
   };
   reader.readAsDataURL(file);
 }
 function addDocLink(cat){
+  if(!requireAdmin()||!requireProjectAccess())return;
   var name=prompt('שם המסמך:');if(!name)return;
   var url=prompt('הכנס לינק (Google Drive / Dropbox וכו\')\n\nחשוב: לינק שיתוף ציבורי!');if(!url)return;
-  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  var data=getData();var proj=getCurrentProject();if(!proj)return;
   proj.documents.push({id:'d'+Date.now(),name:name,category:cat,date:new Date().toLocaleDateString('he-IL'),url:url});
   saveData(data);renderProjectDetail(document.getElementById('main-content'));
 }
 function addDocument(){
+  if(!requireAdmin()||!requireProjectAccess())return;
   var name=prompt('שם המסמך:');if(!name)return;
   var cat=prompt('קטגוריה:\nתוכניות אדריכלות / קונסטרוקטור / היתרים / הסכמים / אחר:')||'אחר';
   var cats=['תוכניות אדריכלות','קונסטרוקטור','היתרים','הסכמים','אחר'];
-  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  var data=getData();var proj=getCurrentProject();if(!proj)return;
   proj.documents.push({id:'d'+Date.now(),name:name,category:cats.includes(cat)?cat:'אחר',date:new Date().toLocaleDateString('he-IL'),url:'#'});
   saveData(data);renderProjectDetail(document.getElementById('main-content'));
 }
 function uploadDoc(cat){
+  if(!requireAdmin()||!requireProjectAccess())return;
   var name=prompt('שם המסמך (קטגוריה: '+cat+'):');if(!name)return;
-  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  var data=getData();var proj=getCurrentProject();if(!proj)return;
   proj.documents.push({id:'d'+Date.now(),name:name,category:cat,date:new Date().toLocaleDateString('he-IL'),url:'#'});
   saveData(data);renderProjectDetail(document.getElementById('main-content'));
 }
 function deleteDoc(id){
+  if(!requireAdmin()||!requireProjectAccess())return;
   if(!confirm('למחוק מסמך זה?'))return;
-  var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+  var data=getData();var proj=getCurrentProject();if(!proj)return;
   proj.documents=proj.documents.filter(function(d){return d.id!==id;});
   saveData(data);renderProjectDetail(document.getElementById('main-content'));
 }
 function uploadPhoto(event){
+  if(!requireAdmin()||!requireProjectAccess())return;
   var file=event.target.files[0];if(!file)return;
   var reader=new FileReader();
   reader.onload=function(e){
-    var data=getData();var proj=data.projects.find(function(p){return p.id===currentProjectId;});
+    var data=getData();var proj=getCurrentProject();if(!proj)return;
     proj.photos.push({id:'img'+Date.now(),name:file.name,url:e.target.result,date:new Date().toLocaleDateString('he-IL')});
     saveData(data);renderProjectDetail(document.getElementById('main-content'));
   };
@@ -1382,6 +1489,7 @@ async function sendAdminResetEmail(){
   msg.style.display='block';msg.style.color='green';msg.innerHTML=ic('circle-check')+' נשלח קישור לאיפוס סיסמה ל-'+email;refreshIcons(msg);
 }
 async function resetData(){
+  if(!requireAdmin())return;
   appDataCache={projects:getDefaultProjects()};
   await supabase.from('app_data').upsert({id:'main',projects:appDataCache.projects,updated_at:new Date().toISOString()});
   location.reload();
