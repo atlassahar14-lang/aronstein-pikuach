@@ -14,6 +14,13 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
 .login-card{background:#fff;border-radius:20px;padding:48px 40px;width:420px;max-width:95vw;box-shadow:0 24px 64px rgba(0,0,0,.25);position:relative;z-index:1}
 .login-logo{text-align:center;margin-bottom:32px}
 .login-logo .icon{font-size:48px;display:block;margin-bottom:12px}
+[data-lucide],.lucide svg{display:inline-block;vertical-align:-0.15em;width:1em;height:1em;stroke-width:2}
+.login-logo .icon svg,.empty-icon svg{width:1.15em;height:1.15em}
+.stat-icon svg{width:28px;height:28px}
+.empty-icon svg{width:48px;height:48px}
+.sidebar-logo .logo-icon svg{width:28px;height:28px}
+.nav-icon{display:inline-flex;align-items:center;justify-content:center}
+.nav-icon svg{width:18px;height:18px}
 .login-logo h1{font-size:26px;font-weight:800;color:var(--primary)}
 .login-logo p{font-size:14px;color:var(--text-muted);margin-top:4px}
 .form-group{margin-bottom:18px}
@@ -231,12 +238,13 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
   .main-content{padding:28px}
 }
 </style>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
 <div id="login-screen">
   <div class="login-card">
     <div class="login-logo">
-      <span class="icon">🏗️</span>
+      <span class="icon"><i data-lucide="construction"></i></span>
       <h1>ארונשטיין פיקוח וניהול</h1>
       <p>מערכת ניהול פרויקטי בנייה</p>
     </div>
@@ -256,7 +264,7 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
       <div class="form-group"><label>אימייל</label><input type="email" id="forgot-email" placeholder="הכנס אימייל" autocomplete="email"/></div>
       <button class="btn btn-primary" id="forgot-btn" onclick="submitForgotPassword()">שלח קישור לאיפוס</button>
       <div class="error-msg" id="forgot-error">שגיאה בשליחת האימייל</div>
-      <div class="success-msg" id="forgot-success">✅ נשלח אליך אימייל עם קישור לאיפוס הסיסמה. בדוק את תיבת הדואר.</div>
+      <div class="success-msg" id="forgot-success"><i data-lucide="circle-check"></i> נשלח אליך אימייל עם קישור לאיפוס הסיסמה. בדוק את תיבת הדואר.</div>
       <button type="button" class="back-login-link" onclick="showLoginForm()">← חזרה לכניסה</button>
     </div>
     <p style="text-align:center;margin-top:20px;font-size:12px;color:var(--text-muted)">פרטי הגישה מסופקים על ידי ארונשטיין פיקוח וניהול</p>
@@ -267,12 +275,12 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
   <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
   <div class="app-layout">
     <header class="mobile-header">
-      <button type="button" class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileSidebar()" aria-label="פתח תפריט">☰</button>
+      <button type="button" class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileSidebar()" aria-label="פתח תפריט"><i data-lucide="menu"></i></button>
       <span class="mobile-header-title">ארונשטיין פיקוח וניהול</span>
     </header>
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-logo">
-        <div class="logo-icon">🏗️</div>
+        <div class="logo-icon"><i data-lucide="construction"></i></div>
         <h2>ארונשטיין פיקוח וניהול</h2>
         <p>מערכת ניהול</p>
       </div>
@@ -282,7 +290,7 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
           <div class="user-avatar" id="user-avatar-sb">א</div>
           <div><div class="user-name" id="user-name-sb">משתמש</div><div class="user-role" id="user-role-sb">תפקיד</div></div>
         </div>
-        <button class="btn-logout" onclick="doLogout()">🚪 יציאה</button>
+        <button class="btn-logout" onclick="doLogout()"><i data-lucide="log-out"></i> יציאה</button>
       </div>
     </aside>
     <main class="main-content" id="main-content"></main>
@@ -294,7 +302,7 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
 <!-- Modal: Project -->
 <div class="modal-overlay" id="modal-project">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title" id="modal-proj-title">פרויקט חדש</div><button class="modal-close" onclick="closeModal('modal-project')">✕</button></div>
+    <div class="modal-header"><div class="modal-title" id="modal-proj-title">פרויקט חדש</div><button class="modal-close" onclick="closeModal('modal-project')"><i data-lucide="x"></i></button></div>
     <div class="form-group"><label>שם הפרויקט</label><input type="text" id="proj-name" placeholder="לדוגמה: בית פרטי - כפר סבא"/></div>
     <div class="form-group"><label>כתובת</label><input type="text" id="proj-addr" placeholder="רחוב, עיר"/></div>
     <div class="form-group"><label>מספר בית</label><input type="text" id="proj-house" placeholder="לדוגמה: 12"/></div>
@@ -319,7 +327,7 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
 <!-- Modal: User -->
 <div class="modal-overlay" id="modal-user">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title">הוספת לקוח</div><button class="modal-close" onclick="closeModal('modal-user')">✕</button></div>
+    <div class="modal-header"><div class="modal-title">הוספת לקוח</div><button class="modal-close" onclick="closeModal('modal-user')"><i data-lucide="x"></i></button></div>
     <div class="form-group"><label>שם מלא</label><input type="text" id="new-user-name" placeholder="שם הלקוח"/></div>
     <div class="form-group"><label>אימייל</label><input type="email" id="new-user-email" placeholder="email@example.com"/></div>
     <div class="form-group"><label>סיסמה</label><input type="text" id="new-user-pass" placeholder="סיסמה"/></div>
@@ -334,7 +342,7 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
 <!-- Modal: Payment -->
 <div class="modal-overlay" id="modal-payment">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title">תשלום חדש</div><button class="modal-close" onclick="closeModal('modal-payment')">✕</button></div>
+    <div class="modal-header"><div class="modal-title">תשלום חדש</div><button class="modal-close" onclick="closeModal('modal-payment')"><i data-lucide="x"></i></button></div>
     <div class="form-group"><label>תיאור התשלום</label><input type="text" id="pay-desc" placeholder="לדוגמה: תשלום לקבלן שלד"/></div>
     <div class="form-group"><label>סכום (₪)</label><input type="number" id="pay-amount" placeholder="0"/></div>
     <div class="form-group"><label>תאריך</label><input type="date" id="pay-date"/></div>
@@ -350,7 +358,7 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
 <!-- Modal: Phase -->
 <div class="modal-overlay" id="modal-phase">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title" id="modal-phase-title">שלב חדש</div><button class="modal-close" onclick="closeModal('modal-phase')">✕</button></div>
+    <div class="modal-header"><div class="modal-title" id="modal-phase-title">שלב חדש</div><button class="modal-close" onclick="closeModal('modal-phase')"><i data-lucide="x"></i></button></div>
     <div class="form-group"><label>שם השלב</label><input type="text" id="phase-name"/></div>
     <div class="grid-2">
       <div class="form-group"><label>תאריך התחלה</label><input type="date" id="phase-start"/></div>
@@ -369,7 +377,7 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
 <!-- Modal: Update -->
 <div class="modal-overlay" id="modal-update">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title">עדכון חדש ללקוח</div><button class="modal-close" onclick="closeModal('modal-update')">✕</button></div>
+    <div class="modal-header"><div class="modal-title">עדכון חדש ללקוח</div><button class="modal-close" onclick="closeModal('modal-update')"><i data-lucide="x"></i></button></div>
     <div class="form-group"><label>כותרת</label><input type="text" id="upd-title" placeholder="לדוגמה: סיום שלב השלד"/></div>
     <div class="form-group"><label>תוכן</label><textarea id="upd-body" placeholder="פרטי העדכון..."></textarea></div>
     <div class="modal-footer">
@@ -387,6 +395,9 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 const ADMIN_EMAIL='atlassahar14@gmail.com';
 
 const supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+function ic(n){return '<i data-lucide="'+n+'"></i>';}
+function refreshIcons(root){if(window.lucide)lucide.createIcons(root?{root:root}:undefined);}
 
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
 var appDataCache={projects:[]},appUsers=[],authBootstrapped=false,skipAuthHandler=false;
@@ -593,14 +604,15 @@ function renderSidebar(){
   var nav=document.getElementById('sidebar-nav');
   if(currentUser.role==='admin'){
     nav.innerHTML='<div class="nav-section-title">ניהול</div>'+
-      '<div class="nav-item '+(currentView==='dashboard'?'active':'')+'" onclick="showView(\'dashboard\')"><span class="nav-icon">📊</span> לוח בקרה</div>'+
-      '<div class="nav-item '+(currentView==='projects'?'active':'')+'" onclick="showView(\'projects\')"><span class="nav-icon">🏗️</span> פרויקטים</div>'+
+      '<div class="nav-item '+(currentView==='dashboard'?'active':'')+'" onclick="showView(\'dashboard\')"><span class="nav-icon">'+ic('layout-dashboard')+'</span> לוח בקרה</div>'+
+      '<div class="nav-item '+(currentView==='projects'?'active':'')+'" onclick="showView(\'projects\')"><span class="nav-icon">'+ic('construction')+'</span> פרויקטים</div>'+
       '<div class="nav-section-title">מערכת</div>'+
-      '<div class="nav-item '+(currentView==='clients'?'active':'')+'" onclick="showView(\'clients\')"><span class="nav-icon">👥</span> לקוחות</div>'+
-      '<div class="nav-item '+(currentView==='settings'?'active':'')+'" onclick="showView(\'settings\')"><span class="nav-icon">⚙️</span> הגדרות</div>';
+      '<div class="nav-item '+(currentView==='clients'?'active':'')+'" onclick="showView(\'clients\')"><span class="nav-icon">'+ic('users')+'</span> לקוחות</div>'+
+      '<div class="nav-item '+(currentView==='settings'?'active':'')+'" onclick="showView(\'settings\')"><span class="nav-icon">'+ic('settings')+'</span> הגדרות</div>';
   } else {
-    nav.innerHTML='<div class="nav-section-title">הפרויקט שלי</div><div class="nav-item active"><span class="nav-icon">🏠</span> הפרויקט שלי</div>';
+    nav.innerHTML='<div class="nav-section-title">הפרויקט שלי</div><div class="nav-item active"><span class="nav-icon">'+ic('house')+'</span> הפרויקט שלי</div>';
   }
+  refreshIcons(nav);
 }
 
 function toggleMobileSidebar(){
@@ -629,6 +641,7 @@ function showView(view,pid){
   else if(view==='project'){currentTab='overview';renderProjectDetail(el);}
   else if(view==='clients')renderClients(el);
   else if(view==='settings')renderSettings(el);
+  refreshIcons(el);
 }
 
 function fmtMoney(n){return '₪'+Number(n).toLocaleString('he-IL');}
@@ -651,11 +664,11 @@ function projectCardHTML(p){
   var sm={'active':['status-active','בביצוע'],'paused':['status-paused','מושהה'],'done':['status-done','הושלם']};
   var sc=sm[p.status]||sm.active;
   return '<div class="project-card" onclick="showView(\'project\',\''+p.id+'\')">'+
-    '<div class="project-card-header"><div><div class="project-name">'+p.name+'</div><div class="project-address">📍 '+formatProjectAddress(p)+'</div></div>'+
+    '<div class="project-card-header"><div><div class="project-name">'+p.name+'</div><div class="project-address">'+ic('map-pin')+' '+formatProjectAddress(p)+'</div></div>'+
     '<span class="status-badge '+sc[0]+'">'+sc[1]+'</span></div>'+
     '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+(p.progress||0)+'%"></div></div>'+
     '<div class="progress-label"><span>התקדמות</span><span>'+(p.progress||0)+'%</span></div>'+
-    '<div class="project-meta"><span>💰 '+(p.budget/1000000).toFixed(1)+'M</span><span>📄 '+p.documents.length+' מסמכים</span><span>🔔 '+p.updates.length+' עדכונים</span></div>'+
+    '<div class="project-meta"><span>'+ic('banknote')+' '+(p.budget/1000000).toFixed(1)+'M</span><span>'+ic('file-text')+' '+p.documents.length+' מסמכים</span><span>'+ic('bell')+' '+p.updates.length+' עדכונים</span></div>'+
     '</div>';
 }
 
@@ -665,21 +678,21 @@ function renderDashboard(el){
   var done=data.projects.filter(function(p){return p.status==='done';}).length;
   var clients=appUsers.filter(function(u){return u.role!=='admin';}).length;
   var totalPaid=data.projects.reduce(function(s,p){return s+p.payments.reduce(function(ss,pay){return ss+Number(pay.amount||0);},0);},0);
-  el.innerHTML='<div class="page-header"><h1>👋 שלום, '+currentUser.name+'</h1><p>סקירה כללית של כל הפרויקטים</p></div>'+
+  el.innerHTML='<div class="page-header"><h1>'+ic('hand')+' שלום, '+currentUser.name+'</h1><p>סקירה כללית של כל הפרויקטים</p></div>'+
     '<div class="stats-grid">'+
-    '<div class="stat-card"><div class="stat-icon">🏗️</div><div class="stat-value">'+data.projects.length+'</div><div class="stat-label">פרויקטים</div></div>'+
-    '<div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-value">'+active+'</div><div class="stat-label">פעילים</div></div>'+
-    '<div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value">'+done+'</div><div class="stat-label">פרויקטים גמורים</div></div>'+
-    '<div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value">'+clients+'</div><div class="stat-label">לקוחות</div></div>'+
-    '<div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value">'+fmtMoney(totalPaid)+'</div><div class="stat-label">שולם סה"כ</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">'+ic('construction')+'</div><div class="stat-value">'+data.projects.length+'</div><div class="stat-label">פרויקטים</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">'+ic('zap')+'</div><div class="stat-value">'+active+'</div><div class="stat-label">פעילים</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">'+ic('circle-check')+'</div><div class="stat-value">'+done+'</div><div class="stat-label">פרויקטים גמורים</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">'+ic('users')+'</div><div class="stat-value">'+clients+'</div><div class="stat-label">לקוחות</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">'+ic('banknote')+'</div><div class="stat-value">'+fmtMoney(totalPaid)+'</div><div class="stat-label">שולם סה"כ</div></div>'+
     '</div>'+
-    '<div class="card"><div class="section-actions"><div class="section-title">🏗️ פרויקטים</div><button class="btn btn-primary btn-sm" onclick="openNewProjectModal()">➕ פרויקט חדש</button></div>'+
+    '<div class="card"><div class="section-actions"><div class="section-title">'+ic('construction')+' פרויקטים</div><button class="btn btn-primary btn-sm" onclick="openNewProjectModal()">'+ic('plus')+' פרויקט חדש</button></div>'+
     '<div class="projects-grid">'+data.projects.map(projectCardHTML).join('')+'</div></div>';
 }
 
 function renderProjectsList(el){
   var data=getData();
-  el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>🏗️ פרויקטים</h1><p>ניהול כל הפרויקטים</p></div><button class="btn btn-primary" onclick="openNewProjectModal()">➕ פרויקט חדש</button></div>'+
+  el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('construction')+' פרויקטים</h1><p>ניהול כל הפרויקטים</p></div><button class="btn btn-primary" onclick="openNewProjectModal()">'+ic('plus')+' פרויקט חדש</button></div>'+
     '<div class="projects-grid">'+data.projects.map(projectCardHTML).join('')+'</div>';
 }
 
@@ -695,31 +708,31 @@ function renderProjectDetail(el){
   var messagesTabBadge=unreadMessages?'<span class="tab-badge show"></span>':'';
 
   var html=(isAdmin?'<button class="back-btn" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>':'');
-  html+='<div class="flex-between responsive-stack mb-24"><div><h1 style="font-size:24px;font-weight:800;color:var(--primary)">'+p.name+'</h1><p style="color:var(--text-muted);margin-top:4px">📍 '+formatProjectAddress(p)+'</p></div>';
-  if(isAdmin)html+='<div class="flex-gap"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">✏️ עריכה</button><button class="btn btn-accent btn-sm" onclick="openModal(\'modal-update\')">🔔 עדכון חדש</button></div>';
+  html+='<div class="flex-between responsive-stack mb-24"><div><h1 style="font-size:24px;font-weight:800;color:var(--primary)">'+p.name+'</h1><p style="color:var(--text-muted);margin-top:4px">'+ic('map-pin')+' '+formatProjectAddress(p)+'</p></div>';
+  if(isAdmin)html+='<div class="flex-gap"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-accent btn-sm" onclick="openModal(\'modal-update\')">'+ic('bell')+' עדכון חדש</button></div>';
   html+='</div>';
 
   html+='<div class="tabs-scroll"><div class="tabs">'+
-    '<button class="tab '+(currentTab==='overview'?'active':'')+'" onclick="switchTab(\'overview\')">📊 סקירה</button>'+
-    '<button class="tab '+(currentTab==='timeline'?'active':'')+'" onclick="switchTab(\'timeline\')">📅 לוח זמנים</button>'+
-    '<button class="tab '+(currentTab==='budget'?'active':'')+'" onclick="switchTab(\'budget\')">💰 תקציב</button>'+
-    '<button class="tab '+(currentTab==='financial'?'active':'')+'" onclick="switchTab(\'financial\')">📈 דוח פיננסי</button>'+
-    '<button class="tab '+(currentTab==='docs'?'active':'')+'" onclick="switchTab(\'docs\')">📁 מסמכים</button>'+
-    '<button class="tab '+(currentTab==='gallery'?'active':'')+'" onclick="switchTab(\'gallery\')">📷 גלריה</button>'+
-    '<button class="tab '+(currentTab==='updates'?'active':'')+'" onclick="switchTab(\'updates\')">🔔 עדכונים</button>'+
-    '<button class="tab '+(currentTab==='messages'?'active':'')+'" onclick="switchTab(\'messages\')">💬 שאלות'+messagesTabBadge+'</button>'+
+    '<button class="tab '+(currentTab==='overview'?'active':'')+'" onclick="switchTab(\'overview\')">'+ic('layout-dashboard')+' סקירה</button>'+
+    '<button class="tab '+(currentTab==='timeline'?'active':'')+'" onclick="switchTab(\'timeline\')">'+ic('calendar')+' לוח זמנים</button>'+
+    '<button class="tab '+(currentTab==='budget'?'active':'')+'" onclick="switchTab(\'budget\')">'+ic('banknote')+' תקציב</button>'+
+    '<button class="tab '+(currentTab==='financial'?'active':'')+'" onclick="switchTab(\'financial\')">'+ic('trending-up')+' דוח פיננסי</button>'+
+    '<button class="tab '+(currentTab==='docs'?'active':'')+'" onclick="switchTab(\'docs\')">'+ic('folder')+' מסמכים</button>'+
+    '<button class="tab '+(currentTab==='gallery'?'active':'')+'" onclick="switchTab(\'gallery\')">'+ic('camera')+' גלריה</button>'+
+    '<button class="tab '+(currentTab==='updates'?'active':'')+'" onclick="switchTab(\'updates\')">'+ic('bell')+' עדכונים</button>'+
+    '<button class="tab '+(currentTab==='messages'?'active':'')+'" onclick="switchTab(\'messages\')">'+ic('message-circle')+' שאלות'+messagesTabBadge+'</button>'+
     '</div></div>';
 
   // OVERVIEW TAB
   html+='<div id="tab-overview" class="tab-content '+(currentTab==='overview'?'active':'')+'">'+
     '<div class="stats-grid">'+
-    '<div class="stat-card"><div class="stat-icon">📈</div><div class="stat-value">'+(p.progress||0)+'%</div><div class="stat-label">התקדמות כללית</div></div>'+
-    '<div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value">'+fmtMoney(paid)+'</div><div class="stat-label">שולם עד כה</div></div>'+
-    '<div class="stat-card"><div class="stat-icon">📅</div><div class="stat-value">'+p.phases.filter(function(x){return x.status==='done';}).length+'/'+p.phases.length+'</div><div class="stat-label">שלבים הושלמו</div></div>'+
-    '<div class="stat-card"><div class="stat-icon">📄</div><div class="stat-value">'+p.documents.length+'</div><div class="stat-label">מסמכים</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">'+ic('trending-up')+'</div><div class="stat-value">'+(p.progress||0)+'%</div><div class="stat-label">התקדמות כללית</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">'+ic('banknote')+'</div><div class="stat-value">'+fmtMoney(paid)+'</div><div class="stat-label">שולם עד כה</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">'+ic('calendar')+'</div><div class="stat-value">'+p.phases.filter(function(x){return x.status==='done';}).length+'/'+p.phases.length+'</div><div class="stat-label">שלבים הושלמו</div></div>'+
+    '<div class="stat-card"><div class="stat-icon">'+ic('file-text')+'</div><div class="stat-value">'+p.documents.length+'</div><div class="stat-label">מסמכים</div></div>'+
     '</div>'+
     '<div class="grid-2" style="gap:20px">'+
-    '<div class="card"><div class="card-title">📝 פרטי הפרויקט</div>'+
+    '<div class="card"><div class="card-title">'+ic('clipboard-list')+' פרטי הפרויקט</div>'+
     '<p style="font-size:14px;color:var(--text-muted);margin-bottom:12px">'+(p.desc||'אין תיאור')+'</p>'+
     '<div style="display:flex;flex-direction:column;gap:8px;font-size:13px">'+
     '<div class="flex-between"><span style="color:var(--text-muted)">תחילת עבודה:</span><span style="font-weight:600">'+p.start+'</span></div>'+
@@ -728,7 +741,7 @@ function renderProjectDetail(el){
     (p.builtArea?'<div class="flex-between"><span style="color:var(--text-muted)">שטח בנוי:</span><span style="font-weight:600">'+p.builtArea+' מ"ר</span></div>':'')+
     (p.propertyArea?'<div class="flex-between"><span style="color:var(--text-muted)">שטח הבית עצמו:</span><span style="font-weight:600">'+p.propertyArea+' מ"ר</span></div>':'')+
     '</div></div>'+
-    '<div class="card"><div class="card-title">📊 תקציב</div>'+
+    '<div class="card"><div class="card-title">'+ic('layout-dashboard')+' תקציב</div>'+
     '<div style="margin-bottom:14px"><div class="flex-between" style="margin-bottom:6px;font-size:13px"><span style="color:var(--text-muted)">שולם</span><span style="font-weight:600;color:var(--success)">'+fmtMoney(paid)+'</span></div>'+
     '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+(p.budget?Math.min(100,Math.round(paid/p.budget*100)):0)+'%;background:var(--success)"></div></div></div>'+
     '<div class="flex-between" style="font-size:13px"><span style="color:var(--text-muted)">נותר:</span><span style="font-weight:700;color:var(--warning)">'+fmtMoney(remaining)+'</span></div>'+
@@ -736,21 +749,21 @@ function renderProjectDetail(el){
 
   // TIMELINE TAB
   html+='<div id="tab-timeline" class="tab-content '+(currentTab==='timeline'?'active':'')+'">'+
-    '<div class="section-actions"><div class="section-title">📅 שלבי הפרויקט</div>'+
-    (isAdmin?'<button class="btn btn-primary btn-sm" onclick="openAddPhaseModal()">➕ שלב חדש</button>':'')+
+    '<div class="section-actions"><div class="section-title">'+ic('calendar')+' שלבי הפרויקט</div>'+
+    (isAdmin?'<button class="btn btn-primary btn-sm" onclick="openAddPhaseModal()">'+ic('plus')+' שלב חדש</button>':'')+
     '</div><div class="timeline-phases">'+
     p.phases.map(function(ph){
       return '<div class="phase-card '+ph.status+'">'+
         '<div class="phase-header"><div class="phase-name">'+ph.name+'</div>'+
-        '<span class="phase-status '+ph.status+'">'+(ph.status==='done'?'✅ הושלם':ph.status==='active'?'🔨 בביצוע':'⏳ ממתין')+'</span></div>'+
+        '<span class="phase-status '+ph.status+'">'+(ph.status==='done'?ic('circle-check')+' הושלם':ph.status==='active'?ic('hammer')+' בביצוע':ic('clock')+' ממתין')+'</span></div>'+
         '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+ph.progress+'%"></div></div>'+
         '<div class="flex-between" style="font-size:12px;color:var(--text-muted);margin-top:6px"><span>'+ph.progress+'%</span><span>'+ph.end+'</span></div>'+
         (ph.notes?'<p style="font-size:12px;color:var(--text-muted);margin-top:8px">'+ph.notes+'</p>':'')+
-        (isAdmin?'<button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%" onclick="openEditPhaseModal(\''+ph.id+'\')">✏️ עריכה</button>':'')+
+        (isAdmin?'<button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%" onclick="openEditPhaseModal(\''+ph.id+'\')">'+ic('pencil')+' עריכה</button>':'')+
         '</div>';
     }).join('')+
     '</div>'+
-    (isAdmin?'<div class="card" style="margin-top:20px"><div class="card-title">📈 התקדמות כללית</div>'+
+    (isAdmin?'<div class="card" style="margin-top:20px"><div class="card-title">'+ic('trending-up')+' התקדמות כללית</div>'+
     '<div style="display:flex;align-items:center;gap:12px">'+
     '<input type="range" min="0" max="100" value="'+(p.progress||0)+'" id="overall-prog" style="flex:1" oninput="document.getElementById(\'overall-prog-val\').textContent=this.value+\'%\'"/>'+
     '<span id="overall-prog-val" style="font-weight:700;color:var(--primary);min-width:40px">'+(p.progress||0)+'%</span>'+
@@ -764,10 +777,10 @@ function renderProjectDetail(el){
     '<div class="budget-item"><div class="label">שולם</div><div class="amount paid">'+fmtMoney(paid)+'</div></div>'+
     '<div class="budget-item"><div class="label">נותר</div><div class="amount remaining">'+fmtMoney(remaining)+'</div></div>'+
     '<div class="budget-item"><div class="label">אחוז ניצול</div><div class="amount total">'+(p.budget?Math.round(paid/p.budget*100):0)+'%</div></div>'+
-    '</div><div class="card"><div class="section-actions"><div class="section-title">💳 תשלומים</div>'+
-    (isAdmin?'<button class="btn btn-primary btn-sm" onclick="openAddPaymentModal()">➕ תשלום חדש</button>':'')+
+    '</div><div class="card"><div class="section-actions"><div class="section-title">'+ic('credit-card')+' תשלומים</div>'+
+    (isAdmin?'<button class="btn btn-primary btn-sm" onclick="openAddPaymentModal()">'+ic('plus')+' תשלום חדש</button>':'')+
     '</div>'+
-    (p.payments.length===0?'<div class="empty-state"><div class="empty-icon">💰</div><p>אין תשלומים עדיין</p></div>':
+    (p.payments.length===0?'<div class="empty-state"><div class="empty-icon">'+ic('banknote')+'</div><p>אין תשלומים עדיין</p></div>':
     '<div class="table-scroll"><table class="payments-table"><thead><tr><th>תיאור</th><th>נמען</th><th>קטגוריה</th><th>תאריך</th><th>סכום</th><th></th></tr></thead><tbody>'+
     p.payments.map(function(pay){
       return '<tr><td style="font-weight:600">'+pay.desc+'</td><td style="color:var(--text-muted)">'+pay.to+'</td>'+
@@ -775,8 +788,8 @@ function renderProjectDetail(el){
         '<td style="color:var(--text-muted)">'+pay.date+'</td>'+
         '<td style="font-weight:700;color:var(--primary)">'+fmtMoney(pay.amount)+'</td>'+
         '<td><div style="display:flex;gap:6px">'+
-        (isAdmin?'<button class="btn btn-outline btn-sm" onclick="openEditPaymentModal(\''+pay.id+'\')">✏️</button>'+
-        '<button class="btn btn-danger btn-sm" onclick="deletePayment(\''+pay.id+'\')">🗑️</button>':'')+
+        (isAdmin?'<button class="btn btn-outline btn-sm" onclick="openEditPaymentModal(\''+pay.id+'\')">'+ic('pencil')+'</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="deletePayment(\''+pay.id+'\')">'+ic('trash-2')+'</button>':'')+
         '</div></td></tr>';
     }).join('')+'</tbody></table></div>')+
     '</div></div>';
@@ -785,58 +798,58 @@ function renderProjectDetail(el){
   var budgetPct=p.budget?Math.min(100,Math.round(paid/p.budget*100)):0;
   var budgetBarColor=budgetPct>=100?'var(--danger)':budgetPct>=80?'var(--warning)':'var(--success)';
   html+='<div id="tab-financial" class="tab-content '+(currentTab==='financial'?'active':'')+'">'+
-    '<div class="section-title mb-16">📈 דוח פיננסי</div>'+
+    '<div class="section-title mb-16">'+ic('trending-up')+' דוח פיננסי</div>'+
     '<div class="budget-summary">'+
     '<div class="budget-item"><div class="label">תקציב כולל</div><div class="amount total">'+fmtMoney(p.budget)+'</div></div>'+
     '<div class="budget-item"><div class="label">שולם עד כה</div><div class="amount paid">'+fmtMoney(paid)+'</div></div>'+
     '<div class="budget-item"><div class="label">יתרה</div><div class="amount remaining">'+fmtMoney(remaining)+'</div></div>'+
     '</div>'+
     '<div class="card fin-progress-card">'+
-    '<div class="card-title">📊 ניצול תקציב</div>'+
+    '<div class="card-title">'+ic('layout-dashboard')+' ניצול תקציב</div>'+
     '<div class="fin-pct-big">'+budgetPct+'%</div>'+
     '<div class="progress-bar-wrap" style="height:14px"><div class="progress-bar" style="width:'+budgetPct+'%;background:'+budgetBarColor+'"></div></div>'+
     '<div class="progress-label" style="margin-top:10px"><span>₪0</span><span>'+fmtMoney(p.budget)+'</span></div>'+
     '</div>'+
     '<div class="fin-charts-grid">'+
-    '<div class="card"><div class="card-title">🥧 פילוח הוצאות לפי קטגוריה</div><canvas id="fin-pie-chart"></canvas></div>'+
-    '<div class="card"><div class="card-title">📊 תקציב מתוכנן מול ביצוע בפועל</div><canvas id="fin-bar-chart"></canvas></div>'+
+    '<div class="card"><div class="card-title">'+ic('chart-pie')+' פילוח הוצאות לפי קטגוריה</div><canvas id="fin-pie-chart"></canvas></div>'+
+    '<div class="card"><div class="card-title">'+ic('layout-dashboard')+' תקציב מתוכנן מול ביצוע בפועל</div><canvas id="fin-bar-chart"></canvas></div>'+
     '</div></div>';
 
   // DOCS TAB
   html+='<div id="tab-docs" class="tab-content '+(currentTab==='docs'?'active':'')+'">'+
-    '<div class="section-title" style="margin-bottom:16px">📁 מסמכים ותוכניות</div>'+
+    '<div class="section-title" style="margin-bottom:16px">'+ic('folder')+' מסמכים ותוכניות</div>'+
     '<div class="doc-categories">'+
     ['תוכניות אדריכלות','קונסטרוקטור','היתרים','הסכמים','אחר'].map(function(cat){
-      var catIcon={'תוכניות אדריכלות':'📐','קונסטרוקטור':'🔩','היתרים':'📋','הסכמים':'📝','אחר':'📄'};
+      var catIcon={'תוכניות אדריכלות':'ruler','קונסטרוקטור':'wrench','היתרים':'clipboard-list','הסכמים':'file-pen','אחר':'file-text'};
       var docs=p.documents.filter(function(d){return d.category===cat;});
-      return '<div class="doc-category"><div class="doc-category-title">'+catIcon[cat]+' '+cat+'</div>'+
+      return '<div class="doc-category"><div class="doc-category-title">'+ic(catIcon[cat])+' '+cat+'</div>'+
         (docs.length===0?'<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px">אין מסמכים</p>':'')+
         docs.map(function(d){
           var isLink=d.url&&d.url!=='#'&&d.url.startsWith('http');
           var isFile=d.url&&d.url.startsWith('data:');
           return '<div class="doc-item">'+
             '<div style="display:flex;align-items:center;gap:6px;font-size:13px">'+
-            (isLink?'🔗':isFile?'📎':'📄')+' <span>'+d.name+'</span></div>'+
+            (isLink?ic('link'):isFile?ic('paperclip'):ic('file-text'))+' <span>'+d.name+'</span></div>'+
             '<div style="display:flex;gap:4px">'+
             (isLink?'<a href="'+d.url+'" target="_blank" class="btn btn-outline btn-sm">פתח</a>':'')+
-            (isFile?'<a href="'+d.url+'" download="'+d.name+'" class="btn btn-outline btn-sm">⬇️</a>':'')+
-            (isAdmin?'<button class="btn btn-danger btn-sm" onclick="deleteDoc(\''+d.id+'\')">🗑️</button>':'')+
+            (isFile?'<a href="'+d.url+'" download="'+d.name+'" class="btn btn-outline btn-sm">'+ic('download')+'</a>':'')+
+            (isAdmin?'<button class="btn btn-danger btn-sm" onclick="deleteDoc(\''+d.id+'\')">'+ic('trash-2')+'</button>':'')+
             '</div></div>';
         }).join('')+
         (isAdmin?
           '<div style="display:flex;gap:6px;margin-top:12px">'+
-          '<label class="btn btn-outline btn-sm" style="cursor:pointer;flex:1;justify-content:center">📎 העלה קובץ<input type="file" style="display:none" onchange="uploadDocFile(event,\''+cat+'\')"/></label>'+
-          '<button class="btn btn-outline btn-sm" style="flex:1" onclick="addDocLink(\''+cat+'\')">🔗 הוסף לינק</button>'+
+          '<label class="btn btn-outline btn-sm" style="cursor:pointer;flex:1;justify-content:center">'+ic('paperclip')+' העלה קובץ<input type="file" style="display:none" onchange="uploadDocFile(event,\''+cat+'\')"/></label>'+
+          '<button class="btn btn-outline btn-sm" style="flex:1" onclick="addDocLink(\''+cat+'\')">'+ic('link')+' הוסף לינק</button>'+
           '</div>':'')+
         '</div>';
     }).join('')+'</div></div>';
 
   // GALLERY TAB
   html+='<div id="tab-gallery" class="tab-content '+(currentTab==='gallery'?'active':'')+'">'+
-    '<div class="section-actions"><div class="section-title">📷 גלריית תמונות מהשטח</div>'+
-    (isAdmin?'<label class="upload-label">📷 העלה תמונה<input type="file" accept="image/*" onchange="uploadPhoto(event)"/></label>':'')+
+    '<div class="section-actions"><div class="section-title">'+ic('camera')+' גלריית תמונות מהשטח</div>'+
+    (isAdmin?'<label class="upload-label">'+ic('camera')+' העלה תמונה<input type="file" accept="image/*" onchange="uploadPhoto(event)"/></label>':'')+
     '</div>'+
-    (p.photos.length===0?'<div class="empty-state card"><div class="empty-icon">📷</div><p>אין תמונות עדיין'+(isAdmin?' — העלה את הראשונה':'')+' </p></div>':
+    (p.photos.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('camera')+'</div><p>אין תמונות עדיין'+(isAdmin?' — העלה את הראשונה':'')+' </p></div>':
     '<div class="gallery-grid">'+p.photos.map(function(photo){
       return '<div class="gallery-item"><img src="'+photo.url+'" alt="'+photo.name+'"/></div>';
     }).join('')+'</div>')+
@@ -844,24 +857,24 @@ function renderProjectDetail(el){
 
   // UPDATES TAB
   html+='<div id="tab-updates" class="tab-content '+(currentTab==='updates'?'active':'')+'">'+
-    '<div class="section-actions"><div class="section-title">🔔 עדכונים</div>'+
-    (isAdmin?'<button class="btn btn-primary btn-sm" onclick="openModal(\'modal-update\')">➕ עדכון חדש</button>':'')+
+    '<div class="section-actions"><div class="section-title">'+ic('bell')+' עדכונים</div>'+
+    (isAdmin?'<button class="btn btn-primary btn-sm" onclick="openModal(\'modal-update\')">'+ic('plus')+' עדכון חדש</button>':'')+
     '</div>'+
-    (p.updates.length===0?'<div class="empty-state card"><div class="empty-icon">🔔</div><p>אין עדכונים עדיין</p></div>':
+    (p.updates.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('bell')+'</div><p>אין עדכונים עדיין</p></div>':
     '<div style="display:flex;flex-direction:column;gap:14px">'+
     p.updates.slice().reverse().map(function(u){
       return '<div class="card"><div class="flex-between" style="margin-bottom:8px">'+
         '<div style="font-size:16px;font-weight:700;color:var(--primary)">'+u.title+'</div>'+
         '<div style="font-size:12px;color:var(--text-muted)">'+u.date+'</div></div>'+
         '<p style="font-size:14px;line-height:1.6">'+u.body+'</p>'+
-        (isAdmin?'<button class="btn btn-danger btn-sm" style="margin-top:10px" onclick="deleteUpdate(\''+u.id+'\')">🗑️ מחק</button>':'')+
+        (isAdmin?'<button class="btn btn-danger btn-sm" style="margin-top:10px" onclick="deleteUpdate(\''+u.id+'\')">'+ic('trash-2')+' מחק</button>':'')+
         '</div>';
     }).join('')+'</div>')+
     '</div>';
 
   // MESSAGES TAB
   html+='<div id="tab-messages" class="tab-content '+(currentTab==='messages'?'active':'')+'">'+
-    '<div class="section-title mb-16">💬 ערוץ שאלות ובקשות</div>'+
+    '<div class="section-title mb-16">'+ic('message-circle')+' ערוץ שאלות ובקשות</div>'+
     '<div class="card">'+
     '<div class="messages-list" id="messages-list">'+
     p.messages.map(function(m){
@@ -974,10 +987,10 @@ function switchTab(t){
 function renderClients(el){
   var data=getData();
   var clients=appUsers.filter(function(u){return u.role!=='admin';});
-  el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>👥 לקוחות</h1><p>ניהול משתמשי הלקוחות (Supabase)</p></div>'+
-    '<button class="btn btn-primary" onclick="openAddUserModal()">➕ לקוח חדש</button></div>'+
+  el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('users')+' לקוחות</h1><p>ניהול משתמשי הלקוחות (Supabase)</p></div>'+
+    '<button class="btn btn-primary" onclick="openAddUserModal()">'+ic('plus')+' לקוח חדש</button></div>'+
     '<div class="users-list">'+
-    (clients.length===0?'<div class="empty-state card"><div class="empty-icon">👥</div><p>אין לקוחות עדיין</p></div>':'')+
+    (clients.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('users')+'</div><p>אין לקוחות עדיין</p></div>':'')+
     clients.map(function(u){
       var proj=data.projects.find(function(p){return p.id===u.projectId;});
       return '<div class="user-row"><div class="user-row-info">'+
@@ -986,14 +999,14 @@ function renderClients(el){
         '<div class="user-row-meta">אימייל: '+u.email+' · פרויקט: '+(proj?proj.name:'לא משויך')+'</div></div></div>'+
         '<div class="flex-gap">'+
         (proj?'<button class="btn btn-outline btn-sm" onclick="showView(\'project\',\''+proj.id+'\')">צפה בפרויקט</button>':'')+
-        '<button class="btn btn-danger btn-sm" onclick="deleteUser(\''+u.id+'\')">🗑️</button></div></div>';
+        '<button class="btn btn-danger btn-sm" onclick="deleteUser(\''+u.id+'\')">'+ic('trash-2')+'</button></div></div>';
     }).join('')+'</div>';
 }
 
 function renderSettings(el){
-  el.innerHTML='<div class="page-header"><h1>⚙️ הגדרות</h1></div>'+
+  el.innerHTML='<div class="page-header"><h1>'+ic('settings')+' הגדרות</h1></div>'+
     '<div class="card" style="max-width:480px">'+
-    '<div class="card-title">🔐 שינוי סיסמה</div>'+
+    '<div class="card-title">'+ic('lock')+' שינוי סיסמה</div>'+
     '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">הסיסמה מנוהלת ב-Supabase Authentication</p>'+
     '<div class="form-group"><label>סיסמה חדשה</label><input type="password" id="new-admin-pass" placeholder="סיסמה חדשה"/></div>'+
     '<div class="form-group"><label>אימות סיסמה</label><input type="password" id="confirm-admin-pass" placeholder="הכנס שוב"/></div>'+
@@ -1001,7 +1014,7 @@ function renderSettings(el){
     '<button class="btn btn-outline" style="margin-top:10px;width:100%;justify-content:center" onclick="sendAdminResetEmail()">שלח קישור לאיפוס סיסמה לאימייל</button>'+
     '<div id="pass-msg" style="margin-top:10px;font-size:13px;display:none"></div></div>'+
     '<div class="card" style="max-width:480px;margin-top:20px">'+
-    '<div class="card-title">🗑️ איפוס נתונים</div>'+
+    '<div class="card-title">'+ic('trash-2')+' איפוס נתונים</div>'+
     '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">מחיקת כל הנתונים מ-Supabase — פעולה בלתי הפיכה!</p>'+
     '<button class="btn btn-danger" onclick="if(confirm(\'בטוח? כל הנתונים יימחקו!\'))resetData()">איפוס מלא</button></div>';
 }
@@ -1279,7 +1292,7 @@ async function changeAdminPass(){
   if(p1.length<6){msg.style.display='block';msg.style.color='red';msg.textContent='הסיסמה חייבת להכיל לפחות 6 תווים';return;}
   var res=await supabase.auth.updateUser({password:p1});
   if(res.error){msg.style.display='block';msg.style.color='red';msg.textContent=supabaseErrorToHebrew(res.error.message);return;}
-  msg.style.display='block';msg.style.color='green';msg.textContent='✅ הסיסמה שונתה בהצלחה';
+  msg.style.display='block';msg.style.color='green';msg.innerHTML=ic('circle-check')+' הסיסמה שונתה בהצלחה';refreshIcons(msg);
   document.getElementById('new-admin-pass').value='';
   document.getElementById('confirm-admin-pass').value='';
 }
@@ -1290,7 +1303,7 @@ async function sendAdminResetEmail(){
   if(!email){msg.style.display='block';msg.style.color='red';msg.textContent='לא נמצא אימייל מחובר';return;}
   var res=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});
   if(res.error){msg.style.display='block';msg.style.color='red';msg.textContent=supabaseErrorToHebrew(res.error.message);return;}
-  msg.style.display='block';msg.style.color='green';msg.textContent='✅ נשלח קישור לאיפוס סיסמה ל-'+email;
+  msg.style.display='block';msg.style.color='green';msg.innerHTML=ic('circle-check')+' נשלח קישור לאיפוס סיסמה ל-'+email;refreshIcons(msg);
 }
 async function resetData(){
   appDataCache={projects:getDefaultProjects()};
@@ -1325,6 +1338,7 @@ window.addEventListener('resize',function(){
   if(finCharts.bar)finCharts.bar.resize();
 });
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMobileSidebar();});
+refreshIcons();
 </script>
 </body>
 </html>
