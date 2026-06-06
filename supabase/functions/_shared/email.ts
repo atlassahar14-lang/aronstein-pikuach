@@ -1,11 +1,16 @@
 export const ADMIN_EMAIL = "atlassahar14@gmail.com";
-export const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-export const FROM_EMAIL = Deno.env.get("NOTIFY_FROM_EMAIL") || "onboarding@resend.dev";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+export function getFromEmail() {
+  const configured = (Deno.env.get("NOTIFY_FROM_EMAIL") || "").trim();
+  const address = configured && configured.includes("@") ? configured : "onboarding@resend.dev";
+  return address.includes("<") ? address : `ארונשטיין פיקוח <${address}>`;
+}
 
 export function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -24,6 +29,7 @@ export function escapeHtml(value: string) {
 
 export async function sendResendEmail(subject: string, html: string) {
   if (!RESEND_API_KEY) {
+    console.error("RESEND_API_KEY is not set");
     return { ok: false as const, error: "Email service not configured" };
   }
 
@@ -34,7 +40,7 @@ export async function sendResendEmail(subject: string, html: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: FROM_EMAIL,
+      from: getFromEmail(),
       to: [ADMIN_EMAIL],
       subject,
       html,
@@ -42,9 +48,15 @@ export async function sendResendEmail(subject: string, html: string) {
   });
 
   if (!emailRes.ok) {
-    const errText = await emailRes.text();
-    console.error("Resend error:", errText);
-    return { ok: false as const, error: "Failed to send email" };
+    let errMsg = "Failed to send email";
+    try {
+      const errJson = await emailRes.json();
+      errMsg = errJson.message || errJson.error || JSON.stringify(errJson);
+    } catch {
+      errMsg = await emailRes.text();
+    }
+    console.error("Resend error:", errMsg);
+    return { ok: false as const, error: errMsg };
   }
 
   return { ok: true as const };

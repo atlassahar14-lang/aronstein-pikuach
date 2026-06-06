@@ -1,10 +1,10 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import {
   corsHeaders,
   escapeHtml,
   jsonResponse,
   sendResendEmail,
 } from "../_shared/email.ts";
+import { authenticateRequest, isClientUser } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -16,34 +16,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return jsonResponse({ error: "Unauthorized" }, 401);
-    }
+    const auth = await authenticateRequest(req);
+    if ("error" in auth && auth.error) return auth.error;
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } },
-    );
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return jsonResponse({ error: "Unauthorized" }, 401);
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role, name")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profileError || !profile || profile.role !== "client") {
+    const { user, profile } = auth;
+    if (!isClientUser(user, profile)) {
+      console.error("Forbidden: user is not a client", user.id, profile?.role);
       return jsonResponse({ error: "Forbidden" }, 403);
     }
 
     const body = await req.json();
-    const clientName = String(body.clientName || profile.name || user.email || "").trim();
+    const clientName = String(body.clientName || profile?.name || user.email || "").trim();
     const projectName = String(body.projectName || "לא ידוע").trim();
     const questionText = String(body.questionText || "").trim();
 
@@ -63,7 +46,10 @@ Deno.serve(async (req) => {
     );
 
     if (!result.ok) {
-      return jsonResponse({ error: result.error }, result.error === "Email service not configured" ? 503 : 500);
+      return jsonResponse(
+        { error: result.error },
+        result.error === "Email service not configured" ? 503 : 500,
+      );
     }
 
     return jsonResponse({ success: true });

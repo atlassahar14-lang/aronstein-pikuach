@@ -1505,7 +1505,7 @@ async function saveUser(){
     proj.messages.push({id:'m'+Date.now(),sender:'admin',text:'ברוך הבא למערכת, '+name+'! כאן תוכל לעקוב אחר הפרויקט שלך ולפנות אלינו בכל שאלה.',date:new Date().toLocaleDateString('he-IL')});
     logActivity('יצירת לקוח',name+' ('+email+') → פרויקט: '+proj.name);
     if(!await saveData(getData()))return;
-    notifyAdminNewClient(name,email,proj.name);
+    await notifyAdminNewClient(name,email,proj.name);
     await refreshAppUsers();
     if(!appUsers.find(function(u){return u.id===userId;}))mergeAppUser({id:userId,email:email,name:name,role:'client',projectId:projectId});
     closeModal('modal-user');
@@ -1671,23 +1671,37 @@ async function deleteUpdate(id){
   renderProjectDetail(document.getElementById('main-content'));
 }
 
+async function invokeEdgeFunction(name,payload){
+  var session=await supabase.auth.getSession();
+  var token=session.data.session&&session.data.session.access_token;
+  if(!token)return {ok:false,error:'אין הרשאת התחברות'};
+  var res=await fetch(SUPABASE_URL+'/functions/v1/'+name,{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+token,'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify(payload||{})
+  });
+  var data={};
+  try{data=await res.json();}catch(e){}
+  if(!res.ok)return {ok:false,error:(data&&data.error)||res.statusText||'שגיאה בשליחה',status:res.status};
+  return {ok:true,data:data};
+}
 async function notifyAdminClientQuestion(clientName,projectName,questionText){
   try{
-    var res=await supabase.functions.invoke('notify-client-question',{
-      body:{clientName:clientName||'',projectName:projectName||'',questionText:questionText||''}
+    var res=await invokeEdgeFunction('notify-client-question',{
+      clientName:clientName||'',projectName:projectName||'',questionText:questionText||''
     });
-    if(res.error)console.warn('שליחת התראת אימייל נכשלה:',res.error.message||res.error);
-    else if(res.data&&res.data.error)console.warn('שליחת התראת אימייל נכשלה:',res.data.error);
-  }catch(e){console.warn('שליחת התראת אימייל נכשלה:',e);}
+    if(!res.ok)console.warn('שליחת התראת אימייל נכשלה:',res.error,res.status||'');
+    return res.ok;
+  }catch(e){console.warn('שליחת התראת אימייל נכשלה:',e);return false;}
 }
 async function notifyAdminNewClient(clientName,clientEmail,projectName){
   try{
-    var res=await supabase.functions.invoke('notify-new-client',{
-      body:{clientName:clientName||'',clientEmail:clientEmail||'',projectName:projectName||''}
+    var res=await invokeEdgeFunction('notify-new-client',{
+      clientName:clientName||'',clientEmail:clientEmail||'',projectName:projectName||''
     });
-    if(res.error)console.warn('שליחת התראת לקוח חדש נכשלה:',res.error.message||res.error);
-    else if(res.data&&res.data.error)console.warn('שליחת התראת לקוח חדש נכשלה:',res.data.error);
-  }catch(e){console.warn('שליחת התראת לקוח חדש נכשלה:',e);}
+    if(!res.ok)console.warn('שליחת התראת לקוח חדש נכשלה:',res.error,res.status||'');
+    return res.ok;
+  }catch(e){console.warn('שליחת התראת לקוח חדש נכשלה:',e);return false;}
 }
 async function sendMessage(){
   if(!requireProjectAccess())return;
@@ -1697,7 +1711,7 @@ async function sendMessage(){
   if(currentUser.role==='client')msg.readByAdmin=false;
   proj.messages.push(msg);
   if(!await saveData(data))return;
-  if(currentUser.role==='client')notifyAdminClientQuestion(currentUser.name,proj.name,text);
+  if(currentUser.role==='client')await notifyAdminClientQuestion(currentUser.name,proj.name,text);
   input.value='';renderProjectDetail(document.getElementById('main-content'));
   setTimeout(function(){var ml=document.getElementById('messages-list');if(ml)ml.scrollTop=ml.scrollHeight;},50);
 }

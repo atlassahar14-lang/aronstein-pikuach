@@ -1,10 +1,10 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import {
   corsHeaders,
   escapeHtml,
   jsonResponse,
   sendResendEmail,
 } from "../_shared/email.ts";
+import { authenticateRequest, isAdminUser } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -16,29 +16,11 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return jsonResponse({ error: "Unauthorized" }, 401);
-    }
+    const auth = await authenticateRequest(req);
+    if ("error" in auth && auth.error) return auth.error;
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } },
-    );
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return jsonResponse({ error: "Unauthorized" }, 401);
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profileError || !profile || profile.role !== "admin") {
+    const { user, profile } = auth;
+    if (!isAdminUser(user, profile)) {
       return jsonResponse({ error: "Forbidden" }, 403);
     }
 
@@ -62,7 +44,10 @@ Deno.serve(async (req) => {
     );
 
     if (!result.ok) {
-      return jsonResponse({ error: result.error }, result.error === "Email service not configured" ? 503 : 500);
+      return jsonResponse(
+        { error: result.error },
+        result.error === "Email service not configured" ? 503 : 500,
+      );
     }
 
     return jsonResponse({ success: true });
