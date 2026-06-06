@@ -18,41 +18,51 @@ create table if not exists public.app_data (
 alter table public.profiles enable row level security;
 alter table public.app_data enable row level security;
 
+drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own" on public.profiles
   for select to authenticated using (auth.uid() = id);
 
+drop policy if exists "profiles_select_admin" on public.profiles;
 create policy "profiles_select_admin" on public.profiles
   for select to authenticated using (
     exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
   );
 
+drop policy if exists "profiles_insert_own" on public.profiles;
 create policy "profiles_insert_own" on public.profiles
   for insert to authenticated with check (auth.uid() = id);
 
+drop policy if exists "profiles_insert_admin" on public.profiles;
 create policy "profiles_insert_admin" on public.profiles
   for insert to authenticated with check (
     exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
   );
 
+drop policy if exists "profiles_update_own" on public.profiles;
 create policy "profiles_update_own" on public.profiles
   for update to authenticated using (auth.uid() = id);
 
+drop policy if exists "profiles_update_admin" on public.profiles;
 create policy "profiles_update_admin" on public.profiles
   for update to authenticated using (
     exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
   );
 
+drop policy if exists "profiles_delete_admin" on public.profiles;
 create policy "profiles_delete_admin" on public.profiles
   for delete to authenticated using (
     exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
   );
 
+drop policy if exists "app_data_select_auth" on public.app_data;
 create policy "app_data_select_auth" on public.app_data
   for select to authenticated using (true);
 
+drop policy if exists "app_data_insert_auth" on public.app_data;
 create policy "app_data_insert_auth" on public.app_data
   for insert to authenticated with check (true);
 
+drop policy if exists "app_data_update_auth" on public.app_data;
 create policy "app_data_update_auth" on public.app_data
   for update to authenticated using (true);
 
@@ -79,11 +89,3 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
-
--- עדכון מגרסה קודמת (הרץ אם כבר יצרת את הטבלאות בעבר):
--- drop policy if exists "profiles_update_admin" on public.profiles;
--- create policy "profiles_update_admin" on public.profiles
---   for update to authenticated using (
---     exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
---   );
--- ואז הרץ שוב את create or replace function public.handle_new_user() למעלה.
