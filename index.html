@@ -39,6 +39,15 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
 .btn-whatsapp{background:#25D366;color:#fff;text-decoration:none}
 .btn-whatsapp:hover{background:#1da851;color:#fff;transform:translateY(-1px)}
 .btn-whatsapp .wa-icon{width:18px;height:18px;flex-shrink:0}
+.whatsapp-banner{background:linear-gradient(135deg,#e8f8e8 0%,#fff 100%);border:2px solid #25D366;border-radius:16px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.whatsapp-banner-title{font-size:17px;font-weight:700;color:#075E54;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.whatsapp-banner-title .wa-icon{width:24px;height:24px}
+.whatsapp-banner-desc{font-size:14px;color:var(--text-muted);line-height:1.5}
+.whatsapp-banner-btn{padding:12px 22px;font-size:15px;font-weight:700;white-space:nowrap}
+.whatsapp-banner-btn .wa-icon{width:20px;height:20px}
+.whatsapp-fab{position:fixed;bottom:24px;left:24px;z-index:120;width:58px;height:58px;border-radius:50%;background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(37,211,102,.5);text-decoration:none;transition:transform .2s,box-shadow .2s}
+.whatsapp-fab:hover{transform:scale(1.08);background:#1da851;color:#fff;box-shadow:0 6px 24px rgba(37,211,102,.6)}
+.whatsapp-fab .wa-icon{width:30px;height:30px}
 .btn-sm{padding:7px 14px;font-size:13px}
 .btn-icon{width:auto;padding:7px 12px}
 .error-msg{background:#fef2f2;color:var(--danger);padding:10px 14px;border-radius:8px;font-size:13px;margin-top:10px;display:none}
@@ -211,6 +220,9 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
   .activity-log-header{display:none}
   .activity-log-row{grid-template-columns:1fr;gap:4px}
   .activity-log-row .log-date{margin-top:4px}
+  .whatsapp-banner{flex-direction:column;align-items:stretch;text-align:center}
+  .whatsapp-banner-btn{width:100%;justify-content:center}
+  .whatsapp-fab{bottom:16px;left:16px}
   .project-meta{flex-wrap:wrap}
   .grid-2{grid-template-columns:1fr}
   .modal{padding:24px 20px;width:100%;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);border-radius:16px}
@@ -424,6 +436,18 @@ function icWhatsApp(){
 }
 function getWhatsAppUrl(){
   return 'https://wa.me/'+WHATSAPP_PHONE+'?text='+encodeURIComponent(WHATSAPP_MSG);
+}
+function whatsappLinkHTML(label,cls){
+  return '<a class="'+(cls||'btn btn-whatsapp btn-sm')+'" href="'+getWhatsAppUrl()+'" target="_blank" rel="noopener noreferrer">'+icWhatsApp()+' '+(label||'שלח הודעה בוואטסאפ')+'</a>';
+}
+function whatsappOverviewBannerHTML(){
+  return '<div class="whatsapp-banner"><div class="whatsapp-banner-text">'+
+    '<div class="whatsapp-banner-title">'+icWhatsApp()+' יש לך שאלה על הפרויקט?</div>'+
+    '<div class="whatsapp-banner-desc">לחץ לשליחת הודעה ישירה לארונשטיין פיקוח וניהול בוואטסאפ</div></div>'+
+    whatsappLinkHTML('פתח וואטסאפ','btn btn-whatsapp whatsapp-banner-btn')+'</div>';
+}
+function whatsappFabHTML(){
+  return '<a class="whatsapp-fab" href="'+getWhatsAppUrl()+'" target="_blank" rel="noopener noreferrer" title="צור קשר בוואטסאפ" aria-label="וואטסאפ">'+icWhatsApp()+'</a>';
 }
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function refreshIcons(root){if(window.lucide)lucide.createIcons(root?{root:root}:undefined);}
@@ -902,6 +926,7 @@ function renderProjectDetail(el){
   }
   currentProjectId=p.id;
   var isAdminUser=isAdmin();
+  var showWhatsApp=!!(currentUser&&!isAdminUser);
   var paid=p.payments.reduce(function(s,x){return s+Number(x.amount||0);},0);
   var remaining=Number(p.budget||0)-paid;
 
@@ -911,7 +936,6 @@ function renderProjectDetail(el){
   var html=(isAdminUser?'<button class="back-btn" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>':'');
   html+='<div class="flex-between responsive-stack mb-24"><div><h1 style="font-size:24px;font-weight:800;color:var(--primary)">'+p.name+'</h1><p style="color:var(--text-muted);margin-top:4px">'+ic('map-pin')+' '+formatProjectAddress(p)+'</p></div>';
   if(isAdminUser)html+='<div class="flex-gap"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-accent btn-sm" onclick="openModal(\'modal-update\')">'+ic('bell')+' עדכון חדש</button></div>';
-  else html+='<div class="flex-gap"><a class="btn btn-whatsapp btn-sm" href="'+getWhatsAppUrl()+'" target="_blank" rel="noopener noreferrer">'+icWhatsApp()+' שלח הודעה בוואטסאפ</a></div>';
   html+='</div>';
 
   html+='<div class="tabs-scroll"><div class="tabs">'+
@@ -927,6 +951,7 @@ function renderProjectDetail(el){
 
   // OVERVIEW TAB
   html+='<div id="tab-overview" class="tab-content '+(currentTab==='overview'?'active':'')+'">'+
+    (showWhatsApp?whatsappOverviewBannerHTML():'')+
     '<div class="stats-grid">'+
     '<div class="stat-card"><div class="stat-icon">'+ic('trending-up')+'</div><div class="stat-value">'+(p.progress||0)+'%</div><div class="stat-label">התקדמות כללית</div></div>'+
     '<div class="stat-card"><div class="stat-icon">'+ic('banknote')+'</div><div class="stat-value">'+fmtMoney(paid)+'</div><div class="stat-label">שולם עד כה</div></div>'+
@@ -1088,6 +1113,7 @@ function renderProjectDetail(el){
     '<input type="text" id="msg-input" placeholder="כתוב הודעה..." onkeydown="if(event.key===\'Enter\')sendMessage()"/>'+
     '<button class="btn btn-primary btn-sm" onclick="sendMessage()">שלח</button></div></div></div>';
 
+  if(showWhatsApp)html+=whatsappFabHTML();
   el.innerHTML=html;
   setTimeout(function(){
     var ml=document.getElementById('messages-list');if(ml)ml.scrollTop=ml.scrollHeight;
