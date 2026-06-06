@@ -1,5 +1,9 @@
 export const ADMIN_EMAIL = "atlassahar14@gmail.com";
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+
+function getResendApiKey() {
+  const raw = Deno.env.get("RESEND_API_KEY") || "";
+  return raw.trim().replace(/^["']|["']$/g, "");
+}
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,15 +32,20 @@ export function escapeHtml(value: string) {
 }
 
 export async function sendResendEmail(subject: string, html: string) {
-  if (!RESEND_API_KEY) {
+  const apiKey = getResendApiKey();
+  if (!apiKey) {
     console.error("RESEND_API_KEY is not set");
     return { ok: false as const, error: "Email service not configured" };
+  }
+  if (!apiKey.startsWith("re_")) {
+    console.error("RESEND_API_KEY has invalid format");
+    return { ok: false as const, error: "Resend API key format invalid" };
   }
 
   const emailRes = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({

@@ -1690,7 +1690,10 @@ async function notifyAdminClientQuestion(clientName,projectName,questionText){
     var res=await invokeEdgeFunction('notify-client-question',{
       clientName:clientName||'',projectName:projectName||'',questionText:questionText||''
     });
-    if(!res.ok)console.warn('שליחת התראת אימייל נכשלה:',res.error,res.status||'');
+    if(!res.ok){
+      console.warn('שליחת התראת אימייל נכשלה:',res.error,res.status||'');
+      if(String(res.error||'').toLowerCase().includes('api key'))console.warn('עדכן RESEND_API_KEY ב-Supabase → Edge Functions → Secrets (מפתח מ-https://resend.com/api-keys)');
+    }
     return res.ok;
   }catch(e){console.warn('שליחת התראת אימייל נכשלה:',e);return false;}
 }
@@ -1699,7 +1702,10 @@ async function notifyAdminNewClient(clientName,clientEmail,projectName){
     var res=await invokeEdgeFunction('notify-new-client',{
       clientName:clientName||'',clientEmail:clientEmail||'',projectName:projectName||''
     });
-    if(!res.ok)console.warn('שליחת התראת לקוח חדש נכשלה:',res.error,res.status||'');
+    if(!res.ok){
+      console.warn('שליחת התראת לקוח חדש נכשלה:',res.error,res.status||'');
+      if(String(res.error||'').toLowerCase().includes('api key'))console.warn('עדכן RESEND_API_KEY ב-Supabase → Edge Functions → Secrets (מפתח מ-https://resend.com/api-keys)');
+    }
     return res.ok;
   }catch(e){console.warn('שליחת התראת לקוח חדש נכשלה:',e);return false;}
 }

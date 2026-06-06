@@ -109,8 +109,9 @@ create trigger on_auth_user_created
 -- התראות אימייל (Edge Functions + Resend)
 -- =============================================================================
 -- Secrets ב-Supabase Dashboard → Edge Functions → Secrets:
---   RESEND_API_KEY = re_xxxxxxxx
---   NOTIFY_FROM_EMAIL = onboarding@resend.dev   (או דומיין מאומת משלך)
+--   שם: RESEND_API_KEY   ערך: re_xxxxxxxx  (מ-https://resend.com/api-keys — ללא גרשיים/רווחים)
+--   אופציונלי NOTIFY_FROM_EMAIL = onboarding@resend.dev
+--   אחרי עדכון Secret חובה לפרוס מחדש: .\deploy-functions.ps1
 --
 -- פריסה:
 --   supabase functions deploy notify-client-question --project-ref knbbbrnwzbkywkrcponi
