@@ -401,7 +401,7 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
     <div class="form-group"><label>סכום (₪)</label><input type="number" id="pay-amount" placeholder="0"/></div>
     <div class="form-group"><label>תאריך</label><input type="date" id="pay-date"/></div>
     <div class="form-group"><label>נמען</label><input type="text" id="pay-to" placeholder="שם הקבלן / ספק"/></div>
-    <div class="form-group"><label>קטגוריה</label><select id="pay-category"><option>שלד</option><option>טיח</option><option>חשמל</option><option>אינסטלציה</option><option>ריצוף</option><option>גמר</option><option>אחר</option></select></div>
+    <div class="form-group"><label>קטגוריה</label><select id="pay-category"><option>שלד</option><option>חפירות</option><option>טיח</option><option>חשמל</option><option>אינסטלציה</option><option>ריצוף</option><option>גמר</option><option>אחר</option></select></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-payment')">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="savePayment()">שמור תשלום</button>
@@ -915,6 +915,19 @@ function showView(view,pid){
 }
 
 function fmtMoney(n){return '₪'+Number(n).toLocaleString('he-IL');}
+function getProjectBudget(p){
+  var b=Number(p.budget)||0;
+  if(b>0)return b;
+  var plan=p.budgetPlan||{};
+  return Object.keys(plan).reduce(function(s,k){return s+(Number(plan[k])||0);},0);
+}
+function calcBudgetUtilPct(paid,budget){
+  var p=Number(paid)||0;
+  var b=Number(budget)||0;
+  if(!b||!p)return 0;
+  var pct=Math.min(100,(p/b)*100);
+  return pct>0&&pct<1?Math.round(pct*10)/10:Math.round(pct);
+}
 
 function countUnreadClientMessages(proj){
   return (proj.messages||[]).filter(function(m){return m.sender==='client'&&!m.readByAdmin;}).length;
@@ -938,7 +951,7 @@ function projectCardHTML(p){
     '<span class="status-badge '+sc[0]+'">'+sc[1]+'</span></div>'+
     '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+(p.progress||0)+'%"></div></div>'+
     '<div class="progress-label"><span>התקדמות</span><span>'+(p.progress||0)+'%</span></div>'+
-    '<div class="project-meta"><span>'+ic('banknote')+' '+(p.budget/1000000).toFixed(1)+'M</span><span>'+ic('file-text')+' '+p.documents.length+' מסמכים</span><span>'+ic('bell')+' '+p.updates.length+' עדכונים</span></div>'+
+    '<div class="project-meta"><span>'+ic('banknote')+' '+(getProjectBudget(p)/1000000).toFixed(1)+'M</span><span>'+ic('file-text')+' '+p.documents.length+' מסמכים</span><span>'+ic('bell')+' '+p.updates.length+' עדכונים</span></div>'+
     '</div>';
 }
 
@@ -979,7 +992,9 @@ function renderProjectDetail(el){
   var isAdminUser=isAdmin();
   var showWhatsApp=!!(currentUser&&!isAdminUser);
   var paid=p.payments.reduce(function(s,x){return s+Number(x.amount||0);},0);
-  var remaining=Number(p.budget||0)-paid;
+  var projectBudget=getProjectBudget(p);
+  var remaining=projectBudget-paid;
+  var budgetUtilPct=calcBudgetUtilPct(paid,projectBudget);
 
   var unreadMessages=isAdminUser?countUnreadClientMessages(p):0;
   var messagesTabBadge=unreadMessages?'<span class="tab-badge show"></span>':'';
@@ -1014,13 +1029,13 @@ function renderProjectDetail(el){
     '<div style="display:flex;flex-direction:column;gap:8px;font-size:13px">'+
     '<div class="flex-between"><span style="color:var(--text-muted)">תחילת עבודה:</span><span style="font-weight:600">'+p.start+'</span></div>'+
     '<div class="flex-between"><span style="color:var(--text-muted)">צפי סיום:</span><span style="font-weight:600">'+p.end+'</span></div>'+
-    '<div class="flex-between"><span style="color:var(--text-muted)">תקציב:</span><span style="font-weight:600">'+fmtMoney(p.budget)+'</span></div>'+
+    '<div class="flex-between"><span style="color:var(--text-muted)">תקציב:</span><span style="font-weight:600">'+fmtMoney(projectBudget)+'</span></div>'+
     (p.builtArea?'<div class="flex-between"><span style="color:var(--text-muted)">שטח בנוי:</span><span style="font-weight:600">'+p.builtArea+' מ"ר</span></div>':'')+
     (p.propertyArea?'<div class="flex-between"><span style="color:var(--text-muted)">שטח הבית עצמו:</span><span style="font-weight:600">'+p.propertyArea+' מ"ר</span></div>':'')+
     '</div></div>'+
     '<div class="card"><div class="card-title">'+ic('layout-dashboard')+' תקציב</div>'+
     '<div style="margin-bottom:14px"><div class="flex-between" style="margin-bottom:6px;font-size:13px"><span style="color:var(--text-muted)">שולם</span><span style="font-weight:600;color:var(--success)">'+fmtMoney(paid)+'</span></div>'+
-    '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+(p.budget?Math.min(100,Math.round(paid/p.budget*100)):0)+'%;background:var(--success)"></div></div></div>'+
+    '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+budgetUtilPct+'%;background:var(--success)"></div></div></div>'+
     '<div class="flex-between" style="font-size:13px"><span style="color:var(--text-muted)">נותר:</span><span style="font-weight:700;color:var(--warning)">'+fmtMoney(remaining)+'</span></div>'+
     '</div></div></div>';
 
@@ -1052,10 +1067,10 @@ function renderProjectDetail(el){
   // BUDGET TAB
   html+='<div id="tab-budget" class="tab-content '+(currentTab==='budget'?'active':'')+'">'+
     '<div class="budget-summary">'+
-    '<div class="budget-item"><div class="label">תקציב כולל</div><div class="amount total">'+fmtMoney(p.budget)+'</div></div>'+
+    '<div class="budget-item"><div class="label">תקציב כולל</div><div class="amount total">'+fmtMoney(projectBudget)+'</div></div>'+
     '<div class="budget-item"><div class="label">שולם</div><div class="amount paid">'+fmtMoney(paid)+'</div></div>'+
     '<div class="budget-item"><div class="label">נותר</div><div class="amount remaining">'+fmtMoney(remaining)+'</div></div>'+
-    '<div class="budget-item"><div class="label">אחוז ניצול</div><div class="amount total">'+(p.budget?Math.round(paid/p.budget*100):0)+'%</div></div>'+
+    '<div class="budget-item"><div class="label">אחוז ניצול</div><div class="amount total">'+budgetUtilPct+'%</div></div>'+
     '</div><div class="card"><div class="section-actions"><div class="section-title">'+ic('credit-card')+' תשלומים</div>'+
     (isAdminUser?'<button class="btn btn-primary btn-sm" onclick="openAddPaymentModal()">'+ic('plus')+' תשלום חדש</button>':'')+
     '</div>'+
@@ -1074,20 +1089,19 @@ function renderProjectDetail(el){
     '</div></div>';
 
   // FINANCIAL REPORT TAB
-  var budgetPct=p.budget?Math.min(100,Math.round(paid/p.budget*100)):0;
-  var budgetBarColor=budgetPct>=100?'var(--danger)':budgetPct>=80?'var(--warning)':'var(--success)';
+  var budgetBarColor=budgetUtilPct>=100?'var(--danger)':budgetUtilPct>=80?'var(--warning)':'var(--success)';
   html+='<div id="tab-financial" class="tab-content '+(currentTab==='financial'?'active':'')+'">'+
     '<div class="section-title mb-16">'+ic('trending-up')+' דוח פיננסי</div>'+
     '<div class="budget-summary">'+
-    '<div class="budget-item"><div class="label">תקציב כולל</div><div class="amount total">'+fmtMoney(p.budget)+'</div></div>'+
+    '<div class="budget-item"><div class="label">תקציב כולל</div><div class="amount total">'+fmtMoney(projectBudget)+'</div></div>'+
     '<div class="budget-item"><div class="label">שולם עד כה</div><div class="amount paid">'+fmtMoney(paid)+'</div></div>'+
     '<div class="budget-item"><div class="label">יתרה</div><div class="amount remaining">'+fmtMoney(remaining)+'</div></div>'+
     '</div>'+
     '<div class="card fin-progress-card">'+
     '<div class="card-title">'+ic('layout-dashboard')+' ניצול תקציב</div>'+
-    '<div class="fin-pct-big">'+budgetPct+'%</div>'+
-    '<div class="progress-bar-wrap" style="height:14px"><div class="progress-bar" style="width:'+budgetPct+'%;background:'+budgetBarColor+'"></div></div>'+
-    '<div class="progress-label" style="margin-top:10px"><span>₪0</span><span>'+fmtMoney(p.budget)+'</span></div>'+
+    '<div class="fin-pct-big">'+budgetUtilPct+'%</div>'+
+    '<div class="progress-bar-wrap" style="height:14px"><div class="progress-bar" style="width:'+budgetUtilPct+'%;background:'+budgetBarColor+'"></div></div>'+
+    '<div class="progress-label" style="margin-top:10px"><span>₪0</span><span>'+fmtMoney(projectBudget)+'</span></div>'+
     '</div>'+
     '<div class="fin-charts-grid">'+
     '<div class="card"><div class="card-title">'+ic('chart-pie')+' פילוח הוצאות לפי קטגוריה</div><canvas id="fin-pie-chart"></canvas></div>'+
@@ -1174,8 +1188,8 @@ function renderProjectDetail(el){
   },50);
 }
 
-var FIN_CATEGORIES=['שלד','טיח','חשמל','אינסטלציה','ריצוף','גמר','אחר'];
-var FIN_CHART_COLORS=['#1a3c5e','#2563a8','#e8a020','#22c55e','#f59e0b','#ef4444','#6b7a8d'];
+var FIN_CATEGORIES=['שלד','חפירות','טיח','חשמל','אינסטלציה','ריצוף','גמר','אחר'];
+var FIN_CHART_COLORS=['#1B2B5E','#2a4078','#e8a020','#22c55e','#f59e0b','#ef4444','#6b7a8d','#8b5cf6'];
 var finCharts={pie:null,bar:null};
 
 function getCategoryFinancials(p){
@@ -1189,7 +1203,7 @@ function getCategoryFinancials(p){
   var planned=p.budgetPlan||{};
   var hasPlan=Object.keys(planned).length>0;
   if(!hasPlan){
-    var perCat=Math.round(Number(p.budget||0)/FIN_CATEGORIES.length);
+    var perCat=Math.round(getProjectBudget(p)/FIN_CATEGORIES.length);
     FIN_CATEGORIES.forEach(function(c){planned[c]=perCat;});
   }
   return FIN_CATEGORIES.map(function(c){
@@ -1424,7 +1438,7 @@ function openEditProjectModal(id){
 async function saveProject(){
   if(!requireAdmin())return;
   var data=getData();
-  var proj={name:document.getElementById('proj-name').value,address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:document.getElementById('proj-budget').value,status:document.getElementById('proj-status').value};
+  var proj={name:document.getElementById('proj-name').value,address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:Number(document.getElementById('proj-budget').value)||0,status:document.getElementById('proj-status').value};
   if(!proj.name)return alert('יש להזין שם פרויקט');
   if(editingProjectId){
     var idx=data.projects.findIndex(function(p){return p.id===editingProjectId;});
@@ -1546,7 +1560,7 @@ function openAddPaymentModal(){
 async function savePayment(){
   if(!requireAdmin()||!requireProjectAccess())return;
   var data=getData();var proj=getCurrentProject();if(!proj)return;
-  var pay={desc:document.getElementById('pay-desc').value,amount:document.getElementById('pay-amount').value,date:document.getElementById('pay-date').value,to:document.getElementById('pay-to').value,category:document.getElementById('pay-category').value};
+  var pay={desc:document.getElementById('pay-desc').value,amount:Number(document.getElementById('pay-amount').value)||0,date:document.getElementById('pay-date').value,to:document.getElementById('pay-to').value,category:document.getElementById('pay-category').value};
   if(!pay.desc||!pay.amount)return alert('יש למלא תיאור וסכום');
   var editId=document.getElementById('modal-payment').dataset.editId;
   if(editId){
