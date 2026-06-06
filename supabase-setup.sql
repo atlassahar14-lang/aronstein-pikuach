@@ -12,8 +12,11 @@ create table if not exists public.profiles (
 create table if not exists public.app_data (
   id text primary key default 'main',
   projects jsonb not null default '[]'::jsonb,
+  activity_log jsonb not null default '[]'::jsonb,
   updated_at timestamptz default now()
 );
+
+alter table public.app_data add column if not exists activity_log jsonb not null default '[]'::jsonb;
 
 alter table public.profiles enable row level security;
 alter table public.app_data enable row level security;

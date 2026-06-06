@@ -142,6 +142,13 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
 .message-input-wrap{display:flex;gap:10px}
 .message-input-wrap input{flex:1;padding:12px 16px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl}
 .message-input-wrap input:focus{outline:none;border-color:var(--primary-light)}
+.activity-log-list{display:flex;flex-direction:column;gap:8px}
+.activity-log-row{display:grid;grid-template-columns:minmax(100px,130px) minmax(120px,1fr) 2fr minmax(110px,140px);gap:12px;padding:14px 18px;background:var(--card);border-radius:12px;border:1px solid var(--border);font-size:13px;align-items:center}
+.activity-log-row .log-user{font-weight:600;color:var(--primary)}
+.activity-log-row .log-action{font-weight:600}
+.activity-log-row .log-details{color:var(--text-muted);line-height:1.4}
+.activity-log-row .log-date{font-size:12px;color:var(--text-muted);white-space:nowrap}
+.activity-log-header{display:grid;grid-template-columns:minmax(100px,130px) minmax(120px,1fr) 2fr minmax(110px,140px);gap:12px;padding:8px 18px;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
 .users-list{display:flex;flex-direction:column;gap:10px}
 .user-row{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--card);border-radius:12px;border:1px solid var(--border)}
 .user-row-info{display:flex;align-items:center;gap:12px}
@@ -198,6 +205,9 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
   .section-actions .btn,.section-actions .upload-label{width:100%;justify-content:center}
   .user-row{flex-direction:column;align-items:stretch!important;gap:12px}
   .user-row .flex-gap{flex-wrap:wrap}
+  .activity-log-header{display:none}
+  .activity-log-row{grid-template-columns:1fr;gap:4px}
+  .activity-log-row .log-date{margin-top:4px}
   .project-meta{flex-wrap:wrap}
   .grid-2{grid-template-columns:1fr}
   .modal{padding:24px 20px;width:100%;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);border-radius:16px}
@@ -404,10 +414,12 @@ const supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 const supabaseHelper=createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:false,autoRefreshToken:false,storageKey:'aronstein-helper-auth'}});
 
 function ic(n){return '<i data-lucide="'+n+'"></i>';}
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function refreshIcons(root){if(window.lucide)lucide.createIcons(root?{root:root}:undefined);}
 
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
-var appDataCache={projects:[]},appUsers=[],authBootstrapped=false,skipAuthHandler=false;
+var appDataCache={projects:[],activityLog:[]},appUsers=[],authBootstrapped=false,skipAuthHandler=false;
+const ACTIVITY_LOG_MAX=500;
 
 function getLoginLockData(){
   try{
@@ -534,20 +546,37 @@ function requireProjectAccess(){
   return true;
 }
 
+function phaseStatusLabel(s){
+  return {done:'הושלם',active:'בביצוע',pending:'ממתין'}[s]||s;
+}
+
+function logActivity(action,details){
+  if(!isAdmin()||!currentUser)return;
+  if(!appDataCache.activityLog)appDataCache.activityLog=[];
+  appDataCache.activityLog.unshift({
+    id:'log'+Date.now()+Math.random().toString(36).slice(2,6),
+    userName:currentUser.name,
+    action:action,
+    details:details||'',
+    date:new Date().toLocaleString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
+  });
+  if(appDataCache.activityLog.length>ACTIVITY_LOG_MAX)appDataCache.activityLog.length=ACTIVITY_LOG_MAX;
+}
+
 async function refreshAppData(){
-  var res=await supabase.from('app_data').select('projects').eq('id','main').maybeSingle();
+  var res=await supabase.from('app_data').select('projects,activity_log').eq('id','main').maybeSingle();
   if(res.error){
     console.error('refreshAppData',res.error);
-    if(!appDataCache.projects.length)appDataCache={projects:[]};
+    if(!appDataCache.projects.length)appDataCache={projects:[],activityLog:[]};
     return false;
   }
   if(res.data&&Array.isArray(res.data.projects)){
-    appDataCache={projects:res.data.projects};
+    appDataCache={projects:res.data.projects,activityLog:Array.isArray(res.data.activity_log)?res.data.activity_log:[]};
     return true;
   }
-  appDataCache={projects:getDefaultProjects()};
+  appDataCache={projects:getDefaultProjects(),activityLog:[]};
   var seed=await supabase.from('app_data').upsert(
-    {id:'main',projects:appDataCache.projects,updated_at:new Date().toISOString()},
+    {id:'main',projects:appDataCache.projects,activity_log:appDataCache.activityLog,updated_at:new Date().toISOString()},
     {onConflict:'id'}
   );
   if(seed.error){console.error('refreshAppData seed',seed.error);return false;}
@@ -557,6 +586,7 @@ async function refreshAppData(){
 async function saveData(d){
   if(isAdmin()){
     appDataCache=d;
+    if(!appDataCache.activityLog)appDataCache.activityLog=[];
   }else{
     var proj=d.projects&&d.projects.find(function(p){return p.id===currentUser.projectId;});
     if(!proj)return false;
@@ -565,7 +595,7 @@ async function saveData(d){
     appDataCache.projects[idx]=proj;
   }
   var res=await supabase.from('app_data').upsert(
-    {id:'main',projects:appDataCache.projects,updated_at:new Date().toISOString()},
+    {id:'main',projects:appDataCache.projects,activity_log:appDataCache.activityLog||[],updated_at:new Date().toISOString()},
     {onConflict:'id'}
   );
   if(res.error){
@@ -742,6 +772,7 @@ function renderSidebar(){
       '<div class="nav-item '+(currentView==='projects'?'active':'')+'" onclick="showView(\'projects\')"><span class="nav-icon">'+ic('construction')+'</span> פרויקטים</div>'+
       '<div class="nav-section-title">מערכת</div>'+
       '<div class="nav-item '+(currentView==='clients'?'active':'')+'" onclick="showView(\'clients\')"><span class="nav-icon">'+ic('users')+'</span> לקוחות</div>'+
+      '<div class="nav-item '+(currentView==='activity-log'?'active':'')+'" onclick="showView(\'activity-log\')"><span class="nav-icon">'+ic('scroll-text')+'</span> לוג פעולות</div>'+
       '<div class="nav-item '+(currentView==='settings'?'active':'')+'" onclick="showView(\'settings\')"><span class="nav-icon">'+ic('settings')+'</span> הגדרות</div>';
   } else {
     nav.innerHTML='<div class="nav-section-title">הפרויקט שלי</div><div class="nav-item active"><span class="nav-icon">'+ic('house')+'</span> הפרויקט שלי</div>';
@@ -780,6 +811,7 @@ function showView(view,pid){
   else if(view==='projects')renderProjectsList(el);
   else if(view==='project')renderProjectDetail(el);
   else if(view==='clients')renderClients(el);
+  else if(view==='activity-log')renderActivityLog(el);
   else if(view==='settings')renderSettings(el);
   refreshIcons(el);
 }
@@ -1150,9 +1182,27 @@ function renderClients(el){
     }).join('')+'</div>';
 }
 
+function renderActivityLog(el){
+  if(!isAdmin()){renderClientNoProject(el);return;}
+  var logs=appDataCache.activityLog||[];
+  el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('scroll-text')+' לוג פעולות</h1><p>היסטוריית פעולות מנהל במערכת ('+logs.length+' רשומות)</p></div></div>'+
+    (logs.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('scroll-text')+'</div><p>אין פעולות מתועדות עדיין</p></div>':
+    '<div class="card"><div class="activity-log-header"><span>משתמש</span><span>פעולה</span><span>פרטים</span><span>תאריך</span></div>'+
+    '<div class="activity-log-list">'+
+    logs.map(function(l){
+      return '<div class="activity-log-row"><span class="log-user">'+escHtml(l.userName)+'</span><span class="log-action">'+escHtml(l.action)+'</span><span class="log-details">'+escHtml(l.details||'—')+'</span><span class="log-date">'+escHtml(l.date)+'</span></div>';
+    }).join('')+'</div></div>');
+  refreshIcons(el);
+}
+
 function renderSettings(el){
   if(!isAdmin()){renderClientNoProject(el);return;}
+  var logCount=(appDataCache.activityLog||[]).length;
   el.innerHTML='<div class="page-header"><h1>'+ic('settings')+' הגדרות</h1></div>'+
+    '<div class="card" style="max-width:480px;margin-bottom:20px">'+
+    '<div class="card-title">'+ic('scroll-text')+' לוג פעולות</div>'+
+    '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">'+logCount+' פעולות מתועדות במערכת</p>'+
+    '<button class="btn btn-outline" style="width:100%;justify-content:center" onclick="showView(\'activity-log\')">'+ic('scroll-text')+' צפה בלוג המלא</button></div>'+
     '<div class="card" style="max-width:480px">'+
     '<div class="card-title">'+ic('lock')+' שינוי סיסמה</div>'+
     '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">הסיסמה מנוהלת ב-Supabase Authentication</p>'+
@@ -1251,11 +1301,15 @@ async function saveProject(){
   var data=getData();
   var proj={name:document.getElementById('proj-name').value,address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:document.getElementById('proj-budget').value,status:document.getElementById('proj-status').value};
   if(!proj.name)return alert('יש להזין שם פרויקט');
-  if(editingProjectId){var idx=data.projects.findIndex(function(p){return p.id===editingProjectId;});data.projects[idx]=Object.assign({},data.projects[idx],proj);}
-  else{
+  if(editingProjectId){
+    var idx=data.projects.findIndex(function(p){return p.id===editingProjectId;});
+    data.projects[idx]=Object.assign({},data.projects[idx],proj);
+    logActivity('עריכת פרויקט','פרויקט: '+proj.name);
+  }else{
     var perCat=proj.budget?Math.round(Number(proj.budget)/FIN_CATEGORIES.length):0;
     var budgetPlan={};FIN_CATEGORIES.forEach(function(c){budgetPlan[c]=perCat;});
     data.projects.push(Object.assign({},proj,{id:'proj'+Date.now(),progress:0,budgetPlan:budgetPlan,phases:[],payments:[],documents:[],photos:[],updates:[],messages:[]}));
+    logActivity('יצירת פרויקט','פרויקט חדש: '+proj.name);
   }
   if(!await saveData(data))return;
   closeModal('modal-project');showView(currentView);
@@ -1305,6 +1359,7 @@ async function saveUser(){
     }
     proj.messages=proj.messages||[];
     proj.messages.push({id:'m'+Date.now(),sender:'admin',text:'ברוך הבא למערכת, '+name+'! כאן תוכל לעקוב אחר הפרויקט שלך ולפנות אלינו בכל שאלה.',date:new Date().toLocaleDateString('he-IL')});
+    logActivity('יצירת לקוח',name+' ('+email+') → פרויקט: '+proj.name);
     if(!await saveData(getData()))return;
     await refreshAppUsers();
     closeModal('modal-user');
@@ -1317,8 +1372,11 @@ async function saveUser(){
 async function deleteUser(id){
   if(!requireAdmin())return;
   if(!confirm('למחוק משתמש זה מהמערכת?'))return;
+  var u=appUsers.find(function(x){return x.id===id;});
   var res=await supabase.from('profiles').delete().eq('id',id);
   if(res.error){alert(supabaseErrorToHebrew(res.error.message));return;}
+  logActivity('מחיקת לקוח',u?(u.name+' ('+u.email+')'):id);
+  await saveData(getData());
   await refreshAppUsers();
   renderClients(document.getElementById('main-content'));
 }
@@ -1340,7 +1398,9 @@ async function deletePayment(id){
   if(!requireAdmin()||!requireProjectAccess())return;
   if(!confirm('למחוק תשלום זה?'))return;
   var data=getData();var proj=getCurrentProject();if(!proj)return;
+  var removed=proj.payments.find(function(x){return x.id===id;});
   proj.payments=proj.payments.filter(function(x){return x.id!==id;});
+  logActivity('מחיקת תשלום','פרויקט: '+proj.name+(removed?' · '+removed.desc:''));
   if(!await saveData(data))return;
   renderProjectDetail(document.getElementById('main-content'));
 }
@@ -1362,8 +1422,10 @@ async function savePayment(){
     var idx=proj.payments.findIndex(function(x){return x.id===editId;});
     proj.payments[idx]=Object.assign({},proj.payments[idx],pay);
     delete document.getElementById('modal-payment').dataset.editId;
+    logActivity('עריכת תשלום','פרויקט: '+proj.name+' · '+pay.desc+' · '+fmtMoney(pay.amount));
   } else {
     proj.payments.push(Object.assign({id:'p'+Date.now()},pay));
+    logActivity('הוספת תשלום','פרויקט: '+proj.name+' · '+pay.desc+' · '+fmtMoney(pay.amount));
   }
   if(!await saveData(data))return;
   closeModal('modal-payment');renderProjectDetail(document.getElementById('main-content'));
@@ -1395,8 +1457,16 @@ async function savePhase(){
   var data=getData();var proj=getCurrentProject();if(!proj)return;
   var ph={name:document.getElementById('phase-name').value,start:document.getElementById('phase-start').value,end:document.getElementById('phase-end').value,progress:Number(document.getElementById('phase-prog').value),status:document.getElementById('phase-status').value,notes:document.getElementById('phase-notes').value};
   if(!ph.name)return alert('יש להזין שם שלב');
+  var oldPh=editingPhaseId?proj.phases.find(function(x){return x.id===editingPhaseId;}):null;
   if(editingPhaseId){var idx=proj.phases.findIndex(function(x){return x.id===editingPhaseId;});proj.phases[idx]=Object.assign({},proj.phases[idx],ph);}
   else{proj.phases.push(Object.assign({},ph,{id:'ph'+Date.now()}));}
+  if(oldPh&&oldPh.status!==ph.status){
+    logActivity('שינוי סטטוס שלב','פרויקט: '+proj.name+' · שלב "'+ph.name+'": '+phaseStatusLabel(oldPh.status)+' → '+phaseStatusLabel(ph.status));
+  }else if(editingPhaseId){
+    logActivity('עריכת שלב','פרויקט: '+proj.name+' · שלב "'+ph.name+'"');
+  }else{
+    logActivity('הוספת שלב','פרויקט: '+proj.name+' · שלב "'+ph.name+'" ('+phaseStatusLabel(ph.status)+')');
+  }
   if(!await saveData(data))return;
   closeModal('modal-phase');renderProjectDetail(document.getElementById('main-content'));
 }
@@ -1405,6 +1475,7 @@ async function saveOverallProgress(){
   var val=document.getElementById('overall-prog').value;
   var data=getData();var proj=getCurrentProject();if(!proj)return;
   proj.progress=Number(val);
+  logActivity('עדכון התקדמות כללית','פרויקט: '+proj.name+' · '+val+'%');
   if(!await saveData(data))return;
   alert('ההתקדמות עודכנה!');
 }
@@ -1415,6 +1486,7 @@ async function saveUpdate(){
   var upd={id:'u'+Date.now(),title:document.getElementById('upd-title').value,body:document.getElementById('upd-body').value,date:new Date().toLocaleDateString('he-IL'),sender:'admin'};
   if(!upd.title||!upd.body)return alert('יש למלא כותרת ותוכן');
   proj.updates.push(upd);
+  logActivity('פרסום עדכון','פרויקט: '+proj.name+' · '+upd.title);
   if(!await saveData(data))return;
   closeModal('modal-update');
   document.getElementById('upd-title').value='';document.getElementById('upd-body').value='';
@@ -1424,7 +1496,9 @@ async function deleteUpdate(id){
   if(!requireAdmin()||!requireProjectAccess())return;
   if(!confirm('למחוק עדכון זה?'))return;
   var data=getData();var proj=getCurrentProject();if(!proj)return;
+  var removed=proj.updates.find(function(u){return u.id===id;});
   proj.updates=proj.updates.filter(function(u){return u.id!==id;});
+  logActivity('מחיקת עדכון','פרויקט: '+proj.name+(removed?' · '+removed.title:''));
   if(!await saveData(data))return;
   renderProjectDetail(document.getElementById('main-content'));
 }
@@ -1448,6 +1522,7 @@ function uploadDocFile(event,cat){
   reader.onload=async function(e){
     var data=getData();var proj=getCurrentProject();if(!proj)return;
     proj.documents.push({id:'d'+Date.now(),name:file.name,category:cat,date:new Date().toLocaleDateString('he-IL'),url:e.target.result});
+    logActivity('העלאת מסמך','פרויקט: '+proj.name+' · '+file.name+' ('+cat+')');
     if(!await saveData(data))return;
     renderProjectDetail(document.getElementById('main-content'));
   };
@@ -1459,6 +1534,7 @@ async function addDocLink(cat){
   var url=prompt('הכנס לינק (Google Drive / Dropbox וכו\')\n\nחשוב: לינק שיתוף ציבורי!');if(!url)return;
   var data=getData();var proj=getCurrentProject();if(!proj)return;
   proj.documents.push({id:'d'+Date.now(),name:name,category:cat,date:new Date().toLocaleDateString('he-IL'),url:url});
+  logActivity('הוספת מסמך (לינק)','פרויקט: '+proj.name+' · '+name);
   if(!await saveData(data))return;
   renderProjectDetail(document.getElementById('main-content'));
 }
@@ -1469,6 +1545,7 @@ async function addDocument(){
   var cats=['תוכניות אדריכלות','קונסטרוקטור','היתרים','הסכמים','אחר'];
   var data=getData();var proj=getCurrentProject();if(!proj)return;
   proj.documents.push({id:'d'+Date.now(),name:name,category:cats.includes(cat)?cat:'אחר',date:new Date().toLocaleDateString('he-IL'),url:'#'});
+  logActivity('הוספת מסמך','פרויקט: '+proj.name+' · '+name);
   if(!await saveData(data))return;
   renderProjectDetail(document.getElementById('main-content'));
 }
@@ -1477,6 +1554,7 @@ async function uploadDoc(cat){
   var name=prompt('שם המסמך (קטגוריה: '+cat+'):');if(!name)return;
   var data=getData();var proj=getCurrentProject();if(!proj)return;
   proj.documents.push({id:'d'+Date.now(),name:name,category:cat,date:new Date().toLocaleDateString('he-IL'),url:'#'});
+  logActivity('הוספת מסמך','פרויקט: '+proj.name+' · '+name+' ('+cat+')');
   if(!await saveData(data))return;
   renderProjectDetail(document.getElementById('main-content'));
 }
@@ -1484,7 +1562,9 @@ async function deleteDoc(id){
   if(!requireAdmin()||!requireProjectAccess())return;
   if(!confirm('למחוק מסמך זה?'))return;
   var data=getData();var proj=getCurrentProject();if(!proj)return;
+  var removed=proj.documents.find(function(d){return d.id===id;});
   proj.documents=proj.documents.filter(function(d){return d.id!==id;});
+  logActivity('מחיקת מסמך','פרויקט: '+proj.name+(removed?' · '+removed.name:''));
   if(!await saveData(data))return;
   renderProjectDetail(document.getElementById('main-content'));
 }
@@ -1495,6 +1575,7 @@ function uploadPhoto(event){
   reader.onload=async function(e){
     var data=getData();var proj=getCurrentProject();if(!proj)return;
     proj.photos.push({id:'img'+Date.now(),name:file.name,url:e.target.result,date:new Date().toLocaleDateString('he-IL')});
+    logActivity('העלאת תמונה','פרויקט: '+proj.name+' · '+file.name);
     if(!await saveData(data))return;
     renderProjectDetail(document.getElementById('main-content'));
   };
@@ -1510,6 +1591,8 @@ async function changeAdminPass(){
   var res=await supabase.auth.updateUser({password:p1});
   if(res.error){msg.style.display='block';msg.style.color='red';msg.textContent=supabaseErrorToHebrew(res.error.message);return;}
   msg.style.display='block';msg.style.color='green';msg.innerHTML=ic('circle-check')+' הסיסמה שונתה בהצלחה';refreshIcons(msg);
+  logActivity('שינוי סיסמה','המנהל שינה את סיסמת החשבון');
+  await saveData(getData());
   document.getElementById('new-admin-pass').value='';
   document.getElementById('confirm-admin-pass').value='';
 }
@@ -1524,9 +1607,10 @@ async function sendAdminResetEmail(){
 }
 async function resetData(){
   if(!requireAdmin())return;
-  appDataCache={projects:getDefaultProjects()};
+  logActivity('איפוס מלא','כל הנתונים אופסו לברירת מחדל');
+  appDataCache={projects:getDefaultProjects(),activityLog:appDataCache.activityLog||[]};
   var res=await supabase.from('app_data').upsert(
-    {id:'main',projects:appDataCache.projects,updated_at:new Date().toISOString()},
+    {id:'main',projects:appDataCache.projects,activity_log:appDataCache.activityLog,updated_at:new Date().toISOString()},
     {onConflict:'id'}
   );
   if(res.error){alert('שגיאה באיפוס הנתונים');return;}
