@@ -256,7 +256,7 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
         <button type="button" class="forgot-link" onclick="showForgotPassword()">שכחתי סיסמה?</button>
       </div>
       <button class="btn btn-primary" id="login-btn" onclick="doLogin()">כניסה לחשבון</button>
-      <div class="error-msg" id="login-error">אימייל או סיסמה שגויים</div>
+      <div class="error-msg" id="login-error">פרטי ההתחברות אינם נכונים</div>
     </div>
     <div id="forgot-form" style="display:none">
       <div class="forgot-title">שחזור סיסמה</div>
@@ -393,6 +393,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SUPABASE_URL='https://knbbbrnwzbkywkrcponi.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtuYmJicm53emJreXdrcmNwb25pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2ODg2MjksImV4cCI6MjA5NjI2NDYyOX0.FQ34u5GL47EemB3ibmZ5EP5mkoSdivvoxPVVRpxZYxw';
 const ADMIN_EMAIL='atlassahar14@gmail.com';
+const LOGIN_ERROR_MSG='פרטי ההתחברות אינם נכונים';
 
 const supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
@@ -404,7 +405,7 @@ var appDataCache={projects:[]},appUsers=[],authBootstrapped=false,skipAuthHandle
 
 function supabaseErrorToHebrew(msg){
   var m=(msg||'').toLowerCase();
-  if(m.includes('invalid login'))return 'אימייל או סיסמה שגויים';
+  if(m.includes('invalid login'))return LOGIN_ERROR_MSG;
   if(m.includes('email not confirmed'))return 'יש לאשר את האימייל לפני הכניסה';
   if(m.includes('user already registered'))return 'כתובת האימייל כבר בשימוש';
   if(m.includes('password'))return 'הסיסמה חלשה מדי (לפחות 6 תווים)';
@@ -519,7 +520,7 @@ async function handleAuthSession(user){
   var profile=await ensureUserProfile(user);
   if(profile){await startApp(profile);return true;}
   await supabase.auth.signOut();
-  document.getElementById('login-error').textContent='חשבון לא רשום במערכת. פנה למנהל.';
+  document.getElementById('login-error').textContent=LOGIN_ERROR_MSG;
   document.getElementById('login-error').classList.add('show');
   return false;
 }
@@ -535,7 +536,7 @@ supabase.auth.onAuthStateChange(function(event,session){
       }
     }catch(e){
       console.error(e);
-      document.getElementById('login-error').textContent=e.message||'שגיאה בטעינת המערכת';
+      document.getElementById('login-error').textContent=LOGIN_ERROR_MSG;
       document.getElementById('login-error').classList.add('show');
     }
     authBootstrapped=true;
@@ -581,10 +582,14 @@ async function doLogin(){
   skipAuthHandler=true;
   try{
     var res=await supabase.auth.signInWithPassword({email:email,password:pass});
-    if(res.error){err.textContent=supabaseErrorToHebrew(res.error.message);err.classList.add('show');}
-    else if(res.data&&res.data.user){await handleAuthSession(res.data.user);}
+    if(res.error){err.textContent=LOGIN_ERROR_MSG;err.classList.add('show');}
+    else if(res.data&&res.data.user){
+      var ok=await handleAuthSession(res.data.user);
+      if(!ok){err.textContent=LOGIN_ERROR_MSG;err.classList.add('show');}
+    }
   }catch(e){
-    err.textContent=e.message||'שגיאת רשת. נסה שוב';
+    console.error(e);
+    err.textContent=LOGIN_ERROR_MSG;
     err.classList.add('show');
   }finally{
     skipAuthHandler=false;
