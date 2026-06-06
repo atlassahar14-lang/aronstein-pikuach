@@ -18,6 +18,10 @@ create table if not exists public.app_data (
 alter table public.profiles enable row level security;
 alter table public.app_data enable row level security;
 
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on public.profiles to authenticated;
+grant select, insert, update, delete on public.app_data to authenticated;
+
 drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own" on public.profiles
   for select to authenticated using (auth.uid() = id);
@@ -64,7 +68,7 @@ create policy "app_data_insert_auth" on public.app_data
 
 drop policy if exists "app_data_update_auth" on public.app_data;
 create policy "app_data_update_auth" on public.app_data
-  for update to authenticated using (true);
+  for update to authenticated using (true) with check (true);
 
 create or replace function public.handle_new_user()
 returns trigger
