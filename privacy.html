@@ -2,22 +2,23 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>תנאי שימוש ומדיניות פרטיות — ארונשטיין פיקוח וניהול</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
 :root{--primary:#1B2B5E;--primary-light:#2a4078;--navy:#1B2B5E;--steel:#6B7A8D;--accent:#e8a020;--bg:#f0f4f8;--card:#fff;--text:#1a2332;--text-muted:#6b7a8d;--border:#dde3ea}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.7}
-.legal-header{background:var(--navy);color:#fff;padding:20px 24px}
+html{-webkit-text-size-adjust:100%;overflow-x:hidden}
+body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.7;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+.legal-header{background:var(--navy);color:#fff;padding:20px 24px;padding-top:max(20px,env(safe-area-inset-top))}
 .legal-header-inner{max-width:800px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .legal-brand{display:flex;align-items:center;gap:12px}
 .legal-brand .icon{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center}
 .legal-brand .icon svg{width:22px;height:22px;color:#fff}
 .legal-brand h1{font-size:18px;font-weight:700}
 .legal-brand p{font-size:12px;opacity:.75;margin-top:2px}
-.back-link{display:inline-flex;align-items:center;gap:6px;color:#fff;text-decoration:none;font-size:14px;font-weight:500;padding:8px 14px;border-radius:8px;background:rgba(255,255,255,.1);transition:background .2s}
+.back-link{display:inline-flex;align-items:center;gap:6px;color:#fff;text-decoration:none;font-size:14px;font-weight:500;padding:10px 16px;min-height:44px;border-radius:8px;background:rgba(255,255,255,.1);transition:background .2s;touch-action:manipulation}
 .back-link:hover{background:rgba(255,255,255,.18)}
 .legal-main{max-width:800px;margin:0 auto;padding:32px 24px 48px}
 .legal-card{background:var(--card);border-radius:16px;padding:32px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.06)}
@@ -37,10 +38,18 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
 .contact-row:last-child{margin-bottom:0}
 .contact-row svg{width:18px;height:18px;color:var(--navy);flex-shrink:0}
 .legal-footer{text-align:center;padding:24px;font-size:12px;color:var(--steel)}
+@media(max-width:1023px){
+  .legal-header-inner{flex-direction:column;align-items:stretch}
+  .back-link{width:100%;justify-content:center}
+}
 @media(max-width:639px){
-  .legal-main{padding:24px 16px 36px}
-  .legal-card{padding:24px 20px}
+  .legal-main{padding:24px max(16px,env(safe-area-inset-left)) max(36px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-right))}
+  .legal-card{padding:20px 16px}
   .legal-title{font-size:22px}
+  .legal-section h2{font-size:16px}
+  .legal-section p,.legal-section li{font-size:14px}
+  .legal-brand h1{font-size:16px}
+  .contact-row{flex-wrap:wrap}
 }
 </style>
 </head>

@@ -2,15 +2,22 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ארונשטיין פיקוח וניהול</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--primary:#1B2B5E;--primary-light:#2a4078;--navy:#1B2B5E;--steel:#6B7A8D;--accent:#e8a020;--bg:#f0f4f8;--card:#fff;--text:#1a2332;--text-muted:#6b7a8d;--border:#dde3ea;--success:#22c55e;--warning:#f59e0b;--danger:#ef4444;--sidebar:240px}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-#login-screen{min-height:100vh;background:#fff}
-.login-split{display:flex;min-height:100vh;width:100%}
+html{-webkit-text-size-adjust:100%;overflow-x:hidden}
+body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+img,svg,video,canvas{max-width:100%;height:auto}
+#login-screen{min-height:100vh;min-height:100dvh;background:#fff}
+.login-split{display:flex;min-height:100vh;min-height:100dvh;width:100%}
+.project-detail-title{font-size:24px;font-weight:800;color:var(--primary);line-height:1.3;word-break:break-word}
+.project-detail-address{color:var(--text-muted);margin-top:4px;font-size:14px;word-break:break-word}
+.phase-actions{display:flex;gap:8px;margin-top:10px}
+.payment-actions{display:flex;gap:6px;flex-wrap:wrap}
+.doc-item-actions{display:flex;gap:4px;flex-wrap:wrap}
 .login-panel{flex:1;display:flex;align-items:center;justify-content:center;padding:48px 56px;background:#fff;min-width:0}
 .login-panel-inner{width:100%;max-width:400px}
 .login-hero{flex:1;position:relative;background:#1B2B5E url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=80') center/cover no-repeat;min-height:360px}
@@ -210,7 +217,7 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
 .fin-charts-grid .card canvas{width:100%!important;max-height:300px}
 .fin-pct-big{font-size:32px;font-weight:800;color:var(--primary);text-align:center;margin:12px 0 16px}
 .mobile-header{display:none;position:fixed;top:0;left:0;right:0;height:56px;background:var(--card);border-bottom:1px solid var(--border);z-index:150;align-items:center;padding:0 16px;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-.hamburger-btn{width:44px;height:44px;border:none;background:var(--bg);border-radius:10px;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0}
+.hamburger-btn{width:44px;height:44px;min-width:44px;min-height:44px;border:none;background:var(--bg);border-radius:10px;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0;touch-action:manipulation}
 .hamburger-btn:hover{background:var(--border)}
 .mobile-header-title{font-size:15px;font-weight:700;color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:180;opacity:0;transition:opacity .3s}
@@ -220,32 +227,51 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
 .tabs-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:4px}
 .tabs-scroll .tabs{flex-wrap:nowrap;min-width:max-content}
 .responsive-stack{flex-wrap:wrap;gap:12px}
+@supports(padding:max(0px,env(safe-area-inset-top))){
+  .mobile-header{padding-top:env(safe-area-inset-top);height:calc(56px + env(safe-area-inset-top))}
+  .login-panel{padding-left:max(28px,env(safe-area-inset-left));padding-right:max(28px,env(safe-area-inset-right));padding-bottom:max(28px,env(safe-area-inset-bottom))}
+}
 @media(max-width:1023px){
+  .form-group input,.form-group select,.form-group textarea,.message-input-wrap input{font-size:16px}
+  .btn{min-height:44px;touch-action:manipulation}
+  .btn-sm{min-height:40px;padding:10px 14px}
+  .tab{min-height:44px;touch-action:manipulation}
+  .nav-item{min-height:44px}
+  .modal-close{min-width:44px;min-height:44px}
+  .forgot-link,.back-login-link{min-height:44px;display:inline-flex;align-items:center}
   .login-split{flex-direction:column}
   .login-hero{order:-1;min-height:280px;flex:none}
   .login-hero-content{padding:32px 24px}
-  .login-panel{padding:36px 28px}
+  .login-panel{padding:36px 28px;flex:none}
+  .login-panel-inner{max-width:100%}
   .mobile-header{display:flex}
-  .sidebar{width:280px;max-width:85vw;transform:translateX(100%);transition:transform .3s ease;z-index:200;box-shadow:-4px 0 24px rgba(0,0,0,.15)}
+  .sidebar{width:280px;max-width:85vw;transform:translateX(100%);transition:transform .3s ease;z-index:200;box-shadow:-4px 0 24px rgba(0,0,0,.15);padding-bottom:env(safe-area-inset-bottom)}
   .sidebar.open{transform:translateX(0)}
-  .main-content{margin-right:0!important;padding:72px 16px 24px}
+  .main-content{margin-right:0!important;padding:calc(72px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
   .page-header h1{font-size:22px}
+  .project-detail-title{font-size:22px}
   .flex-between.responsive-stack{flex-direction:column;align-items:stretch!important}
-  .flex-between.responsive-stack>.flex-gap{flex-wrap:wrap}
+  .flex-between.responsive-stack>.flex-gap{width:100%;flex-wrap:wrap}
+  .flex-between.responsive-stack>.flex-gap .btn{flex:1;min-width:calc(50% - 6px);justify-content:center}
   .section-actions{flex-direction:column;align-items:stretch!important;gap:12px}
   .section-actions .btn,.section-actions .upload-label{width:100%;justify-content:center}
   .user-row{flex-direction:column;align-items:stretch!important;gap:12px}
-  .user-row .flex-gap{flex-wrap:wrap}
+  .user-row .flex-gap{flex-wrap:wrap;width:100%}
+  .user-row .flex-gap .btn{flex:1;min-width:calc(50% - 6px);justify-content:center}
   .activity-log-header{display:none}
   .activity-log-row{grid-template-columns:1fr;gap:4px}
   .activity-log-row .log-date{margin-top:4px}
-  .whatsapp-fab{bottom:16px;left:16px;width:46px;height:46px}
+  .whatsapp-fab{bottom:max(16px,env(safe-area-inset-bottom,16px));left:max(16px,env(safe-area-inset-left,16px));width:48px;height:48px}
   .whatsapp-fab .wa-icon{width:24px;height:24px}
-  .project-meta{flex-wrap:wrap}
+  .project-meta{flex-wrap:wrap;gap:8px}
   .grid-2{grid-template-columns:1fr}
-  .modal{padding:24px 20px;width:100%;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);border-radius:16px}
-  .modal-footer{flex-direction:column-reverse}
+  .modal{padding:24px 20px;width:100%;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);border-radius:16px}
+  .modal-header{cursor:default;touch-action:auto}
+  .modal-footer{flex-direction:column-reverse;align-items:stretch}
   .modal-footer .btn{width:100%;justify-content:center}
+  .modal-footer.phase-modal-footer{flex-direction:column;gap:10px}
+  .modal-footer.phase-modal-footer #phase-delete-btn{width:100%!important;justify-content:center;order:3}
+  .modal-footer-actions{flex-direction:column;width:100%;gap:10px}
   .message-input-wrap{flex-direction:column}
   .message-input-wrap .btn{width:100%;justify-content:center}
   .message-bubble{max-width:95%}
@@ -255,31 +281,63 @@ body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-h
   .projects-grid{grid-template-columns:1fr}
   .timeline-phases{grid-template-columns:1fr}
   .doc-categories{grid-template-columns:1fr}
+  .doc-item{flex-wrap:wrap;gap:10px;align-items:flex-start}
+  .doc-item-actions{width:100%}
   .gallery-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
   .stats-grid{grid-template-columns:repeat(2,1fr)}
   .budget-summary{grid-template-columns:repeat(2,1fr)}
-  .tab{font-size:13px;padding:8px 12px;white-space:nowrap}
+  .tab{font-size:13px;padding:8px 14px;white-space:nowrap}
+  .phase-actions .btn-outline{flex:1}
+  .phase-actions .btn-danger{min-width:44px}
+  .payment-actions .btn{flex:1;min-width:calc(50% - 6px);justify-content:center}
+  .overall-progress-wrap{flex-wrap:wrap}
+  .overall-progress-wrap input[type=range]{min-width:0;width:100%;flex:1 1 100%}
+  .overall-progress-wrap .btn{width:100%;justify-content:center}
 }
 @media(max-width:639px){
-  .login-hero{min-height:220px}
-  .login-panel{padding:28px 20px}
-  .login-logo h1{font-size:22px}
-  .main-content{padding:68px 12px 20px}
-  .card{padding:18px}
+  .login-hero{min-height:200px}
+  .login-panel{padding:24px 16px}
+  .login-logo h1{font-size:20px}
+  .login-logo .icon{width:48px;height:48px}
+  .login-subtitle{font-size:12px}
+  .main-content{padding:calc(68px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(20px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+  .card{padding:16px}
   .stats-grid{grid-template-columns:1fr}
   .budget-summary{grid-template-columns:1fr}
   .stat-value{font-size:24px}
   .budget-item .amount{font-size:18px}
   .page-header h1{font-size:20px}
-  .project-card-header{flex-direction:column;gap:8px}
+  .project-detail-title{font-size:20px}
+  .project-card-header{flex-direction:column;gap:8px;align-items:flex-start}
+  .flex-between.responsive-stack>.flex-gap .btn{min-width:100%;flex:none}
+  .phase-header{flex-direction:column;align-items:flex-start;gap:8px}
+  .phase-actions{flex-direction:column}
+  .phase-actions .btn,.phase-actions .btn-danger{width:100%;justify-content:center}
+  .payment-actions .btn{min-width:100%}
+  .table-scroll .payments-table{min-width:480px}
+  .tabs-scroll{margin:0 -8px;padding:4px 8px}
+  .modal{padding:20px 16px;max-width:calc(100vw - 16px)}
+  .modal-title{font-size:18px}
+  .empty-state{padding:32px 16px}
 }
 @media(min-width:640px) and (max-width:1023px){
   .projects-grid{grid-template-columns:repeat(2,1fr)}
   .timeline-phases{grid-template-columns:repeat(2,1fr)}
+  .doc-categories{grid-template-columns:repeat(2,1fr)}
+  .gallery-grid{grid-template-columns:repeat(3,1fr)}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(min-width:1024px) and (max-width:1279px){
   :root{--sidebar:220px}
   .main-content{padding:28px}
+  .timeline-phases{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+}
+@media(min-width:1280px){
+  .main-content{padding:36px 40px}
+  .projects-grid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+}
+@media(pointer:coarse){
+  .modal-header{cursor:default}
 }
 </style>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -1002,7 +1060,7 @@ function renderProjectDetail(el){
   var messagesTabBadge=unreadMessages?'<span class="tab-badge show"></span>':'';
 
   var html=(isAdminUser?'<button class="back-btn" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>':'');
-  html+='<div class="flex-between responsive-stack mb-24"><div><h1 style="font-size:24px;font-weight:800;color:var(--primary)">'+p.name+'</h1><p style="color:var(--text-muted);margin-top:4px">'+ic('map-pin')+' '+formatProjectAddress(p)+'</p></div>';
+  html+='<div class="flex-between responsive-stack mb-24"><div><h1 class="project-detail-title">'+p.name+'</h1><p class="project-detail-address">'+ic('map-pin')+' '+formatProjectAddress(p)+'</p></div>';
   if(isAdminUser)html+='<div class="flex-gap"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-accent btn-sm" onclick="openModal(\'modal-update\')">'+ic('bell')+' עדכון חדש</button></div>';
   html+='</div>';
 
@@ -1053,14 +1111,14 @@ function renderProjectDetail(el){
         '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+ph.progress+'%"></div></div>'+
         '<div class="flex-between" style="font-size:12px;color:var(--text-muted);margin-top:6px"><span>'+ph.progress+'%</span><span>'+ph.end+'</span></div>'+
         (ph.notes?'<p style="font-size:12px;color:var(--text-muted);margin-top:8px">'+ph.notes+'</p>':'')+
-        (isAdminUser?'<div style="display:flex;gap:8px;margin-top:10px">'+
-        '<button class="btn btn-outline btn-sm" style="flex:1" onclick="openEditPhaseModal(\''+ph.id+'\')">'+ic('pencil')+' עריכה</button>'+
+        (isAdminUser?'<div class="phase-actions">'+
+        '<button class="btn btn-outline btn-sm" onclick="openEditPhaseModal(\''+ph.id+'\')">'+ic('pencil')+' עריכה</button>'+
         '<button class="btn btn-danger btn-sm" onclick="deletePhase(\''+ph.id+'\')">'+ic('trash-2')+'</button></div>':'')+
         '</div>';
     }).join('')+
     '</div>'+
     (isAdminUser?'<div class="card" style="margin-top:20px"><div class="card-title">'+ic('trending-up')+' התקדמות כללית</div>'+
-    '<div style="display:flex;align-items:center;gap:12px">'+
+    '<div class="overall-progress-wrap" style="display:flex;align-items:center;gap:12px">'+
     '<input type="range" min="0" max="100" value="'+(p.progress||0)+'" id="overall-prog" style="flex:1" oninput="document.getElementById(\'overall-prog-val\').textContent=this.value+\'%\'"/>'+
     '<span id="overall-prog-val" style="font-weight:700;color:var(--primary);min-width:40px">'+(p.progress||0)+'%</span>'+
     '<button class="btn btn-primary btn-sm" onclick="saveOverallProgress()">שמור</button></div></div>':'')+
@@ -1083,7 +1141,7 @@ function renderProjectDetail(el){
         '<td><span class="badge badge-blue">'+pay.category+'</span></td>'+
         '<td style="color:var(--text-muted)">'+pay.date+'</td>'+
         '<td style="font-weight:700;color:var(--primary)">'+fmtMoney(pay.amount)+'</td>'+
-        '<td><div style="display:flex;gap:6px">'+
+        '<td><div class="payment-actions">'+
         (isAdminUser?'<button class="btn btn-outline btn-sm" onclick="openEditPaymentModal(\''+pay.id+'\')">'+ic('pencil')+'</button>'+
         '<button class="btn btn-danger btn-sm" onclick="deletePayment(\''+pay.id+'\')">'+ic('trash-2')+'</button>':'')+
         '</div></td></tr>';
@@ -1125,7 +1183,7 @@ function renderProjectDetail(el){
           return '<div class="doc-item">'+
             '<div style="display:flex;align-items:center;gap:6px;font-size:13px">'+
             (isLink?ic('link'):isFile?ic('paperclip'):ic('file-text'))+' <span>'+d.name+'</span></div>'+
-            '<div style="display:flex;gap:4px">'+
+            '<div class="doc-item-actions">'+
             (isLink?'<a href="'+d.url+'" target="_blank" class="btn btn-outline btn-sm">פתח</a>':'')+
             (isFile?'<a href="'+d.url+'" download="'+d.name+'" class="btn btn-outline btn-sm">'+ic('download')+'</a>':'')+
             (isAdminUser?'<button class="btn btn-danger btn-sm" onclick="deleteDoc(\''+d.id+'\')">'+ic('trash-2')+'</button>':'')+
@@ -1392,9 +1450,10 @@ function initDraggableModals(){
   document.addEventListener('touchmove',function(e){if(!drag)return;onMove(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
   document.addEventListener('mouseup',endDrag);
   document.addEventListener('touchend',endDrag);
+  var allowDrag=window.matchMedia('(pointer:fine)').matches;
   document.querySelectorAll('.modal-overlay .modal').forEach(function(modal){
     var header=modal.querySelector('.modal-header');
-    if(!header)return;
+    if(!header||!allowDrag)return;
     function startDrag(clientX,clientY,target){
       if(target.closest('.modal-close'))return;
       var rect=modal.getBoundingClientRect();
@@ -1405,7 +1464,6 @@ function initDraggableModals(){
       drag={modal:modal,startX:clientX,startY:clientY,startLeft:rect.left,startTop:rect.top};
     }
     header.addEventListener('mousedown',function(e){startDrag(e.clientX,e.clientY,e.target);e.preventDefault();});
-    header.addEventListener('touchstart',function(e){startDrag(e.touches[0].clientX,e.touches[0].clientY,e.target);},{passive:true});
   });
 }
 initDraggableModals();
