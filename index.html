@@ -434,7 +434,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
           <div class="user-avatar" id="user-avatar-sb">א</div>
           <div><div class="user-name" id="user-name-sb">משתמש</div><div class="user-role" id="user-role-sb">תפקיד</div></div>
         </div>
-        <button class="btn-logout" onclick="doLogout()"><i data-lucide="log-out"></i> יציאה</button>
+        <button type="button" class="btn-logout" id="logout-btn"><i data-lucide="log-out"></i> יציאה</button>
       </div>
     </aside>
     <main class="main-content" id="main-content"></main>
@@ -872,7 +872,7 @@ supabase.auth.onAuthStateChange(function(event,session){
     try{
       if((event==='INITIAL_SESSION'||event==='SIGNED_IN')&&session&&session.user){
         await handleAuthSession(session.user);
-      }else if(event==='SIGNED_OUT'&&authBootstrapped){
+      }else if(event==='SIGNED_OUT'){
         showLoginScreen();
       }
     }catch(e){
@@ -945,7 +945,17 @@ async function doLogin(){
 
 async function doLogout(){
   closeMobileSidebar();
-  await supabase.auth.signOut();
+  closeMobileTabMenu();
+  try{
+    var res=await supabase.auth.signOut();
+    if(res.error)console.error('Logout error',res.error);
+  }catch(e){
+    console.error('Logout error',e);
+  }
+  currentView='dashboard';
+  currentProjectId=null;
+  currentTab='overview';
+  showLoginScreen();
 }
 
 function renderSidebar(){
@@ -1994,6 +2004,7 @@ document.querySelectorAll('.modal-overlay').forEach(function(overlay){
 document.getElementById('login-pass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 document.getElementById('login-email').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 document.getElementById('forgot-email').addEventListener('keydown',function(e){if(e.key==='Enter')submitForgotPassword();});
+document.getElementById('logout-btn').addEventListener('click',function(e){e.preventDefault();doLogout();});
 Object.assign(window,{
   doLogin,doLogout,showForgotPassword,showLoginForm,submitForgotPassword,
   saveUser,deleteUser,changeAdminPass,sendAdminResetEmail,resetData,
