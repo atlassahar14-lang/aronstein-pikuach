@@ -128,6 +128,26 @@ $$;
 
 grant execute on function public.save_app_data(jsonb, jsonb) to authenticated;
 
+-- מניעת שינוי role עצמי על ידי לקוח
+create or replace function public.profiles_lock_own_role()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() = old.id and new.role is distinct from old.role then
+    new.role := old.role;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_lock_own_role on public.profiles;
+create trigger profiles_lock_own_role
+  before update on public.profiles
+  for each row execute function public.profiles_lock_own_role();
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -168,7 +188,7 @@ create trigger on_auth_user_created
 -- notify-new-client — אימייל ל-atlassahar14@gmail.com כשנוצר לקוח חדש
 
 -- =============================================================================
--- Storage: bucket "media" (Public) — העלאות עדכונים / אסמכתאות תשלום
+-- Storage: bucket "media" (Public) — העלאות גלריה / מסמכים / אסמכתאות תשלום
 -- =============================================================================
 -- צור bucket בשם media ב-Dashboard → Storage (Public) לפני הרצת המדיניות.
 
