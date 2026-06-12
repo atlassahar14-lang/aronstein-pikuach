@@ -119,3 +119,35 @@ create trigger on_auth_user_created
 --
 -- notify-client-question — אימייל ל-atlassahar14@gmail.com כשלקוח שולח שאלה
 -- notify-new-client — אימייל ל-atlassahar14@gmail.com כשנוצר לקוח חדש
+
+-- =============================================================================
+-- Storage: bucket "media" (Public) — העלאות עדכונים / אסמכתאות תשלום
+-- =============================================================================
+-- צור bucket בשם media ב-Dashboard → Storage (Public) לפני הרצת המדיניות.
+
+drop policy if exists "media_auth_insert" on storage.objects;
+drop policy if exists "media_admin_insert" on storage.objects;
+drop policy if exists "media_auth_select" on storage.objects;
+drop policy if exists "media_auth_update" on storage.objects;
+drop policy if exists "media_admin_delete" on storage.objects;
+
+-- מנהל בלבד: העלאת קבצים
+create policy "media_admin_insert"
+on storage.objects for insert to authenticated
+with check (bucket_id = 'media' and public.is_admin());
+
+-- משתמשים מחוברים: קריאת metadata
+create policy "media_auth_select"
+on storage.objects for select to authenticated
+using (bucket_id = 'media');
+
+-- מנהל בלבד: עדכון קובץ
+create policy "media_auth_update"
+on storage.objects for update to authenticated
+using (bucket_id = 'media' and public.is_admin())
+with check (bucket_id = 'media' and public.is_admin());
+
+-- מנהל בלבד: מחיקה
+create policy "media_admin_delete"
+on storage.objects for delete to authenticated
+using (bucket_id = 'media' and public.is_admin());

@@ -249,6 +249,15 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .upload-label{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;background:var(--primary);color:#fff;border-radius:10px;font-family:'Heebo',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
 .upload-label:hover{background:var(--primary-light)}
 .upload-label input{display:none}
+.file-preview{margin-top:10px}
+.file-preview img,.file-preview video{max-width:100%;max-height:180px;border-radius:12px;border:1px solid var(--border);display:block}
+.file-preview-pdf{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:12px;font-size:13px}
+.file-preview-pdf svg{width:28px;height:28px;color:var(--primary);flex-shrink:0}
+.file-preview-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;font-size:12px;color:var(--text-muted)}
+.file-preview-remove{background:none;border:none;color:var(--danger);cursor:pointer;font-family:'Heebo',sans-serif;font-size:12px;font-weight:600;padding:0}
+.file-preview-existing{font-size:12px;color:var(--text-muted);margin-top:6px}
+.update-media-block{margin-top:12px}
+.update-media-block img,.update-media-block video{max-width:100%;max-height:320px;border-radius:12px;border:1px solid var(--border)}
 .fin-progress-card{margin:24px 0}
 .fin-charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:24px}
 .fin-charts-grid .card canvas{width:100%!important;max-height:300px}
@@ -529,6 +538,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="form-group"><label>תאריך</label><input type="date" id="pay-date"/></div>
     <div class="form-group"><label>נמען</label><input type="text" id="pay-to" placeholder="שם הקבלן / ספק"/></div>
     <div class="form-group"><label>קטגוריה</label><select id="pay-category"><option>שלד</option><option>חפירות</option><option>טיח</option><option>חשמל</option><option>אינסטלציה</option><option>ריצוף</option><option>גמר</option><option>אחר</option></select></div>
+    <div class="form-group"><label>אסמכתא (PDF / תמונה)</label><label class="upload-label"><i data-lucide="paperclip"></i> בחר קובץ<input type="file" id="pay-receipt" accept="image/*,application/pdf"/></label><div id="pay-receipt-preview" class="file-preview"></div><div id="pay-receipt-existing" class="file-preview-existing"></div></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-payment')">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="savePayment()">שמור תשלום</button>
@@ -564,6 +574,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="modal-header"><div class="modal-title">עדכון חדש ללקוח</div><button class="modal-close" onclick="closeModal('modal-update')"><i data-lucide="x"></i></button></div>
     <div class="form-group"><label>כותרת</label><input type="text" id="upd-title" placeholder="לדוגמה: סיום שלב השלד"/></div>
     <div class="form-group"><label>תוכן</label><textarea id="upd-body" placeholder="פרטי העדכון..."></textarea></div>
+    <div class="form-group"><label>תמונה / וידאו / PDF מהשטח (אופציונלי)</label><label class="upload-label"><i data-lucide="camera"></i> בחר קובץ<input type="file" id="upd-media" accept="image/*,video/*,application/pdf"/></label><div id="upd-media-preview" class="file-preview"></div></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-update')">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="saveUpdate()">שלח עדכון</button>
@@ -584,7 +595,10 @@ const LOGIN_LOCKOUT_MS=15*60*1000;
 const LOGIN_LOCK_KEY='aronstein_login_lock';
 const WHATSAPP_PHONE='972526471756';
 const WHATSAPP_MSG='שלום, אני לקוח במערכת ארונשטיין פיקוח וניהול ויש לי שאלה לגבי הפרויקט שלי';
+const STORAGE_BUCKET='media';
+const MEDIA_MAX_BYTES=20*1024*1024;
 var loginLockTimer=null;
+var filePreviewUrls={};
 
 const supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 const supabaseHelper=createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:false,autoRefreshToken:false,storageKey:'aronstein-helper-auth'}});
@@ -626,6 +640,73 @@ function updateWhatsAppFab(show){
 }
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function refreshIcons(root){if(window.lucide)lucide.createIcons(root?{root:root}:undefined);}
+
+function sanitizeFileName(name){
+  return String(name||'file').replace(/[^\w.\-()\u0590-\u05FF\s]/g,'_').replace(/\s+/g,'_').slice(0,120);
+}
+function isPdfType(type,name){
+  return type==='application/pdf'||(name&&/\.pdf$/i.test(name));
+}
+function revokePreviewUrl(key){
+  if(filePreviewUrls[key]){URL.revokeObjectURL(filePreviewUrls[key]);delete filePreviewUrls[key];}
+}
+function clearFilePreview(inputId,previewId){
+  var input=document.getElementById(inputId);
+  var preview=document.getElementById(previewId);
+  if(input)input.value='';
+  if(preview)preview.innerHTML='';
+  revokePreviewUrl(inputId);
+}
+function renderFilePreviewContent(file,objectUrl){
+  if(file.type.startsWith('image/'))return '<img src="'+objectUrl+'" alt="תצוגה מקדימה"/>';
+  if(file.type.startsWith('video/'))return '<video controls src="'+objectUrl+'"></video>';
+  if(isPdfType(file.type,file.name))return '<div class="file-preview-pdf">'+ic('file-text')+' <span>'+escHtml(file.name)+'</span></div>';
+  return '<div class="file-preview-pdf">'+ic('paperclip')+' <span>'+escHtml(file.name)+'</span></div>';
+}
+function showFilePreview(inputId,previewId){
+  var input=document.getElementById(inputId);
+  var preview=document.getElementById(previewId);
+  if(!input||!preview)return;
+  revokePreviewUrl(inputId);
+  preview.innerHTML='';
+  var file=input.files&&input.files[0];
+  if(!file)return;
+  if(file.size>MEDIA_MAX_BYTES){
+    alert('הקובץ גדול מדי (מקסימום 20MB)');
+    input.value='';
+    return;
+  }
+  var objectUrl=URL.createObjectURL(file);
+  filePreviewUrls[inputId]=objectUrl;
+  preview.innerHTML=renderFilePreviewContent(file,objectUrl)+
+    '<div class="file-preview-meta"><span>'+escHtml(file.name)+'</span><button type="button" class="file-preview-remove" onclick="clearFilePreview(\''+inputId+'\',\''+previewId+'\')">הסר</button></div>';
+  refreshIcons(preview);
+}
+function renderUpdateMediaHtml(u){
+  if(!u.mediaUrl)return '';
+  var url=escHtml(u.mediaUrl);
+  var name=escHtml(u.mediaName||'קובץ');
+  if(u.mediaType&&u.mediaType.startsWith('video/'))return '<div class="update-media-block"><video controls src="'+url+'"></video></div>';
+  if(isPdfType(u.mediaType,u.mediaName))return '<div class="update-media-block"><a href="'+url+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">'+ic('file-text')+' '+name+'</a></div>';
+  if(u.mediaType&&u.mediaType.startsWith('image/'))return '<div class="update-media-block"><img src="'+url+'" alt="'+name+'"/></div>';
+  return '<div class="update-media-block"><a href="'+url+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">'+ic('paperclip')+' '+name+'</a></div>';
+}
+async function uploadMediaFile(folderPath,file){
+  var safeName=sanitizeFileName(file.name);
+  var path=folderPath+'/'+Date.now()+'_'+safeName;
+  var res=await supabase.storage.from(STORAGE_BUCKET).upload(path,file,{cacheControl:'3600',upsert:false});
+  if(res.error)return {ok:false,error:res.error.message};
+  var publicUrl=supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path).data.publicUrl;
+  return {ok:true,data:{url:publicUrl,name:file.name,type:file.type,path:path}};
+}
+function openNewUpdateModal(){
+  if(!requireAdmin())return;
+  document.getElementById('upd-title').value='';
+  document.getElementById('upd-body').value='';
+  clearFilePreview('upd-media','upd-media-preview');
+  openModal('modal-update');
+  refreshIcons(document.getElementById('modal-update'));
+}
 
 var FIELD_REQUIRED_MSG='שדה חובה';
 function clearFormErrors(modalId){
@@ -1312,7 +1393,7 @@ function renderProjectDetail(el){
 
   var html=(isAdminUser?'<button class="back-btn" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>':'');
   html+='<div class="flex-between responsive-stack mb-24"><div><h1 class="project-detail-title">'+p.name+'</h1><p class="project-detail-address">'+projectAddressLine(p,false)+'</p></div>';
-  if(isAdminUser)html+='<div class="flex-gap"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-accent btn-sm" onclick="openModal(\'modal-update\')">'+ic('bell')+' עדכון חדש</button></div>';
+  if(isAdminUser)html+='<div class="flex-gap"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-accent btn-sm" onclick="openNewUpdateModal()">'+ic('bell')+' עדכון חדש</button></div>';
   html+='</div>';
 
   var tabDefs=[
@@ -1408,6 +1489,7 @@ function renderProjectDetail(el){
         '<td style="color:var(--text-muted)">'+pay.date+'</td>'+
         '<td style="font-weight:700;color:var(--primary)">'+fmtMoney(pay.amount)+'</td>'+
         '<td><div class="payment-actions">'+
+        (pay.receiptUrl?'<a href="'+escHtml(pay.receiptUrl)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" title="אסמכתא">'+ic('paperclip')+'</a>':'')+
         (isAdminUser?'<button class="btn btn-outline btn-sm" onclick="openEditPaymentModal(\''+pay.id+'\')">'+ic('pencil')+'</button>'+
         '<button class="btn btn-danger btn-sm" onclick="deletePayment(\''+pay.id+'\')">'+ic('trash-2')+'</button>':'')+
         '</div></td></tr>';
@@ -1477,7 +1559,7 @@ function renderProjectDetail(el){
   // UPDATES TAB
   html+='<div id="tab-updates" class="tab-content '+(currentTab==='updates'?'active':'')+'">'+
     '<div class="section-actions"><div class="section-title">'+ic('bell')+' עדכונים</div>'+
-    (isAdminUser?'<button class="btn btn-primary btn-sm" onclick="openModal(\'modal-update\')">'+ic('plus')+' עדכון חדש</button>':'')+
+    (isAdminUser?'<button class="btn btn-primary btn-sm" onclick="openNewUpdateModal()">'+ic('plus')+' עדכון חדש</button>':'')+
     '</div>'+
     (p.updates.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('bell')+'</div><p>אין עדכונים עדיין</p></div>':
     '<div style="display:flex;flex-direction:column;gap:14px">'+
@@ -1486,6 +1568,7 @@ function renderProjectDetail(el){
         '<div style="font-size:16px;font-weight:700;color:var(--primary)">'+u.title+'</div>'+
         '<div style="font-size:12px;color:var(--text-muted)">'+u.date+'</div></div>'+
         '<p style="font-size:14px;line-height:1.6">'+u.body+'</p>'+
+        renderUpdateMediaHtml(u)+
         (isAdminUser?'<button class="btn btn-danger btn-sm" style="margin-top:10px" onclick="deleteUpdate(\''+u.id+'\')">'+ic('trash-2')+' מחק</button>':'')+
         '</div>';
     }).join('')+'</div>')+
@@ -1872,6 +1955,12 @@ function openEditPaymentModal(id){
   var proj=getCurrentProject();if(!proj)return;
   clearFormErrors('modal-payment');
   var pay=proj.payments.find(function(x){return x.id===id;});if(!pay)return;
+  clearFilePreview('pay-receipt','pay-receipt-preview');
+  var existingEl=document.getElementById('pay-receipt-existing');
+  if(existingEl){
+    if(pay.receiptUrl)existingEl.innerHTML='אסמכתא קיימת: <a href="'+escHtml(pay.receiptUrl)+'" target="_blank" rel="noopener noreferrer">'+escHtml(pay.receiptName||'צפה בקובץ')+'</a>';
+    else existingEl.innerHTML='';
+  }
   document.getElementById('pay-desc').value=pay.desc;
   document.getElementById('pay-amount').value=pay.amount;
   document.getElementById('pay-date').value=pay.date;
@@ -1895,10 +1984,14 @@ function openAddPaymentModal(){
   if(!requireAdmin())return;
   clearFormErrors('modal-payment');
   delete document.getElementById('modal-payment').dataset.editId;
+  clearFilePreview('pay-receipt','pay-receipt-preview');
+  var existingEl=document.getElementById('pay-receipt-existing');
+  if(existingEl)existingEl.innerHTML='';
   document.getElementById('pay-desc').value='';document.getElementById('pay-amount').value='';
   document.getElementById('pay-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('pay-to').value='';
   openModal('modal-payment');
+  refreshIcons(document.getElementById('modal-payment'));
 }
 async function savePayment(){
   if(!requireAdmin()||!requireProjectAccess())return;
@@ -1909,19 +2002,43 @@ async function savePayment(){
   if(!validateRequired('pay-date'))ok=false;
   if(!ok){focusFirstFormError('modal-payment');return;}
   var data=getData();var proj=getCurrentProject();if(!proj)return;
-  var pay={desc:document.getElementById('pay-desc').value.trim(),amount:Number(document.getElementById('pay-amount').value),date:document.getElementById('pay-date').value,to:document.getElementById('pay-to').value,category:document.getElementById('pay-category').value};
   var editId=document.getElementById('modal-payment').dataset.editId;
-  if(editId){
-    var idx=proj.payments.findIndex(function(x){return x.id===editId;});
-    proj.payments[idx]=Object.assign({},proj.payments[idx],pay);
-    delete document.getElementById('modal-payment').dataset.editId;
-    logActivity('עריכת תשלום','פרויקט: '+proj.name+' · '+pay.desc+' · '+fmtMoney(pay.amount));
-  } else {
-    proj.payments.push(Object.assign({id:'p'+Date.now()},pay));
-    logActivity('הוספת תשלום','פרויקט: '+proj.name+' · '+pay.desc+' · '+fmtMoney(pay.amount));
+  var payId=editId||('p'+Date.now());
+  var existing=editId?proj.payments.find(function(x){return x.id===editId;}):null;
+  var pay={desc:document.getElementById('pay-desc').value.trim(),amount:Number(document.getElementById('pay-amount').value),date:document.getElementById('pay-date').value,to:document.getElementById('pay-to').value,category:document.getElementById('pay-category').value};
+  var file=document.getElementById('pay-receipt').files[0];
+  var btn=document.querySelector('#modal-payment .btn-primary');
+  var origText=btn.textContent;
+  try{
+    if(file){
+      if(file.size>MEDIA_MAX_BYTES){alert('הקובץ גדול מדי (מקסימום 20MB)');return;}
+      btn.disabled=true;btn.textContent='מעלה אסמכתא...';
+      var upload=await uploadMediaFile('payments/'+proj.id+'/'+payId,file);
+      if(!upload.ok){alert('שגיאה בהעלאת האסמכתא: '+upload.error);return;}
+      pay.receiptUrl=upload.data.url;
+      pay.receiptName=upload.data.name;
+      pay.receiptType=upload.data.type;
+      pay.receiptPath=upload.data.path;
+    }else if(existing){
+      pay.receiptUrl=existing.receiptUrl;
+      pay.receiptName=existing.receiptName;
+      pay.receiptType=existing.receiptType;
+      pay.receiptPath=existing.receiptPath;
+    }
+    if(editId){
+      var idx=proj.payments.findIndex(function(x){return x.id===editId;});
+      proj.payments[idx]=Object.assign({},proj.payments[idx],pay);
+      delete document.getElementById('modal-payment').dataset.editId;
+      logActivity('עריכת תשלום','פרויקט: '+proj.name+' · '+pay.desc+' · '+fmtMoney(pay.amount));
+    } else {
+      proj.payments.push(Object.assign({id:payId},pay));
+      logActivity('הוספת תשלום','פרויקט: '+proj.name+' · '+pay.desc+' · '+fmtMoney(pay.amount));
+    }
+    if(!await saveData(data))return;
+    closeModal('modal-payment');renderProjectDetail(document.getElementById('main-content'));
+  }finally{
+    btn.disabled=false;btn.textContent=origText;
   }
-  if(!await saveData(data))return;
-  closeModal('modal-payment');renderProjectDetail(document.getElementById('main-content'));
 }
 
 function openAddPhaseModal(){
@@ -2001,14 +2118,36 @@ async function saveOverallProgress(){
 async function saveUpdate(){
   if(!requireAdmin()||!requireProjectAccess())return;
   var data=getData();var proj=getCurrentProject();if(!proj)return;
-  var upd={id:'u'+Date.now(),title:document.getElementById('upd-title').value,body:document.getElementById('upd-body').value,date:new Date().toLocaleDateString('he-IL'),sender:'admin'};
-  if(!upd.title||!upd.body)return alert('יש למלא כותרת ותוכן');
-  proj.updates.push(upd);
-  logActivity('פרסום עדכון','פרויקט: '+proj.name+' · '+upd.title);
-  if(!await saveData(data))return;
-  closeModal('modal-update');
-  document.getElementById('upd-title').value='';document.getElementById('upd-body').value='';
-  renderProjectDetail(document.getElementById('main-content'));
+  var title=document.getElementById('upd-title').value.trim();
+  var body=document.getElementById('upd-body').value.trim();
+  if(!title||!body)return alert('יש למלא כותרת ותוכן');
+  var updId='u'+Date.now();
+  var upd={id:updId,title:title,body:body,date:new Date().toLocaleDateString('he-IL'),sender:'admin'};
+  var file=document.getElementById('upd-media').files[0];
+  var btn=document.querySelector('#modal-update .btn-primary');
+  var origText=btn.textContent;
+  try{
+    if(file){
+      if(file.size>MEDIA_MAX_BYTES){alert('הקובץ גדול מדי (מקסימום 20MB)');return;}
+      btn.disabled=true;btn.textContent='מעלה קובץ...';
+      var upload=await uploadMediaFile('updates/'+proj.id+'/'+updId,file);
+      if(!upload.ok){alert('שגיאה בהעלאת הקובץ: '+upload.error);return;}
+      upd.mediaUrl=upload.data.url;
+      upd.mediaName=upload.data.name;
+      upd.mediaType=upload.data.type;
+      upd.mediaPath=upload.data.path;
+    }
+    proj.updates.push(upd);
+    logActivity('פרסום עדכון','פרויקט: '+proj.name+' · '+upd.title);
+    if(!await saveData(data))return;
+    closeModal('modal-update');
+    document.getElementById('upd-title').value='';
+    document.getElementById('upd-body').value='';
+    clearFilePreview('upd-media','upd-media-preview');
+    renderProjectDetail(document.getElementById('main-content'));
+  }finally{
+    btn.disabled=false;btn.textContent=origText;
+  }
 }
 async function deleteUpdate(id){
   if(!requireAdmin()||!requireProjectAccess())return;
@@ -2186,6 +2325,8 @@ document.getElementById('login-pass').addEventListener('keydown',function(e){if(
 document.getElementById('login-email').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 document.getElementById('forgot-email').addEventListener('keydown',function(e){if(e.key==='Enter')submitForgotPassword();});
 document.getElementById('logout-btn').addEventListener('click',function(e){e.preventDefault();doLogout();});
+document.getElementById('upd-media').addEventListener('change',function(){showFilePreview('upd-media','upd-media-preview');});
+document.getElementById('pay-receipt').addEventListener('change',function(){showFilePreview('pay-receipt','pay-receipt-preview');});
 Object.assign(window,{
   doLogin,doLogout,showForgotPassword,showLoginForm,submitForgotPassword,
   saveUser,deleteUser,changeAdminPass,sendAdminResetEmail,resetData,
@@ -2193,7 +2334,7 @@ Object.assign(window,{
   openNewProjectModal,openEditProjectModal,saveProject,openAddUserModal,
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
-  saveUpdate,deleteUpdate,sendMessage,
+  saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,uploadPhoto
 });
 window.addEventListener('resize',function(){
