@@ -684,7 +684,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="form-group"><label>טקסט</label><textarea id="gallery-post-text" placeholder="תיאור / כיתוב לפוסט..."></textarea></div>
     <div class="form-group">
       <label>תמונות (ניתן לבחור מספר)</label>
-      <label class="upload-label"><i data-lucide="camera"></i> בחר תמונות<input type="file" id="gallery-post-files" accept="image/*" multiple onchange="onGalleryPostFilesSelected(event)"/></label>
+      <label class="upload-label"><i data-lucide="camera"></i> בחר תמונות<input type="file" id="gallery-post-files" accept="image/*" multiple/></label>
       <div id="gallery-post-images" class="gallery-modal-images"></div>
     </div>
     <div class="modal-footer phase-modal-footer">
@@ -3016,6 +3016,7 @@ document.getElementById('forgot-email').addEventListener('keydown',function(e){i
 document.getElementById('logout-btn').addEventListener('click',function(e){e.preventDefault();doLogout();});
 document.getElementById('upd-media').addEventListener('change',function(){showFilePreview('upd-media','upd-media-preview');});
 document.getElementById('pay-receipt').addEventListener('change',function(){showFilePreview('pay-receipt','pay-receipt-preview');});
+document.getElementById('gallery-post-files').addEventListener('change',onGalleryPostFilesSelected);
 Object.assign(window,{
   doLogin,doLogout,showForgotPassword,showLoginForm,submitForgotPassword,
   saveUser,deleteUser,changeAdminPass,sendAdminResetEmail,resetData,

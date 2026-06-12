@@ -51,7 +51,14 @@ create policy "profiles_select_admin" on public.profiles
 
 drop policy if exists "profiles_insert_own" on public.profiles;
 create policy "profiles_insert_own" on public.profiles
-  for insert to authenticated with check (auth.uid() = id);
+  for insert to authenticated with check (
+    auth.uid() = id
+    and (
+      role = 'client'
+      or email = 'atlassahar14@gmail.com'
+      or public.is_admin()
+    )
+  );
 
 drop policy if exists "profiles_insert_admin" on public.profiles;
 create policy "profiles_insert_admin" on public.profiles
@@ -190,7 +197,10 @@ create trigger on_auth_user_created
 -- =============================================================================
 -- Storage: bucket "media" (Public) — העלאות גלריה / מסמכים / אסמכתאות תשלום
 -- =============================================================================
--- צור bucket בשם media ב-Dashboard → Storage (Public) לפני הרצת המדיניות.
+
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('media', 'media', true, 20971520)
+on conflict (id) do update set public = excluded.public, file_size_limit = excluded.file_size_limit;
 
 drop policy if exists "media_auth_insert" on storage.objects;
 drop policy if exists "media_admin_insert" on storage.objects;
