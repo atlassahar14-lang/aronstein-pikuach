@@ -81,6 +81,53 @@ drop policy if exists "app_data_update_auth" on public.app_data;
 create policy "app_data_update_auth" on public.app_data
   for update to authenticated using (true) with check (true);
 
+drop policy if exists "app_data_delete_admin" on public.app_data;
+create policy "app_data_delete_admin" on public.app_data
+  for delete to authenticated using (public.is_admin());
+
+-- תיקון activity_log ישן שלא נשמר כמערך JSON
+update public.app_data
+set activity_log = '[]'::jsonb
+where id = 'main'
+  and (activity_log is null or jsonb_typeof(activity_log) <> 'array');
+
+alter table public.app_data add column if not exists updated_at timestamptz default now();
+
+-- שמירה אמינה מ-app (עוקף באגים/500 ב-PostgREST upsert?on_conflict=id)
+create or replace function public.save_app_data(p_projects jsonb, p_activity_log jsonb default '[]'::jsonb)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_activity jsonb;
+begin
+  if auth.uid() is null then
+    raise exception 'not authenticated' using errcode = '42501';
+  end if;
+
+  v_activity := coalesce(p_activity_log, '[]'::jsonb);
+  if jsonb_typeof(v_activity) <> 'array' then
+    v_activity := '[]'::jsonb;
+  end if;
+
+  insert into public.app_data (id, projects, activity_log, updated_at)
+  values (
+    'main',
+    coalesce(p_projects, '[]'::jsonb),
+    v_activity,
+    now()
+  )
+  on conflict (id) do update set
+    projects = excluded.projects,
+    activity_log = excluded.activity_log,
+    updated_at = now();
+end;
+$$;
+
+grant execute on function public.save_app_data(jsonb, jsonb) to authenticated;
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql

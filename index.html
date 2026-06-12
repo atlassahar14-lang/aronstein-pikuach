@@ -1435,6 +1435,50 @@ function logActivity(action,details){
   if(appDataCache.activityLog.length>ACTIVITY_LOG_MAX)appDataCache.activityLog.length=ACTIVITY_LOG_MAX;
 }
 
+function normalizeActivityLog(raw){
+  if(Array.isArray(raw))return raw;
+  if(raw&&typeof raw==='object')return Object.values(raw);
+  return [];
+}
+function sanitizeJsonForDb(value){
+  try{return JSON.parse(JSON.stringify(value==null?null:value));}
+  catch(e){console.error('sanitizeJsonForDb',e);return null;}
+}
+function prepareAppDataRow(){
+  var projects=sanitizeJsonForDb(appDataCache.projects||[]);
+  var activityLog=sanitizeJsonForDb(normalizeActivityLog(appDataCache.activityLog));
+  if(!Array.isArray(projects))projects=[];
+  if(!Array.isArray(activityLog))activityLog=[];
+  return {
+    projects:projects,
+    activity_log:activityLog,
+    updated_at:new Date().toISOString()
+  };
+}
+async function persistAppData(){
+  var row=prepareAppDataRow();
+  var rpc=await supabase.rpc('save_app_data',{
+    p_projects:row.projects,
+    p_activity_log:row.activity_log
+  });
+  if(!rpc.error)return {ok:true};
+  console.warn('persistAppData rpc failed, trying update',rpc.error);
+  var upd=await supabase.from('app_data').update({
+    projects:row.projects,
+    activity_log:row.activity_log,
+    updated_at:row.updated_at
+  }).eq('id','main');
+  if(!upd.error)return {ok:true};
+  var ins=await supabase.from('app_data').insert({
+    id:'main',
+    projects:row.projects,
+    activity_log:row.activity_log,
+    updated_at:row.updated_at
+  });
+  if(!ins.error)return {ok:true};
+  return {ok:false,error:(ins.error.message||upd.error.message||rpc.error.message||'save failed')};
+}
+
 async function refreshAppData(){
   var res=await supabase.from('app_data').select('projects,activity_log').eq('id','main').maybeSingle();
   if(res.error){
@@ -1443,7 +1487,7 @@ async function refreshAppData(){
     return {ok:false,error:res.error.message||String(res.error)};
   }
   if(res.data&&Array.isArray(res.data.projects)){
-    appDataCache={projects:res.data.projects,activityLog:Array.isArray(res.data.activity_log)?res.data.activity_log:[]};
+    appDataCache={projects:res.data.projects,activityLog:normalizeActivityLog(res.data.activity_log)};
     appDataCache.projects.forEach(normalizeProjectGallery);
     return {ok:true};
   }
@@ -1452,17 +1496,14 @@ async function refreshAppData(){
     return {ok:false,error:'שדה projects ב-app_data אינו מערך JSON תקין'};
   }
   if(res.data){
-    appDataCache={projects:[],activityLog:Array.isArray(res.data.activity_log)?res.data.activity_log:[]};
+    appDataCache={projects:[],activityLog:normalizeActivityLog(res.data.activity_log)};
     return {ok:true};
   }
   appDataCache={projects:getDefaultProjects(),activityLog:[]};
-  var seed=await supabase.from('app_data').upsert(
-    {id:'main',projects:appDataCache.projects,activity_log:appDataCache.activityLog,updated_at:new Date().toISOString()},
-    {onConflict:'id'}
-  );
-  if(seed.error){
+  var seed=await persistAppData();
+  if(!seed.ok){
     console.error('refreshAppData seed',seed.error);
-    return {ok:false,error:seed.error.message||String(seed.error)};
+    return {ok:false,error:seed.error};
   }
   return {ok:true};
 }
@@ -1472,6 +1513,8 @@ function formatSupabaseErrorHint(errMsg){
   if(m.includes('jwt')||m.includes('401')||m.includes('not authenticated'))return 'ה-session פג תוקף — התנתק והתחבר מחדש.';
   if(m.includes('bucket')||m.includes('not found')&&m.includes('storage'))return 'חסר bucket בשם media ב-Supabase Storage (Public).';
   if(m.includes('payload')||m.includes('too large')||m.includes('413'))return 'נתוני הפרויקט גדולים מדי (למשל תמונות Base64 ישנות).';
+  if(m.includes('500')||m.includes('internal server'))return 'שגיאת שרת בשמירה — הרץ את supabase-setup.sql המעודכן (פונקציית save_app_data), או בדוק אם נתוני הפרויקט גדולים מדי.';
+  if(m.includes('save_app_data')||m.includes('42883')||m.includes('does not exist'))return 'חסרה פונקציית save_app_data — הרץ את supabase-setup.sql המעודכן ב-SQL Editor.';
   if(m.includes('permission')||m.includes('42501')||m.includes('rls'))return 'בעיית הרשאות RLS — הרץ שוב את supabase-setup.sql.';
   if(m.includes('fetch')||m.includes('network')||m.includes('522')||m.includes('timeout'))return 'בעיית רשת או Supabase לא זמין.';
   return errMsg||'שגיאה לא ידועה';
@@ -1488,13 +1531,10 @@ async function saveData(d){
     if(idx<0)return false;
     appDataCache.projects[idx]=proj;
   }
-  var res=await supabase.from('app_data').upsert(
-    {id:'main',projects:appDataCache.projects,activity_log:appDataCache.activityLog||[],updated_at:new Date().toISOString()},
-    {onConflict:'id'}
-  );
-  if(res.error){
+  var res=await persistAppData();
+  if(!res.ok){
     console.error('saveData',res.error);
-    alert('שגיאה בשמירת הנתונים:\n'+formatSupabaseErrorHint(res.error.message||String(res.error)));
+    alert('שגיאה בשמירת הנתונים:\n'+formatSupabaseErrorHint(res.error));
     return false;
   }
   return true;
@@ -2920,11 +2960,8 @@ async function resetData(){
   if(!requireAdmin())return;
   logActivity('איפוס מלא','כל הנתונים אופסו לברירת מחדל');
   appDataCache={projects:getDefaultProjects(),activityLog:appDataCache.activityLog||[]};
-  var res=await supabase.from('app_data').upsert(
-    {id:'main',projects:appDataCache.projects,activity_log:appDataCache.activityLog,updated_at:new Date().toISOString()},
-    {onConflict:'id'}
-  );
-  if(res.error){alert('שגיאה באיפוס הנתונים');return;}
+  var res=await persistAppData();
+  if(!res.ok){alert('שגיאה באיפוס הנתונים:\n'+formatSupabaseErrorHint(res.error));return;}
   location.reload();
 }
 
