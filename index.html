@@ -184,6 +184,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .phase-progress-pct{font-size:13px;font-weight:700;color:var(--primary);min-width:36px;text-align:left;flex-shrink:0}
 .phase-end-date{font-size:12px;color:var(--text-muted);text-align:left}
 .gantt-card{margin-bottom:24px}
+.gantt-card-head{align-items:center;margin-bottom:16px;gap:12px}
+.gantt-card-head .card-title{margin-bottom:0!important}
+.gantt-card-actions{display:flex;flex-wrap:wrap;gap:8px}
 .gantt-legend{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:16px;font-size:12px;color:var(--text-muted)}
 .gantt-legend-item{display:inline-flex;align-items:center;gap:6px}
 .gantt-legend-dot{width:12px;height:12px;border-radius:4px;flex-shrink:0}
@@ -428,6 +431,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .gantt-header{grid-template-columns:minmax(88px,120px) 1fr;gap:8px}
   .gantt-label{font-size:13px}
   .gantt-track{height:32px}
+  .gantt-card-head{flex-direction:column;align-items:stretch!important}
+  .gantt-card-actions{width:100%}
+  .gantt-card-actions .btn{flex:1;justify-content:center}
 }
 @media(max-width:639px){
   .login-hero{min-height:200px}
@@ -1057,7 +1063,10 @@ function renderGanttChartHtml(phases){
       '</div></div></div>';
   }).join('');
   return '<div class="card gantt-card">'+
+    '<div class="gantt-card-head flex-between responsive-stack">'+
     '<div class="card-title">'+ic('calendar')+' לוח זמנים — Gantt</div>'+
+    (phases.length?'<div class="gantt-card-actions"><button type="button" class="btn btn-outline btn-sm" onclick="exportGanttToCsv()">'+ic('download')+' ייצוא ל-MS Project (CSV)</button></div>':'')+
+    '</div>'+
     '<div class="gantt-legend">'+
     '<span class="gantt-legend-item"><span class="gantt-legend-dot done"></span> הושלם</span>'+
     '<span class="gantt-legend-item"><span class="gantt-legend-dot active"></span> בביצוע</span>'+
@@ -1066,6 +1075,48 @@ function renderGanttChartHtml(phases){
     '<div class="gantt-scroll"><div class="gantt-chart">'+
     '<div class="gantt-header"><div class="gantt-header-label">שלב</div><div class="gantt-axis">'+axisHtml+'</div></div>'+
     '<div class="gantt-body">'+rowsHtml+'</div></div></div></div>';
+}
+function csvEscape(val){
+  var s=String(val==null?'':val);
+  if(/[",\n\r]/.test(s))return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+function formatExportIsoDate(s){
+  var d=parsePhaseDate(s);
+  if(!d)return '';
+  var m=d.getMonth()+1,day=d.getDate();
+  return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(day<10?'0':'')+day;
+}
+function downloadTextFile(filename,content,mime){
+  var blob=new Blob(['\ufeff'+content],{type:mime||'text/plain;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function(){URL.revokeObjectURL(a.href);},500);
+}
+function exportGanttToCsv(){
+  if(!requireProjectAccess())return;
+  var proj=getCurrentProject();
+  if(!proj)return;
+  var phases=proj.phases||[];
+  if(!phases.length){alert('אין שלבים לייצוא');return;}
+  var headers=['Task Name','Start','Finish','Percent Complete','Status','Notes'];
+  var rows=phases.map(function(ph){
+    return [
+      csvEscape(ph.name),
+      csvEscape(formatExportIsoDate(ph.start)),
+      csvEscape(formatExportIsoDate(ph.end)),
+      csvEscape(phaseProgressPct(ph.progress)),
+      csvEscape(phaseStatusLabel(ph.status)),
+      csvEscape(ph.notes||'')
+    ].join(',');
+  });
+  var csv=headers.join(',')+'\r\n'+rows.join('\r\n');
+  var fname=sanitizeFileName(proj.name||'project').slice(0,48)+'-gantt-msproject.csv';
+  downloadTextFile(fname,csv,'text/csv;charset=utf-8');
 }
 
 function logActivity(action,details){
@@ -2569,7 +2620,7 @@ Object.assign(window,{
   openNewProjectModal,openEditProjectModal,saveProject,openAddUserModal,
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
-  saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,
+  saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,uploadPhoto
 });
 window.addEventListener('resize',function(){
