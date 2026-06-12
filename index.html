@@ -323,6 +323,12 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .mobile-logout-btn{display:none;min-width:44px;min-height:44px;padding:0 14px;border:none;background:var(--bg);border-radius:10px;color:var(--primary);font-family:'Heebo',sans-serif;font-size:13px;font-weight:600;cursor:pointer;align-items:center;gap:6px;flex-shrink:0;touch-action:manipulation}
 .mobile-logout-btn svg{width:18px;height:18px}
 .file-preview-existing{font-size:12px;color:var(--text-muted);margin-top:6px}
+.upload-spinner{display:none;align-items:center;gap:8px;font-size:13px;color:var(--steel);margin-top:10px}
+.upload-spinner.show{display:flex}
+.upload-spinner-icon{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:upload-spin .8s linear infinite;flex-shrink:0}
+@keyframes upload-spin{to{transform:rotate(360deg)}}
+.upload-error{font-size:13px;color:var(--danger);margin-top:8px;display:none}
+.upload-error.show{display:block}
 .update-media-block{margin-top:12px}
 .update-media-block img,.update-media-block video{max-width:100%;max-height:320px;border-radius:12px;border:1px solid var(--border)}
 .fin-progress-card{margin:24px 0}
@@ -633,7 +639,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="form-group"><label>תאריך</label><input type="date" id="pay-date"/></div>
     <div class="form-group"><label>נמען</label><input type="text" id="pay-to" placeholder="שם הקבלן / ספק"/></div>
     <div class="form-group"><label>קטגוריה</label><select id="pay-category"><option>שלד</option><option>חפירות</option><option>טיח</option><option>חשמל</option><option>אינסטלציה</option><option>ריצוף</option><option>גמר</option><option>אחר</option></select></div>
-    <div class="form-group"><label>אסמכתא (PDF / תמונה)</label><label class="upload-label"><i data-lucide="paperclip"></i> בחר קובץ<input type="file" id="pay-receipt" accept="image/*,application/pdf"/></label><div id="pay-receipt-preview" class="file-preview"></div><div id="pay-receipt-existing" class="file-preview-existing"></div></div>
+    <div class="form-group"><label>קבלה/חשבונית</label><label class="upload-label"><i data-lucide="paperclip"></i> בחר קובץ<input type="file" id="pay-receipt" accept="image/*,application/pdf" capture="environment"/></label><div id="pay-receipt-preview" class="file-preview"></div><div id="pay-receipt-existing" class="file-preview-existing"></div><div id="pay-receipt-upload-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span id="pay-receipt-upload-text">מעלה קבלה...</span></div><div id="pay-receipt-upload-error" class="upload-error"></div></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-payment')">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="savePayment()">שמור תשלום</button>
@@ -718,6 +724,10 @@ const LOGIN_LOCK_KEY='aronstein_login_lock';
 const WHATSAPP_PHONE='972526471756';
 const WHATSAPP_MSG='שלום, אני לקוח במערכת ארונשטיין פיקוח וניהול ויש לי שאלה לגבי הפרויקט שלי';
 const STORAGE_BUCKET='media';
+const PAYMENT_RECEIPTS_BUCKET='payment-receipts';
+const RECEIPT_COMPRESS_BYTES=1024*1024;
+const RECEIPT_MAX_EDGE=1600;
+const RECEIPT_JPEG_QUALITY=0.7;
 const MEDIA_MAX_BYTES=20*1024*1024;
 var loginLockTimer=null;
 var filePreviewUrls={};
@@ -821,6 +831,82 @@ async function uploadMediaFile(folderPath,file){
   if(res.error)return {ok:false,error:res.error.message};
   var publicUrl=supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path).data.publicUrl;
   return {ok:true,data:{url:publicUrl,name:file.name,type:file.type,path:path}};
+}
+function paymentReceiptFileExt(file){
+  var fromName=(file.name||'').split('.').pop();
+  if(fromName&&fromName.length<=5)return fromName.toLowerCase();
+  if(file.type==='application/pdf')return 'pdf';
+  if(file.type==='image/jpeg')return 'jpg';
+  if(file.type==='image/png')return 'png';
+  if(file.type==='image/webp')return 'webp';
+  return 'jpg';
+}
+async function compressImage(file){
+  if(!file||!file.type||!file.type.startsWith('image/'))return file;
+  if(file.size<=RECEIPT_COMPRESS_BYTES)return file;
+  return new Promise(function(resolve){
+    var img=new Image();
+    var objectUrl=URL.createObjectURL(file);
+    img.onload=function(){
+      URL.revokeObjectURL(objectUrl);
+      var w=img.naturalWidth||img.width;
+      var h=img.naturalHeight||img.height;
+      var maxEdge=Math.max(w,h);
+      if(maxEdge>RECEIPT_MAX_EDGE){
+        var scale=RECEIPT_MAX_EDGE/maxEdge;
+        w=Math.max(1,Math.round(w*scale));
+        h=Math.max(1,Math.round(h*scale));
+      }
+      var canvas=document.createElement('canvas');
+      canvas.width=w;
+      canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      canvas.toBlob(function(blob){
+        if(!blob){resolve(file);return;}
+        var base=(file.name||'receipt').replace(/\.[^.]+$/,'')||'receipt';
+        resolve(new File([blob],base+'.jpg',{type:'image/jpeg',lastModified:Date.now()}));
+      },'image/jpeg',RECEIPT_JPEG_QUALITY);
+    };
+    img.onerror=function(){URL.revokeObjectURL(objectUrl);resolve(file);};
+    img.src=objectUrl;
+  });
+}
+async function uploadPaymentReceiptFile(projectId,paymentId,file){
+  var ext=paymentReceiptFileExt(file);
+  var path=projectId+'/'+paymentId+'-'+Date.now()+'.'+ext;
+  var res=await supabase.storage.from(PAYMENT_RECEIPTS_BUCKET).upload(path,file,{cacheControl:'3600',upsert:false});
+  if(res.error)return {ok:false,error:res.error.message};
+  return {ok:true,data:{path:path,name:file.name,type:file.type}};
+}
+function setPaymentReceiptUploadUi(loading,message,errorMsg){
+  var spinner=document.getElementById('pay-receipt-upload-status');
+  var errEl=document.getElementById('pay-receipt-upload-error');
+  var textEl=document.getElementById('pay-receipt-upload-text');
+  if(spinner)spinner.classList.toggle('show',!!loading);
+  if(textEl&&message)textEl.textContent=message;
+  if(errEl){
+    if(errorMsg){errEl.textContent=errorMsg;errEl.classList.add('show');}
+    else errEl.classList.remove('show');
+  }
+}
+function paymentHasReceipt(pay){
+  return !!(pay&&(pay.receipt_url||pay.receiptUrl));
+}
+async function openPaymentReceipt(paymentId){
+  if(!requireProjectAccess())return;
+  var proj=getCurrentProject();if(!proj)return;
+  var pay=proj.payments.find(function(p){return p.id===paymentId;});
+  if(!pay||!paymentHasReceipt(pay)){alert('לא נמצאה קבלה לתשלום זה');return;}
+  if(pay.receipt_url){
+    var res=await supabase.storage.from(PAYMENT_RECEIPTS_BUCKET).createSignedUrl(pay.receipt_url,3600);
+    if(res.error||!res.data||!res.data.signedUrl){
+      alert('שגיאה בפתיחת הקבלה:\n'+formatSupabaseErrorHint((res.error&&res.error.message)||'signed url failed'));
+      return;
+    }
+    window.open(res.data.signedUrl,'_blank','noopener,noreferrer');
+    return;
+  }
+  if(pay.receiptUrl)window.open(pay.receiptUrl,'_blank','noopener,noreferrer');
 }
 function normalizeProjectGallery(proj){
   if(!proj)return;
@@ -2030,7 +2116,7 @@ function renderProjectsList(el){
 }
 
 function renderPaymentActionsHtml(pay,isAdminUser){
-  return (pay.receiptUrl?'<a href="'+escHtml(pay.receiptUrl)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" title="אסמכתא">'+ic('paperclip')+'</a>':'')+
+  return (paymentHasReceipt(pay)?'<button type="button" class="btn btn-outline btn-sm" onclick="openPaymentReceipt(\''+pay.id+'\')">'+ic('file-text')+' צפייה בקבלה</button>':'')+
     (isAdminUser?'<button class="btn btn-outline btn-sm" onclick="openEditPaymentModal(\''+pay.id+'\')">'+ic('pencil')+'</button>'+
     '<button class="btn btn-danger btn-sm" onclick="deletePayment(\''+pay.id+'\')">'+ic('trash-2')+'</button>':'');
 }
@@ -2640,9 +2726,10 @@ function openEditPaymentModal(id){
   clearFormErrors('modal-payment');
   var pay=proj.payments.find(function(x){return x.id===id;});if(!pay)return;
   clearFilePreview('pay-receipt','pay-receipt-preview');
+  setPaymentReceiptUploadUi(false);
   var existingEl=document.getElementById('pay-receipt-existing');
   if(existingEl){
-    if(pay.receiptUrl)existingEl.innerHTML='אסמכתא קיימת: <a href="'+escHtml(pay.receiptUrl)+'" target="_blank" rel="noopener noreferrer">'+escHtml(pay.receiptName||'צפה בקובץ')+'</a>';
+    if(pay.receipt_url||pay.receiptUrl)existingEl.innerHTML='קבלה קיימת: '+escHtml(pay.receiptName||'קובץ מצורף');
     else existingEl.innerHTML='';
   }
   document.getElementById('pay-desc').value=pay.desc;
@@ -2671,6 +2758,7 @@ function openAddPaymentModal(){
   delete document.getElementById('modal-payment').dataset.editId;
   document.querySelector('#modal-payment .modal-title').textContent='תשלום חדש';
   clearFilePreview('pay-receipt','pay-receipt-preview');
+  setPaymentReceiptUploadUi(false);
   var existingEl=document.getElementById('pay-receipt-existing');
   if(existingEl)existingEl.innerHTML='';
   document.getElementById('pay-desc').value='';document.getElementById('pay-amount').value='';
@@ -2695,18 +2783,30 @@ async function savePayment(){
   var pay={desc:document.getElementById('pay-desc').value.trim(),amount:Number(document.getElementById('pay-amount').value),date:document.getElementById('pay-date').value,to:document.getElementById('pay-to').value,category:document.getElementById('pay-category').value};
   var file=document.getElementById('pay-receipt').files[0];
   var btn=document.querySelector('#modal-payment .btn-primary');
+  var cancelBtn=document.querySelector('#modal-payment .btn-outline');
   var origText=btn.textContent;
+  setPaymentReceiptUploadUi(false);
   try{
     if(file){
       if(file.size>MEDIA_MAX_BYTES){alert('הקובץ גדול מדי (מקסימום 20MB)');return;}
-      btn.disabled=true;btn.textContent='מעלה אסמכתא...';
-      var upload=await uploadMediaFile('payments/'+proj.id+'/'+payId,file);
-      if(!upload.ok){alert('שגיאה בהעלאת האסמכתא: '+upload.error);return;}
-      pay.receiptUrl=upload.data.url;
+      btn.disabled=true;
+      if(cancelBtn)cancelBtn.disabled=true;
+      if(file.type.startsWith('image/')&&file.size>RECEIPT_COMPRESS_BYTES)setPaymentReceiptUploadUi(true,'מכווץ תמונה...');
+      var uploadFile=await compressImage(file);
+      setPaymentReceiptUploadUi(true,'מעלה קבלה...');
+      var upload=await uploadPaymentReceiptFile(proj.id,payId,uploadFile);
+      if(!upload.ok){
+        setPaymentReceiptUploadUi(false,null,'שגיאה בהעלאת הקבלה: '+formatSupabaseErrorHint(upload.error));
+        alert('שגיאה בהעלאת הקבלה:\n'+formatSupabaseErrorHint(upload.error));
+        return;
+      }
+      pay.receipt_url=upload.data.path;
       pay.receiptName=upload.data.name;
       pay.receiptType=upload.data.type;
-      pay.receiptPath=upload.data.path;
+      delete pay.receiptUrl;
+      delete pay.receiptPath;
     }else if(existing){
+      pay.receipt_url=existing.receipt_url;
       pay.receiptUrl=existing.receiptUrl;
       pay.receiptName=existing.receiptName;
       pay.receiptType=existing.receiptType;
@@ -2723,9 +2823,13 @@ async function savePayment(){
       logActivity('הוספת תשלום','פרויקט: '+proj.name+' · '+pay.desc+' · '+fmtMoney(pay.amount));
     }
     if(!await saveData(data))return;
+    setPaymentReceiptUploadUi(false);
     closeModal('modal-payment');renderProjectDetail(document.getElementById('main-content'));
   }finally{
-    btn.disabled=false;btn.textContent=origText;
+    btn.disabled=false;
+    if(cancelBtn)cancelBtn.disabled=false;
+    btn.textContent=origText;
+    setPaymentReceiptUploadUi(false);
   }
 }
 
@@ -3022,7 +3126,7 @@ Object.assign(window,{
   saveUser,deleteUser,changeAdminPass,sendAdminResetEmail,resetData,
   showView,switchTab,openModal,closeModal,toggleMobileSidebar,closeMobileSidebar,toggleMobileTabMenu,closeMobileTabMenu,
   openNewProjectModal,openEditProjectModal,saveProject,openAddUserModal,
-  openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,
+  openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,
