@@ -57,6 +57,11 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .form-group input,.form-group select,.form-group textarea{width:100%;padding:12px 16px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:15px;color:var(--text);transition:border-color .2s;background:#fff;direction:rtl}
 .form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--primary-light)}
 .form-group textarea{min-height:80px;resize:vertical}
+.form-group.has-error label{color:var(--danger)}
+.form-group.has-error input,.form-group.has-error select,.form-group.has-error textarea{border-color:var(--danger)}
+.form-group.has-error input:focus,.form-group.has-error select:focus,.form-group.has-error textarea:focus{border-color:var(--danger)}
+.field-error{display:none;font-size:12px;color:var(--danger);margin-top:6px;line-height:1.4}
+.form-group.has-error .field-error{display:block}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border:none;border-radius:10px;font-family:'Heebo',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
 .btn-primary{background:var(--primary);color:#fff;width:100%;justify-content:center}
 .btn-primary:hover{background:var(--primary-light);transform:translateY(-1px)}
@@ -601,6 +606,67 @@ function updateWhatsAppFab(show){
 }
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function refreshIcons(root){if(window.lucide)lucide.createIcons(root?{root:root}:undefined);}
+
+var FIELD_REQUIRED_MSG='שדה חובה';
+function clearFormErrors(modalId){
+  var modal=document.getElementById(modalId);
+  if(!modal)return;
+  modal.querySelectorAll('.form-group.has-error').forEach(function(g){
+    g.classList.remove('has-error');
+    var err=g.querySelector('.field-error');
+    if(err)err.remove();
+  });
+}
+function setFieldError(fieldId,message){
+  var el=document.getElementById(fieldId);
+  if(!el)return false;
+  var group=el.closest('.form-group');
+  if(!group)return false;
+  group.classList.add('has-error');
+  var err=group.querySelector('.field-error');
+  if(!err){
+    err=document.createElement('span');
+    err.className='field-error';
+    group.appendChild(err);
+  }
+  err.textContent=message||FIELD_REQUIRED_MSG;
+  return false;
+}
+function validateRequired(fieldId,message){
+  var el=document.getElementById(fieldId);
+  if(!el)return setFieldError(fieldId,message);
+  var val=el.tagName==='SELECT'?el.value:String(el.value).trim();
+  if(!val)return setFieldError(fieldId,message);
+  return true;
+}
+function validatePositiveNumber(fieldId,message){
+  var el=document.getElementById(fieldId);
+  if(!el)return setFieldError(fieldId,message);
+  var n=Number(el.value);
+  if(!String(el.value).trim()||isNaN(n)||n<=0)return setFieldError(fieldId,message||'יש להזין סכום חיובי');
+  return true;
+}
+function focusFirstFormError(modalId){
+  var modal=document.getElementById(modalId);
+  if(!modal)return;
+  var first=modal.querySelector('.form-group.has-error input, .form-group.has-error select, .form-group.has-error textarea');
+  if(first)first.focus();
+}
+function bindModalValidationClear(modalId){
+  var modal=document.getElementById(modalId);
+  if(!modal||modal.dataset.validationBound)return;
+  modal.dataset.validationBound='1';
+  function clearGroup(e){
+    var g=e.target.closest('.form-group');
+    if(!g||!g.classList.contains('has-error'))return;
+    g.classList.remove('has-error');
+    var err=g.querySelector('.field-error');
+    if(err)err.remove();
+  }
+  modal.addEventListener('input',clearGroup);
+  modal.addEventListener('change',clearGroup);
+}
+['modal-project','modal-user','modal-payment','modal-phase'].forEach(bindModalValidationClear);
 
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
 var appDataCache={projects:[],activityLog:[]},appUsers=[],authBootstrapped=false,skipAuthHandler=false;
@@ -1610,6 +1676,7 @@ initDraggableModals();
 function openNewProjectModal(){
   if(!requireAdmin())return;
   editingProjectId=null;
+  clearFormErrors('modal-project');
   document.getElementById('modal-proj-title').textContent='פרויקט חדש';
   ['proj-name','proj-addr','proj-house','proj-desc','proj-start','proj-end','proj-built','proj-property','proj-budget'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('proj-status').value='active';
@@ -1620,6 +1687,7 @@ function openEditProjectModal(id){
   var data=getData();
   var p=data.projects.find(function(x){return x.id===id;});
   if(!p)return;
+  clearFormErrors('modal-project');
   editingProjectId=id;
   document.getElementById('modal-proj-title').textContent='עריכת פרויקט';
   document.getElementById('proj-name').value=p.name;
@@ -1636,9 +1704,10 @@ function openEditProjectModal(id){
 }
 async function saveProject(){
   if(!requireAdmin())return;
+  clearFormErrors('modal-project');
+  if(!validateRequired('proj-name')){focusFirstFormError('modal-project');return;}
   var data=getData();
-  var proj={name:document.getElementById('proj-name').value,address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:Number(document.getElementById('proj-budget').value)||0,status:document.getElementById('proj-status').value};
-  if(!proj.name)return alert('יש להזין שם פרויקט');
+  var proj={name:document.getElementById('proj-name').value.trim(),address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:Number(document.getElementById('proj-budget').value)||0,status:document.getElementById('proj-status').value};
   if(editingProjectId){
     var idx=data.projects.findIndex(function(p){return p.id===editingProjectId;});
     data.projects[idx]=Object.assign({},data.projects[idx],proj);
@@ -1656,6 +1725,7 @@ async function saveProject(){
 function openAddUserModal(){
   if(!requireAdmin())return;
   if(!appDataCache.projects.length){alert('יש ליצור פרויקט לפני הוספת לקוח');return;}
+  clearFormErrors('modal-user');
   var sel=document.getElementById('new-user-project');
   sel.innerHTML=appDataCache.projects.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
   ['new-user-name','new-user-email','new-user-pass'].forEach(function(id){document.getElementById(id).value='';});
@@ -1663,12 +1733,17 @@ function openAddUserModal(){
 }
 async function saveUser(){
   if(!requireAdmin())return;
+  clearFormErrors('modal-user');
+  var ok=true;
+  if(!validateRequired('new-user-name'))ok=false;
+  if(!validateRequired('new-user-email'))ok=false;
+  if(!validateRequired('new-user-project'))ok=false;
+  if(!ok){focusFirstFormError('modal-user');return;}
   var name=document.getElementById('new-user-name').value.trim();
   var email=document.getElementById('new-user-email').value.trim();
   var pass=document.getElementById('new-user-pass').value;
   var projectId=document.getElementById('new-user-project').value;
-  if(!name||!email||!pass)return alert('יש למלא את כל השדות');
-  if(!projectId)return alert('יש לבחור פרויקט משויך ללקוח');
+  if(!pass)return alert('יש למלא את כל השדות');
   if(pass.length<6)return alert('הסיסמה חייבת להכיל לפחות 6 תווים');
   if(appUsers.find(function(u){return u.email===email;}))return alert('אימייל כבר קיים במערכת');
   var proj=appDataCache.projects.find(function(p){return p.id===projectId;});
@@ -1729,6 +1804,7 @@ async function deleteUser(id){
 function openEditPaymentModal(id){
   if(!requireAdmin()||!requireProjectAccess())return;
   var proj=getCurrentProject();if(!proj)return;
+  clearFormErrors('modal-payment');
   var pay=proj.payments.find(function(x){return x.id===id;});if(!pay)return;
   document.getElementById('pay-desc').value=pay.desc;
   document.getElementById('pay-amount').value=pay.amount;
@@ -1751,6 +1827,7 @@ async function deletePayment(id){
 }
 function openAddPaymentModal(){
   if(!requireAdmin())return;
+  clearFormErrors('modal-payment');
   delete document.getElementById('modal-payment').dataset.editId;
   document.getElementById('pay-desc').value='';document.getElementById('pay-amount').value='';
   document.getElementById('pay-date').value=new Date().toISOString().split('T')[0];
@@ -1759,9 +1836,14 @@ function openAddPaymentModal(){
 }
 async function savePayment(){
   if(!requireAdmin()||!requireProjectAccess())return;
+  clearFormErrors('modal-payment');
+  var ok=true;
+  if(!validateRequired('pay-desc'))ok=false;
+  if(!validatePositiveNumber('pay-amount'))ok=false;
+  if(!validateRequired('pay-date'))ok=false;
+  if(!ok){focusFirstFormError('modal-payment');return;}
   var data=getData();var proj=getCurrentProject();if(!proj)return;
-  var pay={desc:document.getElementById('pay-desc').value,amount:Number(document.getElementById('pay-amount').value)||0,date:document.getElementById('pay-date').value,to:document.getElementById('pay-to').value,category:document.getElementById('pay-category').value};
-  if(!pay.desc||!pay.amount)return alert('יש למלא תיאור וסכום');
+  var pay={desc:document.getElementById('pay-desc').value.trim(),amount:Number(document.getElementById('pay-amount').value),date:document.getElementById('pay-date').value,to:document.getElementById('pay-to').value,category:document.getElementById('pay-category').value};
   var editId=document.getElementById('modal-payment').dataset.editId;
   if(editId){
     var idx=proj.payments.findIndex(function(x){return x.id===editId;});
@@ -1779,6 +1861,7 @@ async function savePayment(){
 function openAddPhaseModal(){
   if(!requireAdmin())return;
   editingPhaseId=null;
+  clearFormErrors('modal-phase');
   document.getElementById('modal-phase-title').textContent='שלב חדש';
   document.getElementById('phase-delete-btn').style.display='none';
   document.querySelector('#modal-phase .phase-modal-footer').style.justifyContent='flex-end';
@@ -1791,6 +1874,7 @@ function openEditPhaseModal(phId){
   if(!requireAdmin()||!requireProjectAccess())return;
   var proj=getCurrentProject();if(!proj)return;
   var ph=proj.phases.find(function(x){return x.id===phId;});if(!ph)return;
+  clearFormErrors('modal-phase');
   editingPhaseId=phId;
   document.getElementById('modal-phase-title').textContent='עריכת שלב';
   document.getElementById('phase-delete-btn').style.display='inline-flex';
@@ -1821,9 +1905,10 @@ async function deletePhase(id){
 }
 async function savePhase(){
   if(!requireAdmin()||!requireProjectAccess())return;
+  clearFormErrors('modal-phase');
+  if(!validateRequired('phase-name')){focusFirstFormError('modal-phase');return;}
   var data=getData();var proj=getCurrentProject();if(!proj)return;
-  var ph={name:document.getElementById('phase-name').value,start:document.getElementById('phase-start').value,end:document.getElementById('phase-end').value,progress:Number(document.getElementById('phase-prog').value),status:document.getElementById('phase-status').value,notes:document.getElementById('phase-notes').value};
-  if(!ph.name)return alert('יש להזין שם שלב');
+  var ph={name:document.getElementById('phase-name').value.trim(),start:document.getElementById('phase-start').value,end:document.getElementById('phase-end').value,progress:Number(document.getElementById('phase-prog').value),status:document.getElementById('phase-status').value,notes:document.getElementById('phase-notes').value};
   var oldPh=editingPhaseId?proj.phases.find(function(x){return x.id===editingPhaseId;}):null;
   if(editingPhaseId){var idx=proj.phases.findIndex(function(x){return x.id===editingPhaseId;});proj.phases[idx]=Object.assign({},proj.phases[idx],ph);}
   else{proj.phases.push(Object.assign({},ph,{id:'ph'+Date.now()}));}
