@@ -183,6 +183,33 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .phase-card.pending .phase-progress-fill{background:var(--primary);opacity:.35}
 .phase-progress-pct{font-size:13px;font-weight:700;color:var(--primary);min-width:36px;text-align:left;flex-shrink:0}
 .phase-end-date{font-size:12px;color:var(--text-muted);text-align:left}
+.gantt-card{margin-bottom:24px}
+.gantt-legend{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:16px;font-size:12px;color:var(--text-muted)}
+.gantt-legend-item{display:inline-flex;align-items:center;gap:6px}
+.gantt-legend-dot{width:12px;height:12px;border-radius:4px;flex-shrink:0}
+.gantt-legend-dot.done{background:var(--success)}
+.gantt-legend-dot.active{background:var(--accent)}
+.gantt-legend-dot.pending{background:var(--steel)}
+.gantt-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:4px}
+.gantt-chart{direction:rtl;min-width:560px;padding:4px 0}
+.gantt-header{display:grid;grid-template-columns:minmax(100px,140px) 1fr;gap:12px;margin-bottom:8px;padding-bottom:8px;border-bottom:2px solid var(--border)}
+.gantt-header-label{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+.gantt-axis{position:relative;height:24px;background:var(--bg);border-radius:8px;overflow:hidden}
+.gantt-axis-tick{position:absolute;top:0;bottom:0;border-right:1px solid var(--border);font-size:10px;color:var(--text-muted);padding:4px 6px 0;white-space:nowrap;transform:translateX(50%)}
+.gantt-body{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.gantt-row{display:grid;grid-template-columns:minmax(100px,140px) 1fr;gap:12px;align-items:center;min-height:52px}
+.gantt-label{font-size:14px;font-weight:700;color:var(--primary);line-height:1.35;word-break:break-word;padding:4px 0}
+.gantt-track-wrap{display:flex;flex-direction:column;gap:4px;min-width:0}
+.gantt-track{position:relative;height:28px;background:var(--bg);border-radius:8px;border:1px solid var(--border);overflow:visible}
+.gantt-bar{position:absolute;top:3px;bottom:3px;border-radius:6px;min-width:4px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.12);transition:width .3s,right .3s}
+.gantt-bar.done{background:var(--success)}
+.gantt-bar.active{background:var(--accent)}
+.gantt-bar.pending{background:var(--steel);opacity:.85}
+.gantt-bar-progress{position:absolute;right:0;top:0;bottom:0;background:rgba(255,255,255,.35);border-radius:0 6px 6px 0;max-width:100%}
+.gantt-meta{font-size:11px;color:var(--text-muted);line-height:1.4;display:flex;flex-wrap:wrap;gap:6px 12px;direction:rtl}
+.gantt-meta-pct{font-weight:700;color:var(--primary)}
+.gantt-empty{padding:32px 16px}
+.gantt-today-line{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--danger);opacity:.6;z-index:2;pointer-events:none}
 .fin-analysis-table{width:100%;border-collapse:collapse;margin-top:8px}
 .fin-analysis-table th,.fin-analysis-table td{padding:12px 14px;text-align:right;border-bottom:1px solid var(--border);font-size:14px}
 .fin-analysis-table th{font-size:12px;font-weight:700;color:var(--text-muted);background:var(--bg)}
@@ -396,6 +423,11 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .overall-progress-wrap{flex-wrap:wrap}
   .overall-progress-wrap input[type=range]{min-width:0;width:100%;flex:1 1 100%}
   .overall-progress-wrap .btn{width:100%;justify-content:center}
+  .gantt-chart{min-width:480px}
+  .gantt-row{grid-template-columns:minmax(88px,120px) 1fr;gap:8px}
+  .gantt-header{grid-template-columns:minmax(88px,120px) 1fr;gap:8px}
+  .gantt-label{font-size:13px}
+  .gantt-track{height:32px}
 }
 @media(max-width:639px){
   .login-hero{min-height:200px}
@@ -944,6 +976,96 @@ function phaseStatusLabel(s){
 }
 function phaseProgressPct(progress){
   return Math.min(100,Math.max(0,Number(progress)||0));
+}
+function parsePhaseDate(s){
+  if(!s)return null;
+  if(/^\d{4}-\d{2}-\d{2}/.test(String(s)))return new Date(String(s).slice(0,10)+'T12:00:00');
+  var m=String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m)return new Date(+m[3],+m[2]-1,+m[1],12,0,0);
+  var d=new Date(s);
+  return isNaN(d.getTime())?null:d;
+}
+function formatGanttDate(d){
+  if(!d)return '';
+  return d.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function ganttMonthTicks(minT,maxT){
+  var ticks=[];
+  var cur=new Date(minT);
+  cur.setDate(1);cur.setHours(12,0,0,0);
+  while(cur.getTime()<=maxT){
+    ticks.push(new Date(cur));
+    cur.setMonth(cur.getMonth()+1);
+  }
+  if(ticks.length===0)ticks.push(new Date(minT),new Date(maxT));
+  return ticks;
+}
+function renderGanttChartHtml(phases){
+  if(!phases||!phases.length){
+    return '<div class="card gantt-card"><div class="card-title">'+ic('calendar')+' לוח זמנים — Gantt</div>'+
+      '<div class="empty-state gantt-empty"><div class="empty-icon">'+ic('calendar')+'</div><p>אין שלבים להצגה — הוסף שלבים לפרויקט</p></div></div>';
+  }
+  var items=phases.map(function(ph){
+    var start=parsePhaseDate(ph.start);
+    var end=parsePhaseDate(ph.end);
+    if(start&&end&&end.getTime()<start.getTime()){var tmp=start;start=end;end=tmp;}
+    return {ph:ph,start:start,end:end,pct:phaseProgressPct(ph.progress)};
+  });
+  var dated=items.filter(function(x){return x.start&&x.end;});
+  if(!dated.length){
+    return '<div class="card gantt-card"><div class="card-title">'+ic('calendar')+' לוח זמנים — Gantt</div>'+
+      '<div class="empty-state gantt-empty"><div class="empty-icon">'+ic('calendar')+'</div><p>יש להגדיר תאריך התחלה וסיום לכל שלב</p></div></div>';
+  }
+  var minT=Math.min.apply(null,dated.map(function(x){return x.start.getTime();}));
+  var maxT=Math.max.apply(null,dated.map(function(x){return x.end.getTime();}));
+  var range=maxT-minT||86400000;
+  var pad=range*0.04;
+  minT-=pad;maxT+=pad;range=maxT-minT;
+  var today=new Date();today.setHours(12,0,0,0);
+  var todayLine='';
+  if(today.getTime()>=minT&&today.getTime()<=maxT){
+    var todayPct=((today.getTime()-minT)/range)*100;
+    todayLine='<span class="gantt-today-line" style="right:'+todayPct+'%" title="היום"></span>';
+  }
+  var ticks=ganttMonthTicks(minT,maxT);
+  var axisHtml=todayLine+ticks.map(function(t){
+    var pct=((t.getTime()-minT)/range)*100;
+    if(pct<0||pct>100)return '';
+    var lbl=t.toLocaleDateString('he-IL',{month:'short',year:'2-digit'});
+    return '<span class="gantt-axis-tick" style="right:'+pct+'%">'+escHtml(lbl)+'</span>';
+  }).join('');
+  var rowsHtml=items.map(function(item){
+    var ph=item.ph;
+    var status=ph.status==='done'?'done':ph.status==='active'?'active':'pending';
+    if(!item.start||!item.end){
+      return '<div class="gantt-row"><div class="gantt-label">'+escHtml(ph.name)+'</div>'+
+        '<div class="gantt-track-wrap"><div class="gantt-meta" style="padding:8px 0">חסרים תאריכים · '+item.pct+'%</div></div></div>';
+    }
+    var rightPct=((item.start.getTime()-minT)/range)*100;
+    var widthPct=Math.max(((item.end.getTime()-item.start.getTime())/range)*100,1.5);
+    if(rightPct+widthPct>100){widthPct=100-rightPct;}
+    return '<div class="gantt-row">'+
+      '<div class="gantt-label">'+escHtml(ph.name)+'</div>'+
+      '<div class="gantt-track-wrap">'+
+      '<div class="gantt-track">'+
+      '<div class="gantt-bar '+status+'" style="right:'+rightPct+'%;width:'+widthPct+'%" title="'+escHtml(ph.name)+'">'+
+      '<div class="gantt-bar-progress" style="width:'+item.pct+'%"></div></div></div>'+
+      '<div class="gantt-meta">'+
+      '<span>'+formatGanttDate(item.start)+' – '+formatGanttDate(item.end)+'</span>'+
+      '<span class="gantt-meta-pct">'+item.pct+'% הושלם</span>'+
+      '<span class="phase-status '+status+'">'+(status==='done'?'הושלם':status==='active'?'בביצוע':'ממתין')+'</span>'+
+      '</div></div></div>';
+  }).join('');
+  return '<div class="card gantt-card">'+
+    '<div class="card-title">'+ic('calendar')+' לוח זמנים — Gantt</div>'+
+    '<div class="gantt-legend">'+
+    '<span class="gantt-legend-item"><span class="gantt-legend-dot done"></span> הושלם</span>'+
+    '<span class="gantt-legend-item"><span class="gantt-legend-dot active"></span> בביצוע</span>'+
+    '<span class="gantt-legend-item"><span class="gantt-legend-dot pending"></span> טרם התחיל</span>'+
+    '</div>'+
+    '<div class="gantt-scroll"><div class="gantt-chart">'+
+    '<div class="gantt-header"><div class="gantt-header-label">שלב</div><div class="gantt-axis">'+axisHtml+'</div></div>'+
+    '<div class="gantt-body">'+rowsHtml+'</div></div></div></div>';
 }
 
 function logActivity(action,details){
@@ -1548,7 +1670,8 @@ function renderProjectDetail(el){
 
   // TIMELINE TAB
   html+='<div id="tab-timeline" class="tab-content '+(currentTab==='timeline'?'active':'')+'">'+
-    '<div class="section-actions"><div class="section-title">'+ic('calendar')+' שלבי הפרויקט</div>'+
+    renderGanttChartHtml(p.phases)+
+    '<div class="section-actions"><div class="section-title">'+ic('layout-grid')+' פירוט שלבים</div>'+
     (isAdminUser?'<button class="btn btn-primary btn-sm" onclick="openAddPhaseModal()">'+ic('plus')+' שלב חדש</button>':'')+
     '</div><div class="timeline-phases">'+
     p.phases.map(function(ph){
