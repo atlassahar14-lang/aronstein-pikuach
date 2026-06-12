@@ -1171,7 +1171,7 @@ function renderSidebar(){
   refreshIcons(nav);
 }
 
-var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה',updates:'עדכונים',messages:'שאלות'};
+var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה',updates:'עדכונים',messages:'שאלות'};
 var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',clients:'לקוחות','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
@@ -1454,7 +1454,7 @@ function renderProjectDetail(el){
   var tabDefs=[
     ['overview','סקירה','layout-dashboard',''],
     ['timeline','לוח זמנים','calendar',''],
-    ['budget','תקציב','banknote',''],
+    ['budget','מעקב תשלומים','banknote',''],
     ['budget-analysis','ניתוח כספי','scale',''],
     ['financial','דוח פיננסי','trending-up',''],
     ['docs','מסמכים','folder',''],
