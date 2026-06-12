@@ -269,6 +269,24 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .message-input-wrap{display:flex;gap:10px}
 .message-input-wrap input{flex:1;padding:12px 16px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl}
 .message-input-wrap input:focus{outline:none;border-color:var(--primary-light)}
+.blueprint-section{margin-bottom:24px}
+.blueprint-viewer-wrap{position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#eef1f5;line-height:0}
+.blueprint-viewer-wrap.clickable{cursor:crosshair}
+.blueprint-viewer-wrap img{display:block;width:100%;max-height:70vh;object-fit:contain;user-select:none;-webkit-user-drag:none}
+.blueprint-viewer-wrap iframe{display:block;width:100%;min-height:480px;border:none;background:#fff}
+.blueprint-pins-layer{position:absolute;inset:0;pointer-events:none}
+.blueprint-pin{position:absolute;width:22px;height:22px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer;z-index:2}
+.blueprint-pin.pin-critical{background:#ef4444}
+.blueprint-pin.pin-medium{background:#f97316}
+.blueprint-pin.pin-low{background:#eab308}
+.blueprint-upload-hint{font-size:13px;color:var(--text-muted);margin-top:8px}
+.punch-urgency-critical{color:#ef4444;font-weight:600}
+.punch-urgency-medium{color:#f97316;font-weight:600}
+.punch-urgency-low{color:#ca8a04;font-weight:600}
+.punch-status-open{color:var(--warning);font-weight:600}
+.punch-status-fixed{color:var(--success);font-weight:600}
+.punch-detail-row{display:flex;gap:8px;font-size:14px;margin-bottom:8px;line-height:1.5}
+.punch-detail-row .label{color:var(--text-muted);min-width:72px}
 .activity-log-list{display:flex;flex-direction:column;gap:8px}
 .activity-log-row{display:grid;grid-template-columns:minmax(100px,130px) minmax(120px,1fr) 2fr minmax(110px,140px);gap:12px;padding:14px 18px;background:var(--card);border-radius:12px;border:1px solid var(--border);font-size:13px;align-items:center}
 .activity-log-row .log-user{font-weight:600;color:var(--primary)}
@@ -713,6 +731,31 @@ img,svg,video,canvas{max-width:100%;height:auto}
   </div>
 </div>
 
+<!-- Modal: Punch item -->
+<div class="modal-overlay" id="modal-punch-item">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="modal-punch-title">ליקוי חדש</div><button class="modal-close" onclick="closeModal('modal-punch-item')"><i data-lucide="x"></i></button></div>
+    <div id="punch-view-panel" style="display:none">
+      <div class="punch-detail-row"><span class="label">תיאור:</span><span id="punch-view-desc"></span></div>
+      <div class="punch-detail-row"><span class="label">קבלן:</span><span id="punch-view-sub"></span></div>
+      <div class="punch-detail-row"><span class="label">דחיפות:</span><span id="punch-view-urgency"></span></div>
+      <div class="punch-detail-row"><span class="label">דד-ליין:</span><span id="punch-view-deadline"></span></div>
+      <div class="punch-detail-row"><span class="label">סטטוס:</span><span id="punch-view-status"></span></div>
+    </div>
+    <div id="punch-form-panel">
+      <div class="form-group"><label>תיאור *</label><textarea id="punch-desc" placeholder="תאר את הליקוי..."></textarea></div>
+      <div class="form-group"><label>קבלן</label><select id="punch-subcontractor"><option value="">— ללא —</option></select></div>
+      <div class="form-group"><label>דחיפות</label><select id="punch-urgency"><option value="נמוכה">נמוכה</option><option value="בינונית" selected>בינונית</option><option value="קריטית">קריטית</option></select></div>
+      <div class="form-group"><label>דד-ליין</label><input type="date" id="punch-deadline"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-punch-item')">סגור</button>
+      <button class="btn btn-primary" id="punch-save-btn" style="width:auto" onclick="savePunchItem()">שמור</button>
+      <button class="btn btn-accent" id="punch-fixed-btn" style="display:none;width:auto" onclick="markPunchFixed()"><i data-lucide="check-circle"></i> סמן כתוקן</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Update -->
 <div class="modal-overlay" id="modal-update">
   <div class="modal">
@@ -769,6 +812,7 @@ const WHATSAPP_PHONE='972526471756';
 const WHATSAPP_MSG='שלום, אני לקוח במערכת ארונשטיין פיקוח וניהול ויש לי שאלה לגבי הפרויקט שלי';
 const STORAGE_BUCKET='media';
 const PAYMENT_RECEIPTS_BUCKET='payment-receipts';
+const PROJECT_BLUEPRINTS_BUCKET='project-blueprints';
 const RECEIPT_COMPRESS_BYTES=1024*1024;
 const RECEIPT_MAX_EDGE=1600;
 const RECEIPT_JPEG_QUALITY=0.7;
@@ -790,7 +834,8 @@ function tabIc(name){
     'camera':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
     'bell':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
     'message-circle':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
-    'scale':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16v6"/><path d="M8 16v6"/><path d="M12 2v20"/><path d="M12 2 8 6"/><path d="M12 2l4 4"/><path d="M2 10h20"/></svg>'
+    'scale':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16v6"/><path d="M8 16v6"/><path d="M12 2v20"/><path d="M12 2 8 6"/><path d="M12 2l4 4"/><path d="M2 10h20"/></svg>',
+    'map-pin':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>'
   };
   return icons[name]||'';
 }
@@ -1461,12 +1506,13 @@ function bindModalValidationClear(modalId){
   modal.addEventListener('input',clearGroup);
   modal.addEventListener('change',clearGroup);
 }
-['modal-project','modal-user','modal-payment','modal-phase','modal-subcontractor','modal-update','modal-gallery-post'].forEach(bindModalValidationClear);
+['modal-project','modal-user','modal-payment','modal-phase','modal-subcontractor','modal-update','modal-gallery-post','modal-punch-item'].forEach(bindModalValidationClear);
 
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
 var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
-var appDataCache={projects:[],activityLog:[]},appUsers=[],subcontractorsCache=[],authBootstrapped=false,skipAuthHandler=false;
+var appDataCache={projects:[],activityLog:[]},appUsers=[],subcontractorsCache=[],punchItemsCache=[],authBootstrapped=false,skipAuthHandler=false;
+var viewingPunchItemId=null,punchPinDraft={x:null,y:null},punchBlueprintSignedUrl=null;
 const ACTIVITY_LOG_MAX=500;
 
 function getLoginLockData(){
@@ -1967,6 +2013,252 @@ function populatePhaseSubcontractorSelect(selectedId){
   sel.innerHTML=html;
 }
 
+function mapPunchItemRow(r){
+  return {
+    id:r.id,
+    projectId:r.project_id,
+    description:r.description,
+    subcontractorId:r.subcontractor_id||null,
+    urgency:r.urgency||'בינונית',
+    deadline:r.deadline||null,
+    status:r.status||'open',
+    blueprintUrl:r.blueprint_url||null,
+    pinX:r.pin_x!=null?Number(r.pin_x):null,
+    pinY:r.pin_y!=null?Number(r.pin_y):null,
+    createdAt:r.created_at
+  };
+}
+async function refreshPunchItems(projectId){
+  if(!projectId){punchItemsCache=[];return {ok:false};}
+  var res=await supabase.from('punch_items').select('*').eq('project_id',projectId).order('created_at',{ascending:false});
+  if(res.error){
+    console.error('refreshPunchItems',res.error);
+    punchItemsCache=[];
+    return {ok:false,error:res.error.message};
+  }
+  punchItemsCache=(res.data||[]).map(mapPunchItemRow);
+  return {ok:true};
+}
+async function getBlueprintSignedUrl(path){
+  if(!path)return null;
+  var res=await supabase.storage.from(PROJECT_BLUEPRINTS_BUCKET).createSignedUrl(path,3600);
+  if(res.error||!res.data||!res.data.signedUrl)return null;
+  return res.data.signedUrl;
+}
+function isBlueprintPdfPath(path){
+  return /\.pdf$/i.test(path||'');
+}
+function punchUrgencyCssClass(urgency){
+  if(urgency==='קריטית')return 'pin-critical punch-urgency-critical';
+  if(urgency==='בינונית')return 'pin-medium punch-urgency-medium';
+  return 'pin-low punch-urgency-low';
+}
+function punchStatusLabel(status){
+  return status==='fixed'?'תוקן':'פתוח';
+}
+function punchStatusCssClass(status){
+  return status==='fixed'?'punch-status-fixed':'punch-status-open';
+}
+function populatePunchSubcontractorSelect(selectedId){
+  var sel=document.getElementById('punch-subcontractor');
+  if(!sel)return;
+  var html='<option value="">— ללא —</option>';
+  subcontractorsCache.forEach(function(s){
+    html+='<option value="'+s.id+'"'+(selectedId===s.id?' selected':'')+'>'+escHtml(s.companyName)+'</option>';
+  });
+  sel.innerHTML=html;
+}
+function renderPunchPinsHtml(items,isImage){
+  if(!isImage)return '';
+  return (items||[]).filter(function(it){
+    return it.status==='open'&&it.pinX!=null&&it.pinY!=null;
+  }).map(function(it){
+    var cls=punchUrgencyCssClass(it.urgency).split(' ')[0];
+    return '<button type="button" class="blueprint-pin '+cls+'" style="left:'+(it.pinX*100)+'%;top:'+(it.pinY*100)+'%" title="'+escHtml(it.description)+'" onclick="event.stopPropagation();openPunchItemView(\''+it.id+'\')"></button>';
+  }).join('');
+}
+function renderPunchTableHtml(items){
+  if(!items.length){
+    return '<div class="empty-state card"><div class="empty-icon">'+ic('map-pin')+'</div><p>אין ליקויים עדיין</p></div>';
+  }
+  return '<div class="card"><div class="table-scroll"><table class="payments-table punch-items-table"><thead><tr>'+
+    '<th>תיאור</th><th>קבלן</th><th>דחיפות</th><th>דד-ליין</th><th>סטטוס</th></tr></thead><tbody>'+
+    items.map(function(it){
+      var sub=getSubcontractorById(it.subcontractorId);
+      var urgCls=punchUrgencyCssClass(it.urgency).split(' ').slice(1).join(' ');
+      return '<tr style="cursor:pointer" onclick="openPunchItemView(\''+it.id+'\')">'+
+        '<td style="font-weight:600">'+escHtml(it.description)+'</td>'+
+        '<td>'+escHtml(sub?sub.companyName:'—')+'</td>'+
+        '<td class="'+urgCls+'">'+escHtml(it.urgency)+'</td>'+
+        '<td>'+formatSubcontractorDate(it.deadline)+'</td>'+
+        '<td class="'+punchStatusCssClass(it.status)+'">'+punchStatusLabel(it.status)+'</td></tr>';
+    }).join('')+'</tbody></table></div></div>';
+}
+async function initPunchListTab(){
+  var root=document.getElementById('punch-tab-root');
+  if(!root)return;
+  if(!requireProjectAccess()){root.innerHTML='<p>אין גישה לפרויקט</p>';return;}
+  var proj=getCurrentProject();
+  if(!proj){root.innerHTML='<p>פרויקט לא נמצא</p>';return;}
+  root.innerHTML='<div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען ליקויים...</p></div>';
+  refreshIcons(root);
+  var isAdminUser=isAdmin();
+  await refreshSubcontractors();
+  var loaded=await refreshPunchItems(proj.id);
+  var blueprintPath=proj.blueprint_path||proj.blueprintPath||null;
+  punchBlueprintSignedUrl=blueprintPath?await getBlueprintSignedUrl(blueprintPath):null;
+  var html='<div class="section-actions"><div class="section-title">'+ic('map-pin')+' ליקויים</div></div>';
+  if(!blueprintPath||!punchBlueprintSignedUrl){
+    html+='<div class="card blueprint-section"><p style="font-size:14px;color:var(--text-muted);margin-bottom:16px">העלה תוכנית (תמונה או PDF) כדי לנעוץ ליקויים על המפה.</p>';
+    if(isAdminUser){
+      html+='<label class="btn btn-primary btn-sm" style="cursor:pointer"><i data-lucide="upload"></i> העלה תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none" onchange="handleBlueprintUpload(event)"/></label>'+
+        '<div id="blueprint-upload-status" class="blueprint-upload-hint"></div>';
+    }else{
+      html+='<p style="font-size:13px;color:var(--text-muted)">טרם הועלתה תוכנית לפרויקט זה.</p>';
+    }
+    html+='</div>';
+  }else{
+    var isPdf=isBlueprintPdfPath(blueprintPath);
+    var pinsHtml=renderPunchPinsHtml(punchItemsCache,!isPdf);
+    if(isPdf){
+      html+='<div class="card blueprint-section">'+
+        '<iframe src="'+escHtml(punchBlueprintSignedUrl)+'" title="תוכנית פרויקט"></iframe>'+
+        '<p class="blueprint-upload-hint">PDF — הוסף ליקוי בלחיצה על הכפתור למטה (ללא נעיצה על התוכנית).</p>'+
+        '<button type="button" class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openNewPunchModal()">'+ic('plus')+' ליקוי חדש</button>'+
+        (isAdminUser?'<label class="btn btn-outline btn-sm" style="cursor:pointer;margin-right:8px"><i data-lucide="upload"></i> החלף תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none" onchange="handleBlueprintUpload(event)"/></label>':'')+
+        '</div>';
+    }else{
+      html+='<div class="card blueprint-section">'+
+        '<p class="blueprint-upload-hint" style="margin-bottom:10px">לחץ על התוכנית כדי להוסיף ליקוי חדש במיקום הנבחר.</p>'+
+        '<div class="blueprint-viewer-wrap clickable" id="blueprint-viewer" onclick="onBlueprintImageClick(event)">'+
+        '<img id="blueprint-image" src="'+escHtml(punchBlueprintSignedUrl)+'" alt="תוכנית פרויקט"/>'+
+        '<div class="blueprint-pins-layer">'+pinsHtml+'</div></div>'+
+        (isAdminUser?'<label class="btn btn-outline btn-sm" style="cursor:pointer;margin-top:12px"><i data-lucide="upload"></i> החלף תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none" onchange="handleBlueprintUpload(event)"/></label>':'')+
+        '</div>';
+    }
+  }
+  if(!loaded.ok){
+    html+='<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינת ליקויים. הרץ את supabase-punch-list-migration.sql.</div>';
+  }
+  html+='<div class="section-title" style="margin-top:24px;margin-bottom:12px">'+ic('list')+' רשימת ליקויים</div>'+renderPunchTableHtml(punchItemsCache);
+  root.innerHTML=html;
+  refreshIcons(root);
+}
+async function handleBlueprintUpload(ev){
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var file=ev.target.files&&ev.target.files[0];
+  if(ev.target)ev.target.value='';
+  if(!file)return;
+  var statusEl=document.getElementById('blueprint-upload-status');
+  if(statusEl)statusEl.textContent='מעלה תוכנית...';
+  var proj=getCurrentProject();if(!proj)return;
+  var uploadFile=file;
+  if(file.type&&file.type.startsWith('image/'))uploadFile=await compressImage(file);
+  var ext=paymentReceiptFileExt(uploadFile);
+  var path=proj.id+'/blueprint-'+Date.now()+'.'+ext;
+  var upRes=await supabase.storage.from(PROJECT_BLUEPRINTS_BUCKET).upload(path,uploadFile,{cacheControl:'3600',upsert:false});
+  if(upRes.error){
+    if(statusEl)statusEl.textContent='';
+    alert('שגיאה בהעלאת התוכנית:\n'+formatSupabaseErrorHint(upRes.error.message));
+    return;
+  }
+  var signed=await getBlueprintSignedUrl(path);
+  if(!signed||!await verifyStorageUrl(signed)){
+    await supabase.storage.from(PROJECT_BLUEPRINTS_BUCKET).remove([path]);
+    if(statusEl)statusEl.textContent='';
+    alert('שגיאה באימות התוכנית לאחר העלאה');
+    return;
+  }
+  var data=getData();
+  var p=data.projects.find(function(x){return x.id===proj.id;});
+  if(!p){if(statusEl)statusEl.textContent='';return;}
+  p.blueprint_path=path;
+  if(!(await saveData(data))){if(statusEl)statusEl.textContent='';return;}
+  logActivity('העלאת תוכנית','פרויקט: '+p.name);
+  if(statusEl)statusEl.textContent='';
+  await initPunchListTab();
+}
+function onBlueprintImageClick(e){
+  if(e.target.closest('.blueprint-pin'))return;
+  if(!requireProjectAccess())return;
+  var wrap=document.getElementById('blueprint-viewer');
+  if(!wrap||!e.target.closest('#blueprint-image'))return;
+  var rect=wrap.getBoundingClientRect();
+  if(!rect.width||!rect.height)return;
+  var x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+  var y=Math.max(0,Math.min(1,(e.clientY-rect.top)/rect.height));
+  openNewPunchModal(x,y);
+}
+function openNewPunchModal(pinX,pinY){
+  if(!requireProjectAccess())return;
+  viewingPunchItemId=null;
+  punchPinDraft={x:pinX!=null?pinX:null,y:pinY!=null?pinY:null};
+  document.getElementById('modal-punch-title').textContent='ליקוי חדש';
+  document.getElementById('punch-view-panel').style.display='none';
+  document.getElementById('punch-form-panel').style.display='';
+  document.getElementById('punch-save-btn').style.display='';
+  document.getElementById('punch-fixed-btn').style.display='none';
+  document.getElementById('punch-desc').value='';
+  document.getElementById('punch-urgency').value='בינונית';
+  document.getElementById('punch-deadline').value='';
+  clearFormErrors('modal-punch-item');
+  populatePunchSubcontractorSelect('');
+  openModal('modal-punch-item');
+  refreshIcons(document.getElementById('modal-punch-item'));
+}
+function openPunchItemView(itemId){
+  if(!requireProjectAccess())return;
+  var item=punchItemsCache.find(function(x){return x.id===itemId;});
+  if(!item)return;
+  viewingPunchItemId=itemId;
+  punchPinDraft={x:item.pinX,y:item.pinY};
+  var sub=getSubcontractorById(item.subcontractorId);
+  document.getElementById('modal-punch-title').textContent='פרטי ליקוי';
+  document.getElementById('punch-view-panel').style.display='';
+  document.getElementById('punch-form-panel').style.display='none';
+  document.getElementById('punch-save-btn').style.display='none';
+  document.getElementById('punch-view-desc').textContent=item.description;
+  document.getElementById('punch-view-sub').textContent=sub?sub.companyName:'—';
+  document.getElementById('punch-view-urgency').innerHTML='<span class="'+punchUrgencyCssClass(item.urgency)+'">'+escHtml(item.urgency)+'</span>';
+  document.getElementById('punch-view-deadline').textContent=formatSubcontractorDate(item.deadline);
+  document.getElementById('punch-view-status').innerHTML='<span class="'+punchStatusCssClass(item.status)+'">'+punchStatusLabel(item.status)+'</span>';
+  document.getElementById('punch-fixed-btn').style.display=item.status==='open'?'':'none';
+  openModal('modal-punch-item');
+  refreshIcons(document.getElementById('modal-punch-item'));
+}
+async function savePunchItem(){
+  if(!requireProjectAccess())return;
+  clearFormErrors('modal-punch-item');
+  if(!validateRequired('punch-desc')){focusFirstFormError('modal-punch-item');return;}
+  var proj=getCurrentProject();if(!proj)return;
+  var row={
+    project_id:proj.id,
+    description:document.getElementById('punch-desc').value.trim(),
+    subcontractor_id:document.getElementById('punch-subcontractor').value||null,
+    urgency:document.getElementById('punch-urgency').value||'בינונית',
+    deadline:document.getElementById('punch-deadline').value||null,
+    status:'open',
+    pin_x:punchPinDraft.x,
+    pin_y:punchPinDraft.y
+  };
+  var res=await supabase.from('punch_items').insert(row).select().single();
+  if(res.error){alert('שגיאה בשמירת הליקוי:\n'+formatSupabaseErrorHint(res.error.message));return;}
+  logActivity('ליקוי חדש','פרויקט: '+proj.name+' · '+row.description);
+  closeModal('modal-punch-item');
+  await initPunchListTab();
+}
+async function markPunchFixed(){
+  if(!requireProjectAccess()||!viewingPunchItemId)return;
+  var proj=getCurrentProject();if(!proj)return;
+  var item=punchItemsCache.find(function(x){return x.id===viewingPunchItemId;});
+  if(!item||item.status==='fixed')return;
+  var res=await supabase.from('punch_items').update({status:'fixed'}).eq('id',viewingPunchItemId).select().single();
+  if(res.error){alert('שגיאה בעדכון הסטטוס:\n'+formatSupabaseErrorHint(res.error.message));return;}
+  logActivity('ליקוי סומן כתוקן','פרויקט: '+proj.name+' · '+item.description);
+  closeModal('modal-punch-item');
+  await initPunchListTab();
+}
+
 async function ensureUserProfile(authUser){
   var res=await supabase.from('profiles').select('*').eq('id',authUser.id).maybeSingle();
   if(res.data){
@@ -2173,7 +2465,7 @@ function renderSidebar(){
   refreshIcons(nav);
 }
 
-var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה',updates:'עדכונים',messages:'שאלות'};
+var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה',punch:'ליקויים',updates:'עדכונים',messages:'שאלות'};
 var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
@@ -2474,6 +2766,7 @@ function renderProjectDetail(el){
     ['financial','דוח פיננסי','trending-up',''],
     ['docs','מסמכים','folder',''],
     ['gallery','גלריה','camera',''],
+    ['punch','ליקויים','map-pin',''],
     ['updates','עדכונים','bell',''],
     ['messages','שאלות','message-circle',messagesTabBadge]
   ];
@@ -2633,6 +2926,9 @@ function renderProjectDetail(el){
     }).join('')+'</div>')+
     '</div>';
 
+  // PUNCH LIST TAB
+  html+='<div id="tab-punch" class="tab-content '+(currentTab==='punch'?'active':'')+'"><div id="punch-tab-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div></div>';
+
   // UPDATES TAB
   html+='<div id="tab-updates" class="tab-content '+(currentTab==='updates'?'active':'')+'">'+
     '<div class="section-actions"><div class="section-title">'+ic('bell')+' עדכונים</div>'+
@@ -2671,6 +2967,7 @@ function renderProjectDetail(el){
   setTimeout(function(){
     var ml=document.getElementById('messages-list');if(ml)ml.scrollTop=ml.scrollHeight;
     if(currentTab==='financial')renderFinancialCharts(p);
+    if(currentTab==='punch')initPunchListTab();
   },50);
 }
 
@@ -2783,6 +3080,7 @@ async function switchTab(t){
       var p=getCurrentProject();
       if(p)setTimeout(function(){renderFinancialCharts(p);},50);
     }
+    if(t==='punch')initPunchListTab();
     var ml=document.getElementById('messages-list');
     if(ml)setTimeout(function(){ml.scrollTop=ml.scrollHeight;},50);
     return;
