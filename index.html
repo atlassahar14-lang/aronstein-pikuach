@@ -265,7 +265,16 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .file-preview-pdf{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:12px;font-size:13px}
 .file-preview-pdf svg{width:28px;height:28px;color:var(--primary);flex-shrink:0}
 .file-preview-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;font-size:12px;color:var(--text-muted)}
-.file-preview-remove{background:none;border:none;color:var(--danger);cursor:pointer;font-family:'Heebo',sans-serif;font-size:12px;font-weight:600;padding:0}
+.file-preview-remove{background:none;border:none;color:var(--danger);cursor:pointer;font-family:'Heebo',sans-serif;font-size:12px;font-weight:600;padding:8px 12px;min-height:44px;touch-action:manipulation}
+.payment-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.payment-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
+.payment-card-desc{font-weight:700;color:var(--primary);font-size:15px;line-height:1.35;flex:1;min-width:0;word-break:break-word}
+.payment-card-amount{font-weight:800;color:var(--primary);font-size:16px;white-space:nowrap;flex-shrink:0}
+.payment-card-meta{display:flex;flex-wrap:wrap;gap:8px 12px;font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.4}
+.payments-mobile-list{display:none;flex-direction:column;gap:12px}
+.payments-desktop{display:block}
+.mobile-logout-btn{display:none;min-width:44px;min-height:44px;padding:0 14px;border:none;background:var(--bg);border-radius:10px;color:var(--primary);font-family:'Heebo',sans-serif;font-size:13px;font-weight:600;cursor:pointer;align-items:center;gap:6px;flex-shrink:0;touch-action:manipulation}
+.mobile-logout-btn svg{width:18px;height:18px}
 .file-preview-existing{font-size:12px;color:var(--text-muted);margin-top:6px}
 .update-media-block{margin-top:12px}
 .update-media-block img,.update-media-block video{max-width:100%;max-height:320px;border-radius:12px;border:1px solid var(--border)}
@@ -307,13 +316,26 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .login-panel{padding-left:max(28px,env(safe-area-inset-left));padding-right:max(28px,env(safe-area-inset-right));padding-bottom:max(28px,env(safe-area-inset-bottom))}
 }
 @media(max-width:1023px){
-  .form-group input,.form-group select,.form-group textarea,.message-input-wrap input{font-size:16px}
+  .form-group input,.form-group select,.form-group textarea,.message-input-wrap input{font-size:16px;min-height:44px}
+  .form-group textarea{min-height:88px}
   .btn{min-height:44px;touch-action:manipulation}
-  .btn-sm{min-height:40px;padding:10px 14px}
+  .btn-sm{min-height:44px;min-width:44px;padding:10px 14px;justify-content:center}
   .tab{min-height:44px;touch-action:manipulation}
   .nav-item{min-height:44px}
   .modal-close{min-width:44px;min-height:44px}
+  .upload-label{min-height:44px;width:100%;justify-content:center;padding:12px 16px;font-size:14px;touch-action:manipulation}
+  .map-nav-btn{width:44px;height:44px;min-width:44px;min-height:44px}
+  .map-nav-btn svg{width:18px;height:18px}
+  .sidebar-close-btn{width:44px;height:44px;min-width:44px;min-height:44px}
+  .btn-logout{min-height:44px;padding:12px 16px;font-size:14px;touch-action:manipulation}
+  .back-btn{min-height:44px;padding:10px 4px;touch-action:manipulation}
   .forgot-link,.back-login-link{min-height:44px;display:inline-flex;align-items:center}
+  .login-footer a{display:inline-flex;align-items:center;min-height:44px;padding:4px 0}
+  input[type=range]{height:44px;touch-action:manipulation;cursor:pointer}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:var(--primary);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+  input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:var(--primary);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+  .client-mode .hamburger-btn{display:none}
+  .client-mode .mobile-logout-btn{display:inline-flex}
   .login-split{flex-direction:column}
   .login-hero{order:-1;min-height:280px;flex:none}
   .login-hero-content{padding:32px 24px}
@@ -380,11 +402,17 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .login-panel{padding:24px 16px}
   .login-logo h1{font-size:20px}
   .login-logo .icon{width:48px;height:48px}
-  .login-subtitle{font-size:12px}
+  .login-subtitle{font-size:13px;line-height:1.55}
+  .login-footer{font-size:13px}
   .main-content{padding:calc(68px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(20px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
   .card{padding:16px}
   .stats-grid{grid-template-columns:1fr}
+  .dash-metrics{grid-template-columns:1fr}
+  .dash-metric-value{font-size:26px}
   .budget-summary{grid-template-columns:1fr}
+  .payments-desktop{display:none}
+  .payments-mobile-list{display:flex}
+  .fin-analysis-table-wrap{display:none}
   .stat-value{font-size:24px}
   .budget-item .amount{font-size:18px}
   .page-header h1{font-size:20px}
@@ -473,6 +501,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="mobile-header-inner">
         <button type="button" class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileSidebar()" aria-label="פתח תפריט" aria-expanded="false"><i data-lucide="menu"></i></button>
         <span class="mobile-header-title" id="mobile-header-title">ארונשטיין פיקוח וניהול</span>
+        <button type="button" class="mobile-logout-btn" id="mobile-logout-btn" onclick="doLogout()" aria-label="יציאה"><i data-lucide="log-out"></i> יציאה</button>
       </div>
     </header>
     <aside class="sidebar" id="sidebar">
@@ -1156,6 +1185,10 @@ function renderSidebar(){
   document.getElementById('user-avatar-sb').textContent=currentUser.name.charAt(0);
   document.getElementById('user-name-sb').textContent=currentUser.name;
   document.getElementById('user-role-sb').textContent=currentUser.role==='admin'?'מנהל מערכת':'לקוח';
+  var appLayout=document.querySelector('.app-layout');
+  if(appLayout)appLayout.classList.toggle('client-mode',!isAdmin());
+  var mobileLogout=document.getElementById('mobile-logout-btn');
+  if(mobileLogout)refreshIcons(mobileLogout);
   var nav=document.getElementById('sidebar-nav');
   if(currentUser.role==='admin'){
     nav.innerHTML='<div class="nav-section-title">ניהול</div>'+
@@ -1191,7 +1224,7 @@ function toggleMobileSidebar(){
   var bd=document.getElementById('sidebar-backdrop');
   var open=sb.classList.toggle('open');
   bd.classList.toggle('open',open);
-  document.body.style.overflow=open?'hidden':'';
+  syncBodyScrollLock();
   updateHamburgerIcon(open);
 }
 function closeMobileSidebar(){
@@ -1199,7 +1232,7 @@ function closeMobileSidebar(){
   var bd=document.getElementById('sidebar-backdrop');
   if(sb)sb.classList.remove('open');
   if(bd)bd.classList.remove('open');
-  document.body.style.overflow='';
+  syncBodyScrollLock();
   updateHamburgerIcon(false);
 }
 function updateMobileTabLabel(tab){
@@ -1217,7 +1250,7 @@ function toggleMobileTabMenu(){
   backdrop.classList.toggle('open',open);
   toggle.classList.toggle('open',open);
   toggle.setAttribute('aria-expanded',open?'true':'false');
-  document.body.style.overflow=open?'hidden':(document.getElementById('sidebar').classList.contains('open')?'hidden':'');
+  syncBodyScrollLock();
 }
 function closeMobileTabMenu(){
   var drawer=document.getElementById('mobile-tab-drawer');
@@ -1226,7 +1259,7 @@ function closeMobileTabMenu(){
   if(drawer)drawer.classList.remove('open');
   if(backdrop)backdrop.classList.remove('open');
   if(toggle){toggle.classList.remove('open');toggle.setAttribute('aria-expanded','false');}
-  if(!document.getElementById('sidebar').classList.contains('open'))document.body.style.overflow='';
+  syncBodyScrollLock();
 }
 
 function showView(view,pid){
@@ -1309,7 +1342,7 @@ function renderBudgetAnalysisTabHtml(p,ba){
     '<div class="progress-bar-wrap" style="height:14px"><div class="progress-bar" style="width:'+barWidth+'%;background:'+barColor+'"></div></div>'+
     '<div class="progress-label" style="margin-top:8px"><span>₪0</span><span>'+fmtMoney(ba.approved)+'</span></div>'+
     '</div>'+
-    '<div class="card"><div class="card-title">'+ic('table')+' סיכום תקציב מול ביצוע</div>'+
+    '<div class="card fin-analysis-table-wrap"><div class="card-title">'+ic('table')+' סיכום תקציב מול ביצוע</div>'+
     '<div class="table-scroll"><table class="fin-analysis-table"><thead><tr><th>פרויקט</th><th>תקציב</th><th>בוצע</th><th>שארית / עודף</th></tr></thead><tbody>'+
     '<tr><td class="fin-val">'+escHtml(p.name)+'</td><td class="fin-val">'+fmtMoney(ba.approved)+'</td><td class="fin-val">'+fmtMoney(ba.paid)+'</td>'+
     '<td class="fin-val '+tableDiffClass+'">'+ba.diffDisplay+'</td></tr></tbody></table></div></div>';
@@ -1427,6 +1460,18 @@ function renderProjectsList(el){
     '<div class="projects-grid">'+data.projects.map(projectCardHTML).join('')+'</div>';
 }
 
+function renderPaymentActionsHtml(pay,isAdminUser){
+  return (pay.receiptUrl?'<a href="'+escHtml(pay.receiptUrl)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" title="אסמכתא">'+ic('paperclip')+'</a>':'')+
+    (isAdminUser?'<button class="btn btn-outline btn-sm" onclick="openEditPaymentModal(\''+pay.id+'\')">'+ic('pencil')+'</button>'+
+    '<button class="btn btn-danger btn-sm" onclick="deletePayment(\''+pay.id+'\')">'+ic('trash-2')+'</button>':'');
+}
+function renderPaymentCardHtml(pay,isAdminUser){
+  return '<div class="payment-card">'+
+    '<div class="payment-card-header"><span class="payment-card-desc">'+escHtml(pay.desc)+'</span><span class="payment-card-amount">'+fmtMoney(pay.amount)+'</span></div>'+
+    '<div class="payment-card-meta"><span>'+escHtml(pay.to)+'</span><span class="badge badge-blue">'+escHtml(pay.category)+'</span><span>'+escHtml(pay.date)+'</span></div>'+
+    '<div class="payment-actions">'+renderPaymentActionsHtml(pay,isAdminUser)+'</div></div>';
+}
+
 function renderProjectDetail(el){
   if(!isAdmin()&&!currentUser.projectId){renderClientNoProject(el);return;}
   var p=getCurrentProject();
@@ -1538,18 +1583,15 @@ function renderProjectDetail(el){
     (isAdminUser?'<button class="btn btn-primary btn-sm" onclick="openAddPaymentModal()">'+ic('plus')+' תשלום חדש</button>':'')+
     '</div>'+
     (p.payments.length===0?'<div class="empty-state"><div class="empty-icon">'+ic('banknote')+'</div><p>אין תשלומים עדיין</p></div>':
-    '<div class="table-scroll"><table class="payments-table"><thead><tr><th>תיאור</th><th>נמען</th><th>קטגוריה</th><th>תאריך</th><th>סכום</th><th></th></tr></thead><tbody>'+
+    '<div class="payments-desktop"><div class="table-scroll"><table class="payments-table"><thead><tr><th>תיאור</th><th>נמען</th><th>קטגוריה</th><th>תאריך</th><th>סכום</th><th></th></tr></thead><tbody>'+
     p.payments.map(function(pay){
       return '<tr><td style="font-weight:600">'+pay.desc+'</td><td style="color:var(--text-muted)">'+pay.to+'</td>'+
         '<td><span class="badge badge-blue">'+pay.category+'</span></td>'+
         '<td style="color:var(--text-muted)">'+pay.date+'</td>'+
         '<td style="font-weight:700;color:var(--primary)">'+fmtMoney(pay.amount)+'</td>'+
-        '<td><div class="payment-actions">'+
-        (pay.receiptUrl?'<a href="'+escHtml(pay.receiptUrl)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" title="אסמכתא">'+ic('paperclip')+'</a>':'')+
-        (isAdminUser?'<button class="btn btn-outline btn-sm" onclick="openEditPaymentModal(\''+pay.id+'\')">'+ic('pencil')+'</button>'+
-        '<button class="btn btn-danger btn-sm" onclick="deletePayment(\''+pay.id+'\')">'+ic('trash-2')+'</button>':'')+
-        '</div></td></tr>';
-    }).join('')+'</tbody></table></div>')+
+        '<td><div class="payment-actions">'+renderPaymentActionsHtml(pay,isAdminUser)+'</div></td></tr>';
+    }).join('')+'</tbody></table></div></div>'+
+    '<div class="payments-mobile-list">'+p.payments.map(function(pay){return renderPaymentCardHtml(pay,isAdminUser);}).join('')+'</div>')+
     '</div></div>';
 
   // BUDGET ANALYSIS TAB
@@ -1834,15 +1876,24 @@ function renderSettings(el){
 function resetModalPosition(modal){
   modal.style.left='50%';modal.style.top='50%';modal.style.transform='translate(-50%,-50%)';
 }
+var modalOpenCount=0;
+function syncBodyScrollLock(){
+  var sbOpen=document.getElementById('sidebar')&&document.getElementById('sidebar').classList.contains('open');
+  var tabOpen=document.getElementById('mobile-tab-drawer')&&document.getElementById('mobile-tab-drawer').classList.contains('open');
+  document.body.style.overflow=(modalOpenCount>0||sbOpen||tabOpen)?'hidden':'';
+}
 function openModal(id){
   var overlay=document.getElementById(id);
   resetModalPosition(overlay.querySelector('.modal'));
   overlay.classList.add('open');
+  if(!modalOpenCount++)syncBodyScrollLock();
 }
 function closeModal(id){
   var overlay=document.getElementById(id);
   overlay.classList.remove('open');
   resetModalPosition(overlay.querySelector('.modal'));
+  if(modalOpenCount>0)modalOpenCount--;
+  syncBodyScrollLock();
 }
 function initDraggableModals(){
   var drag=null;
