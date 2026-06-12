@@ -14,7 +14,11 @@ img,svg,video,canvas{max-width:100%;height:auto}
 #login-screen{min-height:100vh;min-height:100dvh;background:#fff}
 .login-split{display:flex;min-height:100vh;min-height:100dvh;width:100%}
 .project-detail-title{font-size:24px;font-weight:800;color:var(--primary);line-height:1.3;word-break:break-word}
-.project-detail-address{color:var(--text-muted);margin-top:4px;font-size:14px;word-break:break-word}
+.project-detail-address{color:var(--text-muted);margin-top:4px;font-size:14px;word-break:break-word;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.project-address-row{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.map-nav-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;min-width:28px;min-height:28px;border-radius:8px;background:var(--primary);color:#fff;text-decoration:none;flex-shrink:0;transition:background .2s,transform .2s;touch-action:manipulation}
+.map-nav-btn:hover{background:var(--accent);color:#fff;transform:scale(1.05)}
+.map-nav-btn svg{width:14px;height:14px}
 .phase-actions{display:flex;gap:8px;margin-top:10px}
 .payment-actions{display:flex;gap:6px;flex-wrap:wrap}
 .doc-item-actions{display:flex;gap:4px;flex-wrap:wrap}
@@ -1102,13 +1106,27 @@ function formatProjectAddress(p){
   if(p.houseNumber)addr+=(addr?' ':'')+p.houseNumber;
   return addr;
 }
+function getProjectNavUrl(p){
+  var q=formatProjectAddress(p).trim();
+  if(!q)return '';
+  return 'https://waze.com/ul?q='+encodeURIComponent(q)+'&navigate=yes';
+}
+function projectNavBtn(p,stopProp){
+  var url=getProjectNavUrl(p);
+  if(!url)return '';
+  var stop=stopProp?' onclick="event.stopPropagation()"':'';
+  return '<a href="'+url+'" class="map-nav-btn" target="_blank" rel="noopener noreferrer"'+stop+' aria-label="ניווט לכתובת הפרויקט" title="ניווט ב-Waze / Google Maps">'+ic('navigation')+'</a>';
+}
+function projectAddressLine(p,stopProp){
+  return '<span class="project-address-row">'+ic('map-pin')+' <span>'+formatProjectAddress(p)+'</span>'+projectNavBtn(p,stopProp)+'</span>';
+}
 
 function projectCardHTML(p){
   var paid=p.payments.reduce(function(s,x){return s+Number(x.amount||0);},0);
   var sm={'active':['status-active','בביצוע'],'paused':['status-paused','מושהה'],'done':['status-done','הושלם']};
   var sc=sm[p.status]||sm.active;
   return '<div class="project-card" onclick="showView(\'project\',\''+p.id+'\')">'+
-    '<div class="project-card-header"><div><div class="project-name">'+p.name+'</div><div class="project-address">'+ic('map-pin')+' '+formatProjectAddress(p)+'</div></div>'+
+    '<div class="project-card-header"><div><div class="project-name">'+p.name+'</div><div class="project-address">'+projectAddressLine(p,true)+'</div></div>'+
     '<span class="status-badge '+sc[0]+'">'+sc[1]+'</span></div>'+
     '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+(p.progress||0)+'%"></div></div>'+
     '<div class="progress-label"><span>התקדמות</span><span>'+(p.progress||0)+'%</span></div>'+
@@ -1161,7 +1179,7 @@ function renderProjectDetail(el){
   var messagesTabBadge=unreadMessages?'<span class="tab-badge show"></span>':'';
 
   var html=(isAdminUser?'<button class="back-btn" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>':'');
-  html+='<div class="flex-between responsive-stack mb-24"><div><h1 class="project-detail-title">'+p.name+'</h1><p class="project-detail-address">'+ic('map-pin')+' '+formatProjectAddress(p)+'</p></div>';
+  html+='<div class="flex-between responsive-stack mb-24"><div><h1 class="project-detail-title">'+p.name+'</h1><p class="project-detail-address">'+projectAddressLine(p,false)+'</p></div>';
   if(isAdminUser)html+='<div class="flex-gap"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-accent btn-sm" onclick="openModal(\'modal-update\')">'+ic('bell')+' עדכון חדש</button></div>';
   html+='</div>';
 
