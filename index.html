@@ -240,10 +240,24 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .doc-category-title{font-size:15px;font-weight:700;color:var(--primary);margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .doc-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
 .doc-item:last-child{border-bottom:none}
-.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
-.gallery-item{aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;cursor:pointer;transition:transform .2s}
-.gallery-item:hover{transform:scale(1.02)}
-.gallery-item img{width:100%;height:100%;object-fit:cover}
+.gallery-list{display:flex;flex-direction:column;gap:14px}
+.gallery-row{display:flex;align-items:flex-start;gap:16px;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:14px}
+.gallery-row-thumb{width:140px;height:105px;flex-shrink:0;border-radius:10px;overflow:hidden;cursor:pointer;border:1px solid var(--border);padding:0;background:var(--bg);transition:transform .15s,box-shadow .15s}
+.gallery-row-thumb:hover{transform:scale(1.02);box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.gallery-row-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.gallery-row-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}
+.gallery-row-date{font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:6px}
+.gallery-row-date svg{width:14px;height:14px}
+.gallery-caption-edit{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.gallery-caption-input{flex:1;min-width:180px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl}
+.gallery-caption-input:focus{outline:none;border-color:var(--primary-light)}
+.gallery-caption-text{font-size:14px;line-height:1.55;color:var(--text);margin:0}
+.gallery-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1100;padding:24px;flex-direction:column}
+.gallery-lightbox.open{display:flex}
+.gallery-lightbox img{max-width:min(96vw,1200px);max-height:calc(100dvh - 120px);object-fit:contain;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.4)}
+.gallery-lightbox-close{position:absolute;top:16px;left:16px;background:rgba(255,255,255,.15);border:none;color:#fff;width:44px;height:44px;border-radius:50%;cursor:pointer;font-size:24px;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.gallery-lightbox-close:hover{background:rgba(255,255,255,.28)}
+.gallery-lightbox-caption{color:#fff;font-size:15px;text-align:center;margin-top:16px;max-width:720px;line-height:1.5;padding:0 16px}
 .messages-list{display:flex;flex-direction:column;gap:12px;max-height:450px;overflow-y:auto;margin-bottom:20px;padding:4px}
 .message-bubble{padding:12px 16px;border-radius:14px;max-width:80%;font-size:14px;line-height:1.5}
 .message-bubble.admin{background:var(--primary);color:#fff;align-self:flex-start;border-radius:4px 14px 14px 14px}
@@ -416,7 +430,10 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .doc-categories{grid-template-columns:1fr}
   .doc-item{flex-wrap:wrap;gap:10px;align-items:flex-start}
   .doc-item-actions{width:100%}
-  .gallery-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+  .gallery-row{flex-direction:column}
+  .gallery-row-thumb{width:100%;height:200px}
+  .gallery-caption-edit{flex-direction:column;align-items:stretch}
+  .gallery-caption-save{width:100%;justify-content:center}
   .stats-grid{grid-template-columns:repeat(2,1fr)}
   .budget-summary{grid-template-columns:repeat(2,1fr)}
   .tab{font-size:13px;padding:8px 14px;white-space:nowrap}
@@ -471,7 +488,6 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .projects-grid{grid-template-columns:repeat(2,1fr)}
   .timeline-phases{grid-template-columns:repeat(2,1fr)}
   .doc-categories{grid-template-columns:repeat(2,1fr)}
-  .gallery-grid{grid-template-columns:repeat(3,1fr)}
   .stats-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(min-width:1024px) and (max-width:1279px){
@@ -660,6 +676,13 @@ img,svg,video,canvas{max-width:100%;height:auto}
   </div>
 </div>
 
+<!-- Gallery lightbox -->
+<div class="gallery-lightbox" id="gallery-lightbox" onclick="closePhotoLightbox(event)">
+  <button type="button" class="gallery-lightbox-close" onclick="closePhotoLightbox(event)" aria-label="סגור">&times;</button>
+  <img id="gallery-lightbox-img" src="" alt=""/>
+  <div id="gallery-lightbox-caption" class="gallery-lightbox-caption"></div>
+</div>
+
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/+esm';
 
@@ -777,6 +800,84 @@ async function uploadMediaFile(folderPath,file){
   if(res.error)return {ok:false,error:res.error.message};
   var publicUrl=supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path).data.publicUrl;
   return {ok:true,data:{url:publicUrl,name:file.name,type:file.type,path:path}};
+}
+function formatPhotoDateTime(photo){
+  var raw=photo.uploadedAt||photo.date;
+  if(!raw)return '—';
+  var d=new Date(raw);
+  if(isNaN(d.getTime()))return String(raw);
+  return d.toLocaleString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function getGalleryPhotosSorted(photos){
+  return photos.slice().sort(function(a,b){
+    var ta=Date.parse(a.uploadedAt||a.date||0)||0;
+    var tb=Date.parse(b.uploadedAt||b.date||0)||0;
+    return tb-ta;
+  });
+}
+function renderGalleryPhotoRow(photo,isAdminUser){
+  var dateStr=formatPhotoDateTime(photo);
+  var captionBlock=isAdminUser
+    ? '<div class="gallery-caption-edit">'+
+        '<input type="text" class="gallery-caption-input" id="photo-caption-'+photo.id+'" value="'+escHtml(photo.caption||'')+'" placeholder="הוסף כיתוב לתמונה..." onkeydown="if(event.key===\'Enter\')savePhotoCaption(\''+photo.id+'\')"/>'+
+        '<button type="button" class="btn btn-primary btn-sm gallery-caption-save" onclick="savePhotoCaption(\''+photo.id+'\')">'+ic('save')+' שמור</button>'+
+      '</div>'
+    : (photo.caption?'<p class="gallery-caption-text">'+escHtml(photo.caption)+'</p>':'');
+  return '<div class="gallery-row">'+
+    '<button type="button" class="gallery-row-thumb" onclick="openPhotoLightbox(\''+photo.id+'\')" aria-label="הגדל תמונה">'+
+      '<img src="'+escHtml(photo.url)+'" alt="'+escHtml(photo.caption||photo.name||'תמונה')+'" loading="lazy"/>'+
+    '</button>'+
+    '<div class="gallery-row-body">'+
+      '<div class="gallery-row-date">'+ic('clock')+' '+dateStr+'</div>'+
+      captionBlock+
+    '</div></div>';
+}
+function openPhotoLightbox(photoId){
+  var proj=getCurrentProject();if(!proj)return;
+  var photo=proj.photos.find(function(p){return p.id===photoId;});
+  if(!photo)return;
+  var lb=document.getElementById('gallery-lightbox');
+  var img=document.getElementById('gallery-lightbox-img');
+  var cap=document.getElementById('gallery-lightbox-caption');
+  img.src=photo.url;
+  img.alt=photo.caption||photo.name||'תמונה';
+  cap.textContent=photo.caption||'';
+  cap.style.display=photo.caption?'block':'none';
+  lb.classList.add('open');
+  if(!modalOpenCount++)syncBodyScrollLock();
+}
+function closePhotoLightbox(event){
+  if(event){
+    var isCloseBtn=event.target.classList&&event.target.classList.contains('gallery-lightbox-close');
+    if(event.target!==event.currentTarget&&!isCloseBtn)return;
+    event.stopPropagation();
+  }
+  var lb=document.getElementById('gallery-lightbox');
+  if(!lb.classList.contains('open'))return;
+  lb.classList.remove('open');
+  document.getElementById('gallery-lightbox-img').src='';
+  if(modalOpenCount>0)modalOpenCount--;
+  syncBodyScrollLock();
+}
+async function savePhotoCaption(photoId){
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var input=document.getElementById('photo-caption-'+photoId);
+  if(!input)return;
+  var data=getData();var proj=getCurrentProject();if(!proj)return;
+  var photo=proj.photos.find(function(p){return p.id===photoId;});
+  if(!photo)return;
+  var caption=input.value.trim();
+  photo.caption=caption;
+  logActivity('עדכון כיתוב תמונה','פרויקט: '+proj.name+(caption?' · '+caption:''));
+  if(!await saveData(data))return;
+  var btn=input.parentElement&&input.parentElement.querySelector('.gallery-caption-save');
+  if(btn){
+    var orig=btn.innerHTML;
+    btn.innerHTML=ic('circle-check')+' נשמר';
+    btn.disabled=true;
+    refreshIcons(btn);
+    setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;refreshIcons(btn);},1500);
+  }
 }
 function openNewUpdateModal(){
   if(!requireAdmin())return;
@@ -1828,8 +1929,8 @@ function renderProjectDetail(el){
     (isAdminUser?'<label class="upload-label">'+ic('camera')+' העלה תמונה<input type="file" accept="image/*" onchange="uploadPhoto(event)"/></label>':'')+
     '</div>'+
     (p.photos.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('camera')+'</div><p>אין תמונות עדיין'+(isAdminUser?' — העלה את הראשונה':'')+' </p></div>':
-    '<div class="gallery-grid">'+p.photos.map(function(photo){
-      return '<div class="gallery-item"><img src="'+photo.url+'" alt="'+photo.name+'"/></div>';
+    '<div class="gallery-list">'+getGalleryPhotosSorted(p.photos).map(function(photo){
+      return renderGalleryPhotoRow(photo,isAdminUser);
     }).join('')+'</div>')+
     '</div>';
 
@@ -2550,18 +2651,32 @@ async function deleteDoc(id){
   if(!await saveData(data))return;
   renderProjectDetail(document.getElementById('main-content'));
 }
-function uploadPhoto(event){
+async function uploadPhoto(event){
   if(!requireAdmin()||!requireProjectAccess())return;
   var file=event.target.files[0];if(!file)return;
-  var reader=new FileReader();
-  reader.onload=async function(e){
-    var data=getData();var proj=getCurrentProject();if(!proj)return;
-    proj.photos.push({id:'img'+Date.now(),name:file.name,url:e.target.result,date:new Date().toLocaleDateString('he-IL')});
-    logActivity('העלאת תמונה','פרויקט: '+proj.name+' · '+file.name);
-    if(!await saveData(data))return;
-    renderProjectDetail(document.getElementById('main-content'));
-  };
-  reader.readAsDataURL(file);
+  event.target.value='';
+  if(file.size>MEDIA_MAX_BYTES){alert('הקובץ גדול מדי (מקסימום 20MB)');return;}
+  if(!file.type.startsWith('image/')){alert('יש לבחור קובץ תמונה בלבד');return;}
+  var proj=getCurrentProject();if(!proj)return;
+  var photoId='img'+Date.now();
+  var upload=await uploadMediaFile('gallery/'+proj.id+'/'+photoId,file);
+  if(!upload.ok){
+    alert('שגיאה בהעלאת התמונה: '+upload.error);
+    return;
+  }
+  var data=getData();proj=getCurrentProject();if(!proj)return;
+  proj.photos.push({
+    id:photoId,
+    name:file.name,
+    url:upload.data.url,
+    path:upload.data.path,
+    type:upload.data.type,
+    uploadedAt:new Date().toISOString(),
+    caption:''
+  });
+  logActivity('העלאת תמונה','פרויקט: '+proj.name+' · '+file.name);
+  if(!await saveData(data))return;
+  renderProjectDetail(document.getElementById('main-content'));
 }
 
 async function changeAdminPass(){
@@ -2621,14 +2736,20 @@ Object.assign(window,{
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,
-  uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,uploadPhoto
+  uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,uploadPhoto,savePhotoCaption,openPhotoLightbox,closePhotoLightbox
 });
 window.addEventListener('resize',function(){
   if(window.innerWidth>=1024)closeMobileSidebar();
   if(finCharts.pie)finCharts.pie.resize();
   if(finCharts.bar)finCharts.bar.resize();
 });
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeMobileSidebar();closeMobileTabMenu();}});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    closeMobileSidebar();
+    closeMobileTabMenu();
+    closePhotoLightbox();
+  }
+});
 refreshIcons();
 updateLoginLockUI();
 </script>
