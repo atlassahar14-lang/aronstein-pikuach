@@ -1010,7 +1010,7 @@ async function saveGalleryPost(){
     var postId=editingGalleryPostId||('gpost'+Date.now());
     var uploadRes=await uploadGalleryImageFiles(proj.id,postId,galleryEditPendingFiles);
     if(!uploadRes.ok){
-      alert('שגיאה בהעלאת '+uploadRes.file+': '+uploadRes.error);
+      alert('שגיאה בהעלאת '+uploadRes.file+':\n'+formatSupabaseErrorHint(uploadRes.error));
       return;
     }
     if(editingGalleryPostId){
@@ -1440,20 +1440,41 @@ async function refreshAppData(){
   if(res.error){
     console.error('refreshAppData',res.error);
     if(!appDataCache.projects.length)appDataCache={projects:[],activityLog:[]};
-    return false;
+    return {ok:false,error:res.error.message||String(res.error)};
   }
   if(res.data&&Array.isArray(res.data.projects)){
     appDataCache={projects:res.data.projects,activityLog:Array.isArray(res.data.activity_log)?res.data.activity_log:[]};
     appDataCache.projects.forEach(normalizeProjectGallery);
-    return true;
+    return {ok:true};
+  }
+  if(res.data&&res.data.projects!=null&&!Array.isArray(res.data.projects)){
+    console.error('refreshAppData invalid projects shape',res.data.projects);
+    return {ok:false,error:'שדה projects ב-app_data אינו מערך JSON תקין'};
+  }
+  if(res.data){
+    appDataCache={projects:[],activityLog:Array.isArray(res.data.activity_log)?res.data.activity_log:[]};
+    return {ok:true};
   }
   appDataCache={projects:getDefaultProjects(),activityLog:[]};
   var seed=await supabase.from('app_data').upsert(
     {id:'main',projects:appDataCache.projects,activity_log:appDataCache.activityLog,updated_at:new Date().toISOString()},
     {onConflict:'id'}
   );
-  if(seed.error){console.error('refreshAppData seed',seed.error);return false;}
-  return true;
+  if(seed.error){
+    console.error('refreshAppData seed',seed.error);
+    return {ok:false,error:seed.error.message||String(seed.error)};
+  }
+  return {ok:true};
+}
+
+function formatSupabaseErrorHint(errMsg){
+  var m=(errMsg||'').toLowerCase();
+  if(m.includes('jwt')||m.includes('401')||m.includes('not authenticated'))return 'ה-session פג תוקף — התנתק והתחבר מחדש.';
+  if(m.includes('bucket')||m.includes('not found')&&m.includes('storage'))return 'חסר bucket בשם media ב-Supabase Storage (Public).';
+  if(m.includes('payload')||m.includes('too large')||m.includes('413'))return 'נתוני הפרויקט גדולים מדי (למשל תמונות Base64 ישנות).';
+  if(m.includes('permission')||m.includes('42501')||m.includes('rls'))return 'בעיית הרשאות RLS — הרץ שוב את supabase-setup.sql.';
+  if(m.includes('fetch')||m.includes('network')||m.includes('522')||m.includes('timeout'))return 'בעיית רשת או Supabase לא זמין.';
+  return errMsg||'שגיאה לא ידועה';
 }
 
 async function saveData(d){
@@ -1473,7 +1494,7 @@ async function saveData(d){
   );
   if(res.error){
     console.error('saveData',res.error);
-    alert('שגיאה בשמירת הנתונים. נסה שוב.');
+    alert('שגיאה בשמירת הנתונים:\n'+formatSupabaseErrorHint(res.error.message||String(res.error)));
     return false;
   }
   return true;
@@ -1532,8 +1553,16 @@ function renderClientNoProject(el){
 
 async function startApp(user){
   currentUser=user;
-  var loaded=await refreshAppData();
-  if(!loaded)alert('לא ניתן לטעון נתונים מ-Supabase. בדוק חיבור אינטרנט והרץ את supabase-setup.sql.');
+  var refresh=await refreshAppData();
+  if(!refresh.ok){
+    var hint=formatSupabaseErrorHint(refresh.error);
+    var hasCache=appDataCache.projects&&appDataCache.projects.length>0;
+    if(hasCache){
+      console.warn('refreshAppData failed, using cached data:',refresh.error);
+    }else{
+      alert('לא ניתן לטעון נתונים מ-Supabase.\n\n'+hint+'\n\n(אם הטבלאות קיימות — זו לא בעיית SQL אלא חיבור/הרשאות מהדפדפן.)');
+    }
+  }
   await refreshAppUsers();
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
@@ -1557,13 +1586,22 @@ function showLoginScreen(){
   updateLoginLockUI();
 }
 
-async function handleAuthSession(user){
+async function handleAuthSession(user,event){
   var profile=await ensureUserProfile(user);
-  if(profile){clearLoginLockout();await startApp(profile);return true;}
-  await supabase.auth.signOut();
-  document.getElementById('login-error').textContent=LOGIN_ERROR_MSG;
-  document.getElementById('login-error').classList.add('show');
-  return false;
+  if(!profile){
+    await supabase.auth.signOut();
+    document.getElementById('login-error').textContent=LOGIN_ERROR_MSG;
+    document.getElementById('login-error').classList.add('show');
+    return false;
+  }
+  clearLoginLockout();
+  var alreadyInApp=authBootstrapped&&currentUser&&currentUser.id===profile.id;
+  if(alreadyInApp&&event!=='INITIAL_SESSION'){
+    currentUser=profile;
+    return true;
+  }
+  await startApp(profile);
+  return true;
 }
 
 supabase.auth.onAuthStateChange(function(event,session){
@@ -1571,7 +1609,7 @@ supabase.auth.onAuthStateChange(function(event,session){
   setTimeout(async function(){
     try{
       if((event==='INITIAL_SESSION'||event==='SIGNED_IN')&&session&&session.user){
-        await handleAuthSession(session.user);
+        await handleAuthSession(session.user,event);
       }else if(event==='SIGNED_OUT'){
         showLoginScreen();
       }
@@ -1628,7 +1666,7 @@ async function doLogin(){
     var res=await supabase.auth.signInWithPassword({email:email,password:pass});
     if(res.error){failed=true;}
     else if(res.data&&res.data.user){
-      var ok=await handleAuthSession(res.data.user);
+      var ok=await handleAuthSession(res.data.user,'SIGNED_IN');
       if(!ok)failed=true;
     }
   }catch(e){
