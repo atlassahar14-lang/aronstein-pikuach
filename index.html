@@ -287,6 +287,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .punch-status-fixed{color:var(--success);font-weight:600}
 .punch-detail-row{display:flex;gap:8px;font-size:14px;margin-bottom:8px;line-height:1.5}
 .punch-detail-row .label{color:var(--text-muted);min-width:72px}
+.subcontractors-filter-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;margin-bottom:12px}
+.subcontractors-filter-bar label{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap}
+.subcontractors-filter-bar select{min-width:180px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px;background:#fff;direction:rtl}
 .activity-log-list{display:flex;flex-direction:column;gap:8px}
 .activity-log-row{display:grid;grid-template-columns:minmax(100px,130px) minmax(120px,1fr) 2fr minmax(110px,140px);gap:12px;padding:14px 18px;background:var(--card);border-radius:12px;border:1px solid var(--border);font-size:13px;align-items:center}
 .activity-log-row .log-user{font-weight:600;color:var(--primary)}
@@ -1513,6 +1516,7 @@ var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
 var appDataCache={projects:[],activityLog:[]},appUsers=[],subcontractorsCache=[],punchItemsCache=[],authBootstrapped=false,skipAuthHandler=false;
 var viewingPunchItemId=null,punchPinDraft={x:null,y:null},punchBlueprintSignedUrl=null;
+var subcontractorSpecialtyFilter='';
 const ACTIVITY_LOG_MAX=500;
 
 function getLoginLockData(){
@@ -3122,29 +3126,78 @@ async function renderClients(el){
     }).join('')+'</div>';
 }
 
+function compareSubcontractorCompanyName(a,b){
+  return (a.companyName||'').localeCompare(b.companyName||'','he',{sensitivity:'base'});
+}
+function getSubcontractorSpecialtyOptions(){
+  var seen={};
+  subcontractorsCache.forEach(function(s){
+    var sp=(s.specialty||'').trim();
+    if(sp)seen[sp]=true;
+  });
+  return Object.keys(seen).sort(function(a,b){return a.localeCompare(b,'he');});
+}
+function getSubcontractorsForDisplay(){
+  var subs=subcontractorsCache.slice();
+  if(subcontractorSpecialtyFilter){
+    subs=subs.filter(function(s){return (s.specialty||'')===subcontractorSpecialtyFilter;});
+  }
+  subs.sort(compareSubcontractorCompanyName);
+  return subs;
+}
+function renderSubcontractorTableRows(subs){
+  return subs.map(function(s){
+    return '<tr><td style="font-weight:600">'+escHtml(s.companyName)+'</td>'+
+      '<td>'+escHtml(s.contactName||'—')+'</td>'+
+      '<td dir="ltr" style="text-align:right">'+escHtml(s.phone||'—')+'</td>'+
+      '<td>'+escHtml(s.specialty||'—')+'</td>'+
+      '<td>'+renderExpiryDateCell(s.insuranceExpiry)+'</td>'+
+      '<td>'+renderExpiryDateCell(s.safetyCertExpiry)+'</td>'+
+      '<td><div class="flex-gap">'+
+      '<button class="btn btn-outline btn-sm" onclick="openEditSubcontractorModal(\''+s.id+'\')">'+ic('pencil')+'</button>'+
+      '<button class="btn btn-danger btn-sm" onclick="deleteSubcontractor(\''+s.id+'\')">'+ic('trash-2')+'</button>'+
+      '</div></td></tr>';
+  }).join('');
+}
+function onSubcontractorSpecialtyFilterChange(){
+  var sel=document.getElementById('sub-specialty-filter');
+  subcontractorSpecialtyFilter=sel?sel.value:'';
+  var tbody=document.getElementById('subcontractors-tbody');
+  if(!tbody)return;
+  var subs=getSubcontractorsForDisplay();
+  tbody.innerHTML=subs.length?renderSubcontractorTableRows(subs):
+    '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">אין קבלנים בתחום זה</td></tr>';
+  refreshIcons(tbody);
+}
+
 async function renderSubcontractors(el){
   if(!isAdmin()){renderClientNoProject(el);return;}
   var loaded=await refreshSubcontractors();
-  var subs=subcontractorsCache;
+  var allSubs=subcontractorsCache;
+  var subs=getSubcontractorsForDisplay();
+  var specialtyOptions=getSubcontractorSpecialtyOptions();
+  var filterHtml='';
+  if(allSubs.length>0){
+    filterHtml='<div class="card subcontractors-filter-bar">'+
+      '<label for="sub-specialty-filter">סינון לפי תחום התמחות:</label>'+
+      '<select id="sub-specialty-filter" onchange="onSubcontractorSpecialtyFilterChange()">'+
+      '<option value=""'+(subcontractorSpecialtyFilter===''?' selected':'')+'>הכל</option>'+
+      specialtyOptions.map(function(opt){
+        return '<option value="'+escHtml(opt)+'"'+(subcontractorSpecialtyFilter===opt?' selected':'')+'>'+escHtml(opt)+'</option>';
+      }).join('')+
+      '</select></div>';
+  }
   el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('hard-hat')+' קבלני משנה</h1><p>ניהול קבלני משנה ותוקפי ביטוח/בטיחות</p></div>'+
     '<button class="btn btn-primary" onclick="openAddSubcontractorModal()">'+ic('plus')+' קבלן חדש</button></div>'+
     (!loaded.ok?'<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינת קבלנים. הרץ את supabase-subcontractors-migration.sql ב-SQL Editor.</div>':'')+
-    (subs.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('hard-hat')+'</div><p>אין קבלני משנה עדיין</p></div>':
+    (allSubs.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('hard-hat')+'</div><p>אין קבלני משנה עדיין</p></div>':
+    filterHtml+
     '<div class="card"><div class="table-scroll"><table class="subcontractors-table"><thead><tr>'+
     '<th>שם חברה</th><th>איש קשר</th><th>טלפון</th><th>תחום התמחות</th><th>תוקף ביטוח</th><th>תוקף בטיחות</th><th></th>'+
-    '</tr></thead><tbody>'+
-    subs.map(function(s){
-      return '<tr><td style="font-weight:600">'+escHtml(s.companyName)+'</td>'+
-        '<td>'+escHtml(s.contactName||'—')+'</td>'+
-        '<td dir="ltr" style="text-align:right">'+escHtml(s.phone||'—')+'</td>'+
-        '<td>'+escHtml(s.specialty||'—')+'</td>'+
-        '<td>'+renderExpiryDateCell(s.insuranceExpiry)+'</td>'+
-        '<td>'+renderExpiryDateCell(s.safetyCertExpiry)+'</td>'+
-        '<td><div class="flex-gap">'+
-        '<button class="btn btn-outline btn-sm" onclick="openEditSubcontractorModal(\''+s.id+'\')">'+ic('pencil')+'</button>'+
-        '<button class="btn btn-danger btn-sm" onclick="deleteSubcontractor(\''+s.id+'\')">'+ic('trash-2')+'</button>'+
-        '</div></td></tr>';
-    }).join('')+'</tbody></table></div></div>');
+    '</tr></thead><tbody id="subcontractors-tbody">'+
+    (subs.length?renderSubcontractorTableRows(subs):
+    '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">אין קבלנים בתחום זה</td></tr>')+
+    '</tbody></table></div></div>');
   refreshIcons(el);
 }
 function openAddSubcontractorModal(){
@@ -3848,7 +3901,7 @@ Object.assign(window,{
   saveUser,deleteUser,changeAdminPass,sendAdminResetEmail,resetData,
   showView,switchTab,openModal,closeModal,toggleMobileSidebar,closeMobileSidebar,toggleMobileTabMenu,closeMobileTabMenu,
   openNewProjectModal,openEditProjectModal,saveProject,openAddUserModal,
-  openAddSubcontractorModal,openEditSubcontractorModal,saveSubcontractor,deleteSubcontractor,
+  openAddSubcontractorModal,openEditSubcontractorModal,saveSubcontractor,deleteSubcontractor,onSubcontractorSpecialtyFilterChange,
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,
