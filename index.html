@@ -241,23 +241,26 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .doc-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
 .doc-item:last-child{border-bottom:none}
 .gallery-list{display:flex;flex-direction:column;gap:14px}
-.gallery-row{display:flex;align-items:flex-start;gap:16px;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:14px}
-.gallery-row-thumb{width:140px;height:105px;flex-shrink:0;border-radius:10px;overflow:hidden;cursor:pointer;border:1px solid var(--border);padding:0;background:var(--bg);transition:transform .15s,box-shadow .15s}
-.gallery-row-thumb:hover{transform:scale(1.02);box-shadow:0 4px 16px rgba(0,0,0,.12)}
-.gallery-row-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.gallery-row-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}
+.gallery-post{padding:16px;background:var(--card);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;gap:12px}
+.gallery-post-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .gallery-row-date{font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:6px}
 .gallery-row-date svg{width:14px;height:14px}
-.gallery-caption-edit{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.gallery-caption-input{flex:1;min-width:180px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl}
-.gallery-caption-input:focus{outline:none;border-color:var(--primary-light)}
-.gallery-caption-text{font-size:14px;line-height:1.55;color:var(--text);margin:0}
+.gallery-caption-text{font-size:14px;line-height:1.55;color:var(--text);margin:0;white-space:pre-wrap}
+.gallery-thumbs{display:flex;flex-wrap:wrap;gap:8px}
+.gallery-thumb{width:76px;height:76px;flex-shrink:0;border-radius:10px;overflow:hidden;cursor:pointer;border:1px solid var(--border);padding:0;background:var(--bg);transition:transform .15s,box-shadow .15s}
+.gallery-thumb:hover{transform:scale(1.04);box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.gallery-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.gallery-modal-images{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;min-height:0}
+.gallery-modal-image-item{position:relative;width:90px;height:90px;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--bg)}
+.gallery-modal-image-item img{width:100%;height:100%;object-fit:cover;display:block}
+.gallery-modal-image-remove{position:absolute;top:4px;left:4px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(0,0,0,.7);color:#fff;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0}
+.gallery-modal-image-remove:hover{background:rgba(185,28,28,.9)}
 .gallery-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1100;padding:24px;flex-direction:column}
 .gallery-lightbox.open{display:flex}
 .gallery-lightbox img{max-width:min(96vw,1200px);max-height:calc(100dvh - 120px);object-fit:contain;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.4)}
 .gallery-lightbox-close{position:absolute;top:16px;left:16px;background:rgba(255,255,255,.15);border:none;color:#fff;width:44px;height:44px;border-radius:50%;cursor:pointer;font-size:24px;display:flex;align-items:center;justify-content:center;transition:background .15s}
 .gallery-lightbox-close:hover{background:rgba(255,255,255,.28)}
-.gallery-lightbox-caption{color:#fff;font-size:15px;text-align:center;margin-top:16px;max-width:720px;line-height:1.5;padding:0 16px}
+.gallery-lightbox-caption{color:#fff;font-size:15px;text-align:center;margin-top:16px;max-width:720px;line-height:1.5;padding:0 16px;white-space:pre-wrap}
 .messages-list{display:flex;flex-direction:column;gap:12px;max-height:450px;overflow-y:auto;margin-bottom:20px;padding:4px}
 .message-bubble{padding:12px 16px;border-radius:14px;max-width:80%;font-size:14px;line-height:1.5}
 .message-bubble.admin{background:var(--primary);color:#fff;align-self:flex-start;border-radius:4px 14px 14px 14px}
@@ -430,10 +433,8 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .doc-categories{grid-template-columns:1fr}
   .doc-item{flex-wrap:wrap;gap:10px;align-items:flex-start}
   .doc-item-actions{width:100%}
-  .gallery-row{flex-direction:column}
-  .gallery-row-thumb{width:100%;height:200px}
-  .gallery-caption-edit{flex-direction:column;align-items:stretch}
-  .gallery-caption-save{width:100%;justify-content:center}
+  .gallery-post-header{align-items:flex-start}
+  .gallery-thumb{width:68px;height:68px}
   .stats-grid{grid-template-columns:repeat(2,1fr)}
   .budget-summary{grid-template-columns:repeat(2,1fr)}
   .tab{font-size:13px;padding:8px 14px;white-space:nowrap}
@@ -676,6 +677,26 @@ img,svg,video,canvas{max-width:100%;height:auto}
   </div>
 </div>
 
+<!-- Modal: Gallery post -->
+<div class="modal-overlay" id="modal-gallery-post">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="gallery-post-modal-title">פוסט חדש בגלריה</div><button class="modal-close" onclick="closeGalleryPostModal()"><i data-lucide="x"></i></button></div>
+    <div class="form-group"><label>טקסט</label><textarea id="gallery-post-text" placeholder="תיאור / כיתוב לפוסט..."></textarea></div>
+    <div class="form-group">
+      <label>תמונות (ניתן לבחור מספר)</label>
+      <label class="upload-label"><i data-lucide="camera"></i> בחר תמונות<input type="file" id="gallery-post-files" accept="image/*" multiple onchange="onGalleryPostFilesSelected(event)"/></label>
+      <div id="gallery-post-images" class="gallery-modal-images"></div>
+    </div>
+    <div class="modal-footer phase-modal-footer">
+      <button class="btn btn-danger" id="gallery-post-delete-btn" style="display:none;width:auto" onclick="deleteGalleryPost()"><i data-lucide="trash-2"></i> מחק פוסט</button>
+      <div class="modal-footer-actions">
+        <button class="btn btn-outline" onclick="closeGalleryPostModal()">ביטול</button>
+        <button class="btn btn-primary" id="gallery-post-save-btn" style="width:auto" onclick="saveGalleryPost()">שמור</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Gallery lightbox -->
 <div class="gallery-lightbox" id="gallery-lightbox" onclick="closePhotoLightbox(event)">
   <button type="button" class="gallery-lightbox-close" onclick="closePhotoLightbox(event)" aria-label="סגור">&times;</button>
@@ -801,48 +822,247 @@ async function uploadMediaFile(folderPath,file){
   var publicUrl=supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path).data.publicUrl;
   return {ok:true,data:{url:publicUrl,name:file.name,type:file.type,path:path}};
 }
-function formatPhotoDateTime(photo){
-  var raw=photo.uploadedAt||photo.date;
+function normalizeProjectGallery(proj){
+  if(!proj)return;
+  if(Array.isArray(proj.galleryPosts))return;
+  var legacy=proj.photos||[];
+  proj.galleryPosts=legacy.map(function(p){
+    var ts=p.uploadedAt||p.date||new Date().toISOString();
+    return {
+      id:'gpost_'+p.id,
+      text:p.caption||'',
+      createdAt:ts,
+      updatedAt:ts,
+      images:[{
+        id:p.id,
+        name:p.name||'',
+        url:p.url,
+        path:p.path||null,
+        type:p.type||'',
+        uploadedAt:ts
+      }]
+    };
+  });
+}
+function getProjectGalleryPosts(proj){
+  normalizeProjectGallery(proj);
+  return proj.galleryPosts||[];
+}
+function formatGalleryPostDateTime(post){
+  var raw=post.createdAt||post.updatedAt;
   if(!raw)return '—';
   var d=new Date(raw);
   if(isNaN(d.getTime()))return String(raw);
   return d.toLocaleString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 }
-function getGalleryPhotosSorted(photos){
-  return photos.slice().sort(function(a,b){
-    var ta=Date.parse(a.uploadedAt||a.date||0)||0;
-    var tb=Date.parse(b.uploadedAt||b.date||0)||0;
+function getGalleryPostsSorted(posts){
+  return posts.slice().sort(function(a,b){
+    var ta=Date.parse(a.createdAt||a.updatedAt||0)||0;
+    var tb=Date.parse(b.createdAt||b.updatedAt||0)||0;
     return tb-ta;
   });
 }
-function renderGalleryPhotoRow(photo,isAdminUser){
-  var dateStr=formatPhotoDateTime(photo);
-  var captionBlock=isAdminUser
-    ? '<div class="gallery-caption-edit">'+
-        '<input type="text" class="gallery-caption-input" id="photo-caption-'+photo.id+'" value="'+escHtml(photo.caption||'')+'" placeholder="הוסף כיתוב לתמונה..." onkeydown="if(event.key===\'Enter\')savePhotoCaption(\''+photo.id+'\')"/>'+
-        '<button type="button" class="btn btn-primary btn-sm gallery-caption-save" onclick="savePhotoCaption(\''+photo.id+'\')">'+ic('save')+' שמור</button>'+
-      '</div>'
-    : (photo.caption?'<p class="gallery-caption-text">'+escHtml(photo.caption)+'</p>':'');
-  return '<div class="gallery-row">'+
-    '<button type="button" class="gallery-row-thumb" onclick="openPhotoLightbox(\''+photo.id+'\')" aria-label="הגדל תמונה">'+
-      '<img src="'+escHtml(photo.url)+'" alt="'+escHtml(photo.caption||photo.name||'תמונה')+'" loading="lazy"/>'+
-    '</button>'+
-    '<div class="gallery-row-body">'+
-      '<div class="gallery-row-date">'+ic('clock')+' '+dateStr+'</div>'+
-      captionBlock+
-    '</div></div>';
+function renderGalleryThumbnails(post){
+  return (post.images||[]).map(function(img){
+    return '<button type="button" class="gallery-thumb" onclick="openPhotoLightbox(\''+post.id+'\',\''+img.id+'\')" aria-label="הגדל תמונה">'+
+      '<img src="'+escHtml(img.url)+'" alt="'+escHtml(img.name||'תמונה')+'" loading="lazy"/>'+
+    '</button>';
+  }).join('');
 }
-function openPhotoLightbox(photoId){
+function renderGalleryPostRow(post,isAdminUser){
+  var dateStr=formatGalleryPostDateTime(post);
+  var thumbs=renderGalleryThumbnails(post);
+  var actions=isAdminUser?'<button type="button" class="btn btn-outline btn-sm" onclick="openEditGalleryPostModal(\''+post.id+'\')">'+ic('pencil')+' עריכה</button>':'';
+  return '<div class="gallery-post">'+
+    '<div class="gallery-post-header">'+
+      '<div class="gallery-row-date">'+ic('clock')+' '+dateStr+'</div>'+
+      actions+
+    '</div>'+
+    (post.text?'<p class="gallery-caption-text">'+escHtml(post.text)+'</p>':'')+
+    (thumbs?'<div class="gallery-thumbs">'+thumbs+'</div>':'')+
+    '</div>';
+}
+function resetGalleryEditState(){
+  editingGalleryPostId=null;
+  galleryEditRemovedIds=[];
+  galleryEditPendingFiles=[];
+  galleryEditPreviewUrls.forEach(function(u){URL.revokeObjectURL(u);});
+  galleryEditPreviewUrls=[];
+  var textEl=document.getElementById('gallery-post-text');
+  var filesEl=document.getElementById('gallery-post-files');
+  var imagesEl=document.getElementById('gallery-post-images');
+  var delBtn=document.getElementById('gallery-post-delete-btn');
+  if(textEl)textEl.value='';
+  if(filesEl)filesEl.value='';
+  if(imagesEl)imagesEl.innerHTML='';
+  if(delBtn)delBtn.style.display='none';
+}
+function closeGalleryPostModal(){
+  closeModal('modal-gallery-post');
+  resetGalleryEditState();
+}
+function openNewGalleryPostModal(){
+  if(!requireAdmin())return;
+  resetGalleryEditState();
+  document.getElementById('gallery-post-modal-title').textContent='פוסט חדש בגלריה';
+  openModal('modal-gallery-post');
+  refreshIcons(document.getElementById('modal-gallery-post'));
+}
+function openEditGalleryPostModal(postId){
+  if(!requireAdmin())return;
   var proj=getCurrentProject();if(!proj)return;
-  var photo=proj.photos.find(function(p){return p.id===photoId;});
-  if(!photo)return;
+  var post=getProjectGalleryPosts(proj).find(function(p){return p.id===postId;});
+  if(!post)return;
+  resetGalleryEditState();
+  editingGalleryPostId=postId;
+  document.getElementById('gallery-post-text').value=post.text||'';
+  document.getElementById('gallery-post-modal-title').textContent='עריכת פוסט בגלריה';
+  document.getElementById('gallery-post-delete-btn').style.display='';
+  renderGalleryModalImages();
+  openModal('modal-gallery-post');
+  refreshIcons(document.getElementById('modal-gallery-post'));
+}
+function renderGalleryModalImages(){
+  var wrap=document.getElementById('gallery-post-images');
+  if(!wrap)return;
+  var html='';
+  if(editingGalleryPostId){
+    var proj=getCurrentProject();
+    var post=proj&&getProjectGalleryPosts(proj).find(function(p){return p.id===editingGalleryPostId;});
+    if(post){
+      post.images.forEach(function(img){
+        if(galleryEditRemovedIds.indexOf(img.id)>=0)return;
+        html+='<div class="gallery-modal-image-item">'+
+          '<img src="'+escHtml(img.url)+'" alt="'+escHtml(img.name||'תמונה')+'"/>'+
+          '<button type="button" class="gallery-modal-image-remove" onclick="toggleRemoveGalleryImage(\''+img.id+'\')" aria-label="הסר תמונה">&times;</button>'+
+          '</div>';
+      });
+    }
+  }
+  galleryEditPendingFiles.forEach(function(file,idx){
+    html+='<div class="gallery-modal-image-item">'+
+      '<img src="'+galleryEditPreviewUrls[idx]+'" alt="'+escHtml(file.name)+'"/>'+
+      '<button type="button" class="gallery-modal-image-remove" onclick="removePendingGalleryFile('+idx+')" aria-label="הסר תמונה">&times;</button>'+
+      '</div>';
+  });
+  wrap.innerHTML=html;
+}
+function onGalleryPostFilesSelected(event){
+  var files=Array.from(event.target.files||[]);
+  event.target.value='';
+  files.forEach(function(file){
+    if(!file.type.startsWith('image/'))return;
+    if(file.size>MEDIA_MAX_BYTES){alert('הקובץ '+file.name+' גדול מדי (מקסימום 20MB)');return;}
+    galleryEditPendingFiles.push(file);
+    galleryEditPreviewUrls.push(URL.createObjectURL(file));
+  });
+  renderGalleryModalImages();
+}
+function toggleRemoveGalleryImage(imageId){
+  var idx=galleryEditRemovedIds.indexOf(imageId);
+  if(idx>=0)galleryEditRemovedIds.splice(idx,1);
+  else galleryEditRemovedIds.push(imageId);
+  renderGalleryModalImages();
+}
+function removePendingGalleryFile(idx){
+  if(galleryEditPreviewUrls[idx])URL.revokeObjectURL(galleryEditPreviewUrls[idx]);
+  galleryEditPendingFiles.splice(idx,1);
+  galleryEditPreviewUrls.splice(idx,1);
+  renderGalleryModalImages();
+}
+async function uploadGalleryImageFiles(projId,postId,files){
+  var uploaded=[];
+  for(var i=0;i<files.length;i++){
+    var file=files[i];
+    var imgId='img'+(Date.now()+i);
+    var upload=await uploadMediaFile('gallery/'+projId+'/'+postId+'/'+imgId,file);
+    if(!upload.ok)return {ok:false,error:upload.error,file:file.name};
+    uploaded.push({
+      id:imgId,
+      name:file.name,
+      url:upload.data.url,
+      path:upload.data.path,
+      type:upload.data.type,
+      uploadedAt:new Date().toISOString()
+    });
+  }
+  return {ok:true,images:uploaded};
+}
+async function saveGalleryPost(){
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var text=document.getElementById('gallery-post-text').value.trim();
+  var btn=document.getElementById('gallery-post-save-btn');
+  var proj=getCurrentProject();if(!proj)return;
+  var existingCount=0;
+  if(editingGalleryPostId){
+    var existingPost=getProjectGalleryPosts(proj).find(function(p){return p.id===editingGalleryPostId;});
+    if(existingPost)existingCount=existingPost.images.filter(function(img){return galleryEditRemovedIds.indexOf(img.id)<0;}).length;
+  }
+  if(existingCount+galleryEditPendingFiles.length===0){
+    alert('יש להוסיף לפחות תמונה אחת לפוסט');
+    return;
+  }
+  btn.disabled=true;btn.textContent='שומר...';
+  try{
+    var data=getData();proj=getCurrentProject();if(!proj)return;
+    var posts=getProjectGalleryPosts(proj);
+    var now=new Date().toISOString();
+    var postId=editingGalleryPostId||('gpost'+Date.now());
+    var uploadRes=await uploadGalleryImageFiles(proj.id,postId,galleryEditPendingFiles);
+    if(!uploadRes.ok){
+      alert('שגיאה בהעלאת '+uploadRes.file+': '+uploadRes.error);
+      return;
+    }
+    if(editingGalleryPostId){
+      var post=posts.find(function(p){return p.id===editingGalleryPostId;});
+      if(!post)return;
+      post.text=text;
+      post.updatedAt=now;
+      post.images=post.images.filter(function(img){return galleryEditRemovedIds.indexOf(img.id)<0;}).concat(uploadRes.images);
+      logActivity('עריכת פוסט גלריה','פרויקט: '+proj.name+(text?' · '+text:''));
+    }else{
+      posts.push({
+        id:postId,
+        text:text,
+        createdAt:now,
+        updatedAt:now,
+        images:uploadRes.images
+      });
+      proj.galleryPosts=posts;
+      logActivity('פוסט גלריה חדש','פרויקט: '+proj.name+(text?' · '+text:'')+' · '+uploadRes.images.length+' תמונות');
+    }
+    if(!await saveData(data))return;
+    closeGalleryPostModal();
+    renderProjectDetail(document.getElementById('main-content'));
+  }finally{
+    btn.disabled=false;btn.textContent='שמור';
+  }
+}
+async function deleteGalleryPost(){
+  if(!requireAdmin()||!requireProjectAccess()||!editingGalleryPostId)return;
+  if(!confirm('למחוק את הפוסט וכל התמונות שלו?'))return;
+  var data=getData();var proj=getCurrentProject();if(!proj)return;
+  var posts=getProjectGalleryPosts(proj);
+  var removed=posts.find(function(p){return p.id===editingGalleryPostId;});
+  proj.galleryPosts=posts.filter(function(p){return p.id!==editingGalleryPostId;});
+  logActivity('מחיקת פוסט גלריה','פרויקט: '+proj.name+(removed&&removed.text?' · '+removed.text:''));
+  if(!await saveData(data))return;
+  closeGalleryPostModal();
+  renderProjectDetail(document.getElementById('main-content'));
+}
+function openPhotoLightbox(postId,imageId){
+  var proj=getCurrentProject();if(!proj)return;
+  var post=getProjectGalleryPosts(proj).find(function(p){return p.id===postId;});
+  if(!post)return;
+  var image=post.images.find(function(img){return img.id===imageId;});
+  if(!image)return;
   var lb=document.getElementById('gallery-lightbox');
   var img=document.getElementById('gallery-lightbox-img');
   var cap=document.getElementById('gallery-lightbox-caption');
-  img.src=photo.url;
-  img.alt=photo.caption||photo.name||'תמונה';
-  cap.textContent=photo.caption||'';
-  cap.style.display=photo.caption?'block':'none';
+  img.src=image.url;
+  img.alt=image.name||post.text||'תמונה';
+  cap.textContent=post.text||'';
+  cap.style.display=post.text?'block':'none';
   lb.classList.add('open');
   if(!modalOpenCount++)syncBodyScrollLock();
 }
@@ -858,26 +1078,6 @@ function closePhotoLightbox(event){
   document.getElementById('gallery-lightbox-img').src='';
   if(modalOpenCount>0)modalOpenCount--;
   syncBodyScrollLock();
-}
-async function savePhotoCaption(photoId){
-  if(!requireAdmin()||!requireProjectAccess())return;
-  var input=document.getElementById('photo-caption-'+photoId);
-  if(!input)return;
-  var data=getData();var proj=getCurrentProject();if(!proj)return;
-  var photo=proj.photos.find(function(p){return p.id===photoId;});
-  if(!photo)return;
-  var caption=input.value.trim();
-  photo.caption=caption;
-  logActivity('עדכון כיתוב תמונה','פרויקט: '+proj.name+(caption?' · '+caption:''));
-  if(!await saveData(data))return;
-  var btn=input.parentElement&&input.parentElement.querySelector('.gallery-caption-save');
-  if(btn){
-    var orig=btn.innerHTML;
-    btn.innerHTML=ic('circle-check')+' נשמר';
-    btn.disabled=true;
-    refreshIcons(btn);
-    setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;refreshIcons(btn);},1500);
-  }
 }
 function openNewUpdateModal(){
   if(!requireAdmin())return;
@@ -950,6 +1150,8 @@ function bindModalValidationClear(modalId){
 ['modal-project','modal-user','modal-payment','modal-phase'].forEach(bindModalValidationClear);
 
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
+var editingGalleryPostId=null;
+var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
 var appDataCache={projects:[],activityLog:[]},appUsers=[],authBootstrapped=false,skipAuthHandler=false;
 const ACTIVITY_LOG_MAX=500;
 
@@ -1046,7 +1248,7 @@ function getDefaultProjects(){
         {id:'d2',name:'היתר בנייה',category:'היתרים',date:'2025-01-05'},
         {id:'d3',name:'חוזה עם קבלן שלד',category:'הסכמים',date:'2025-01-10'}
       ],
-      photos:[],
+      galleryPosts:[],
       updates:[
         {id:'u1',title:'סיום שלב השלד',body:'שלב השלד הושלם בהצלחה וניתן לעבור לשלב הטיח.',date:'05/03/2025'},
         {id:'u2',title:'עדכון שבועי',body:'עבודות הטיח בשלב טוב, צפי לסיום בסוף מאי.',date:'20/04/2025'}
@@ -1242,6 +1444,7 @@ async function refreshAppData(){
   }
   if(res.data&&Array.isArray(res.data.projects)){
     appDataCache={projects:res.data.projects,activityLog:Array.isArray(res.data.activity_log)?res.data.activity_log:[]};
+    appDataCache.projects.forEach(normalizeProjectGallery);
     return true;
   }
   appDataCache={projects:getDefaultProjects(),activityLog:[]};
@@ -1924,13 +2127,14 @@ function renderProjectDetail(el){
     }).join('')+'</div></div>';
 
   // GALLERY TAB
+  var galleryPosts=getGalleryPostsSorted(getProjectGalleryPosts(p));
   html+='<div id="tab-gallery" class="tab-content '+(currentTab==='gallery'?'active':'')+'">'+
     '<div class="section-actions"><div class="section-title">'+ic('camera')+' גלריית תמונות מהשטח</div>'+
-    (isAdminUser?'<label class="upload-label">'+ic('camera')+' העלה תמונה<input type="file" accept="image/*" onchange="uploadPhoto(event)"/></label>':'')+
+    (isAdminUser?'<button class="btn btn-primary btn-sm" onclick="openNewGalleryPostModal()">'+ic('plus')+' פוסט חדש</button>':'')+
     '</div>'+
-    (p.photos.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('camera')+'</div><p>אין תמונות עדיין'+(isAdminUser?' — העלה את הראשונה':'')+' </p></div>':
-    '<div class="gallery-list">'+getGalleryPhotosSorted(p.photos).map(function(photo){
-      return renderGalleryPhotoRow(photo,isAdminUser);
+    (galleryPosts.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('camera')+'</div><p>אין תמונות עדיין'+(isAdminUser?' — צור את הפוסט הראשון':'')+' </p></div>':
+    '<div class="gallery-list">'+galleryPosts.map(function(post){
+      return renderGalleryPostRow(post,isAdminUser);
     }).join('')+'</div>')+
     '</div>';
 
@@ -2251,7 +2455,7 @@ async function saveProject(){
   }else{
     var perCat=proj.budget?Math.round(Number(proj.budget)/FIN_CATEGORIES.length):0;
     var budgetPlan={};FIN_CATEGORIES.forEach(function(c){budgetPlan[c]=perCat;});
-    data.projects.push(Object.assign({},proj,{id:'proj'+Date.now(),progress:0,budgetPlan:budgetPlan,phases:[],payments:[],documents:[],photos:[],updates:[],messages:[]}));
+    data.projects.push(Object.assign({},proj,{id:'proj'+Date.now(),progress:0,budgetPlan:budgetPlan,phases:[],payments:[],documents:[],galleryPosts:[],updates:[],messages:[]}));
     logActivity('יצירת פרויקט','פרויקט חדש: '+proj.name);
   }
   if(!await saveData(data))return;
@@ -2651,34 +2855,6 @@ async function deleteDoc(id){
   if(!await saveData(data))return;
   renderProjectDetail(document.getElementById('main-content'));
 }
-async function uploadPhoto(event){
-  if(!requireAdmin()||!requireProjectAccess())return;
-  var file=event.target.files[0];if(!file)return;
-  event.target.value='';
-  if(file.size>MEDIA_MAX_BYTES){alert('הקובץ גדול מדי (מקסימום 20MB)');return;}
-  if(!file.type.startsWith('image/')){alert('יש לבחור קובץ תמונה בלבד');return;}
-  var proj=getCurrentProject();if(!proj)return;
-  var photoId='img'+Date.now();
-  var upload=await uploadMediaFile('gallery/'+proj.id+'/'+photoId,file);
-  if(!upload.ok){
-    alert('שגיאה בהעלאת התמונה: '+upload.error);
-    return;
-  }
-  var data=getData();proj=getCurrentProject();if(!proj)return;
-  proj.photos.push({
-    id:photoId,
-    name:file.name,
-    url:upload.data.url,
-    path:upload.data.path,
-    type:upload.data.type,
-    uploadedAt:new Date().toISOString(),
-    caption:''
-  });
-  logActivity('העלאת תמונה','פרויקט: '+proj.name+' · '+file.name);
-  if(!await saveData(data))return;
-  renderProjectDetail(document.getElementById('main-content'));
-}
-
 async function changeAdminPass(){
   var p1=document.getElementById('new-admin-pass').value;var p2=document.getElementById('confirm-admin-pass').value;
   var msg=document.getElementById('pass-msg');
@@ -2736,7 +2912,10 @@ Object.assign(window,{
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,
-  uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,uploadPhoto,savePhotoCaption,openPhotoLightbox,closePhotoLightbox
+  uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,
+  openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,
+  toggleRemoveGalleryImage,removePendingGalleryFile,saveGalleryPost,deleteGalleryPost,
+  openPhotoLightbox,closePhotoLightbox
 });
 window.addEventListener('resize',function(){
   if(window.innerWidth>=1024)closeMobileSidebar();
