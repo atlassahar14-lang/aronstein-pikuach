@@ -183,6 +183,17 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .phase-card.pending .phase-progress-fill{background:var(--primary);opacity:.35}
 .phase-progress-pct{font-size:13px;font-weight:700;color:var(--primary);min-width:36px;text-align:left;flex-shrink:0}
 .phase-end-date{font-size:12px;color:var(--text-muted);text-align:left}
+.fin-analysis-table{width:100%;border-collapse:collapse;margin-top:8px}
+.fin-analysis-table th,.fin-analysis-table td{padding:12px 14px;text-align:right;border-bottom:1px solid var(--border);font-size:14px}
+.fin-analysis-table th{font-size:12px;font-weight:700;color:var(--text-muted);background:var(--bg)}
+.fin-analysis-table tr:last-child td{border-bottom:none}
+.fin-analysis-table .fin-val{font-weight:700;color:var(--primary)}
+.fin-analysis-table .fin-val.positive{color:var(--success)}
+.fin-analysis-table .fin-val.negative{color:var(--danger)}
+.fin-diff-positive{color:var(--success)!important}
+.fin-diff-negative{color:var(--danger)!important}
+.fin-analysis-progress{margin:24px 0}
+.fin-analysis-bar-label{display:flex;justify-content:space-between;font-size:13px;color:var(--text-muted);margin-bottom:8px}
 .budget-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
 .budget-item{background:var(--card);border-radius:14px;padding:18px;border:1px solid var(--border);text-align:center}
 .budget-item .amount{font-size:22px;font-weight:800;margin-top:8px}
@@ -613,7 +624,8 @@ function tabIc(name){
     'folder':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
     'camera':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
     'bell':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
-    'message-circle':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>'
+    'message-circle':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
+    'scale':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16v6"/><path d="M8 16v6"/><path d="M12 2v20"/><path d="M12 2 8 6"/><path d="M12 2l4 4"/><path d="M2 10h20"/></svg>'
   };
   return icons[name]||'';
 }
@@ -1159,7 +1171,7 @@ function renderSidebar(){
   refreshIcons(nav);
 }
 
-var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'תקציב',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה',updates:'עדכונים',messages:'שאלות'};
+var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה',updates:'עדכונים',messages:'שאלות'};
 var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',clients:'לקוחות','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
@@ -1259,6 +1271,48 @@ function calcBudgetUtilPct(paid,budget){
   if(!b||!p)return 0;
   var pct=Math.min(100,(p/b)*100);
   return pct>0&&pct<1?Math.round(pct*10)/10:Math.round(pct);
+}
+function sumProjectPaid(p){
+  return (p.payments||[]).reduce(function(s,x){return s+Number(x.amount||0);},0);
+}
+function calcBudgetAnalysis(p){
+  var approved=getProjectBudget(p);
+  var paid=sumProjectPaid(p);
+  var diff=approved-paid;
+  var rawPct=approved?Math.round((paid/approved)*1000)/10:0;
+  return {
+    approved:approved,
+    paid:paid,
+    diff:diff,
+    pct:rawPct,
+    isOver:diff<0,
+    diffLabel:diff<0?'עודף (חריגה)':'שארית',
+    diffDisplay:(diff>=0?'+':'-')+fmtMoney(Math.abs(diff))
+  };
+}
+function renderBudgetAnalysisTabHtml(p,ba){
+  var barWidth=Math.min(100,ba.pct);
+  var barColor=ba.pct>100?'var(--danger)':'var(--success)';
+  var diffCardClass=ba.isOver?'warn':'success';
+  var diffValueClass=ba.isOver?'fin-diff-negative':'fin-diff-positive';
+  var tableDiffClass=ba.isOver?'negative':'positive';
+  return '<div class="section-title mb-16">'+ic('scale')+' ניתוח כספי — תקציב מול ביצוע</div>'+
+    '<div class="dash-metrics fin-analysis-metrics">'+
+    dashMetricCard('','banknote',fmtMoney(ba.approved),'תקציב אושר')+
+    dashMetricCard('accent','wallet',fmtMoney(ba.paid),'סכום תשלומים בפועל')+
+    dashMetricCard(diffCardClass,ba.isOver?'alert-triangle':'circle-check','<span class="'+diffValueClass+'">'+ba.diffDisplay+'</span>',ba.diffLabel)+
+    dashMetricCard('', 'percent',ba.pct+'%','אחוז נוצל')+
+    '</div>'+
+    '<div class="card fin-analysis-progress">'+
+    '<div class="card-title">'+ic('layout-dashboard')+' התקדמות כספית</div>'+
+    '<div class="fin-analysis-bar-label"><span>ניצול תקציב</span><span style="font-weight:700;color:var(--primary)">'+ba.pct+'%</span></div>'+
+    '<div class="progress-bar-wrap" style="height:14px"><div class="progress-bar" style="width:'+barWidth+'%;background:'+barColor+'"></div></div>'+
+    '<div class="progress-label" style="margin-top:8px"><span>₪0</span><span>'+fmtMoney(ba.approved)+'</span></div>'+
+    '</div>'+
+    '<div class="card"><div class="card-title">'+ic('table')+' סיכום תקציב מול ביצוע</div>'+
+    '<div class="table-scroll"><table class="fin-analysis-table"><thead><tr><th>פרויקט</th><th>תקציב</th><th>בוצע</th><th>שארית / עודף</th></tr></thead><tbody>'+
+    '<tr><td class="fin-val">'+escHtml(p.name)+'</td><td class="fin-val">'+fmtMoney(ba.approved)+'</td><td class="fin-val">'+fmtMoney(ba.paid)+'</td>'+
+    '<td class="fin-val '+tableDiffClass+'">'+ba.diffDisplay+'</td></tr></tbody></table></div></div>';
 }
 
 function countUnreadClientMessages(proj){
@@ -1383,10 +1437,11 @@ function renderProjectDetail(el){
   currentProjectId=p.id;
   var isAdminUser=isAdmin();
   var showWhatsApp=!!(currentUser&&!isAdminUser);
-  var paid=p.payments.reduce(function(s,x){return s+Number(x.amount||0);},0);
+  var paid=sumProjectPaid(p);
   var projectBudget=getProjectBudget(p);
   var remaining=projectBudget-paid;
   var budgetUtilPct=calcBudgetUtilPct(paid,projectBudget);
+  var budgetAnalysis=calcBudgetAnalysis(p);
 
   var unreadMessages=isAdminUser?countUnreadClientMessages(p):0;
   var messagesTabBadge=unreadMessages?'<span class="tab-badge show"></span>':'';
@@ -1400,6 +1455,7 @@ function renderProjectDetail(el){
     ['overview','סקירה','layout-dashboard',''],
     ['timeline','לוח זמנים','calendar',''],
     ['budget','תקציב','banknote',''],
+    ['budget-analysis','ניתוח כספי','scale',''],
     ['financial','דוח פיננסי','trending-up',''],
     ['docs','מסמכים','folder',''],
     ['gallery','גלריה','camera',''],
@@ -1495,6 +1551,11 @@ function renderProjectDetail(el){
         '</div></td></tr>';
     }).join('')+'</tbody></table></div>')+
     '</div></div>';
+
+  // BUDGET ANALYSIS TAB
+  html+='<div id="tab-budget-analysis" class="tab-content '+(currentTab==='budget-analysis'?'active':'')+'">'+
+    renderBudgetAnalysisTabHtml(p,budgetAnalysis)+
+    '</div>';
 
   // FINANCIAL REPORT TAB
   var budgetBarColor=budgetUtilPct>=100?'var(--danger)':budgetUtilPct>=80?'var(--warning)':'var(--success)';
