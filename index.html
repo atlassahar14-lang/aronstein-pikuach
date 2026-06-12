@@ -329,6 +329,13 @@ img,svg,video,canvas{max-width:100%;height:auto}
 @keyframes upload-spin{to{transform:rotate(360deg)}}
 .upload-error{font-size:13px;color:var(--danger);margin-top:8px;display:none}
 .upload-error.show{display:block}
+.expiry-expired{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:#fef2f2;color:var(--danger);font-weight:600;font-size:13px}
+.phase-insurance-warning{display:flex;align-items:center;gap:6px;margin-top:8px;padding:8px 10px;border-radius:8px;background:#fef2f2;color:var(--danger);font-size:12px;font-weight:600}
+.subcontractors-table{width:100%;border-collapse:collapse}
+.subcontractors-table th{text-align:right;padding:10px 14px;font-size:12px;font-weight:600;color:var(--text-muted);border-bottom:2px solid var(--border);background:var(--bg)}
+.subcontractors-table td{padding:12px 14px;font-size:14px;border-bottom:1px solid var(--border);vertical-align:middle}
+.subcontractors-table tr:last-child td{border-bottom:none}
+.table-scroll .subcontractors-table{min-width:720px}
 .update-media-block{margin-top:12px}
 .update-media-block img,.update-media-block video{max-width:100%;max-height:320px;border-radius:12px;border:1px solid var(--border)}
 .fin-progress-card{margin:24px 0}
@@ -647,6 +654,28 @@ img,svg,video,canvas{max-width:100%;height:auto}
   </div>
 </div>
 
+<!-- Modal: Subcontractor -->
+<div class="modal-overlay" id="modal-subcontractor">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="modal-subcontractor-title">קבלן חדש</div><button class="modal-close" onclick="closeModal('modal-subcontractor')"><i data-lucide="x"></i></button></div>
+    <div class="form-group"><label>שם חברה *</label><input type="text" id="sub-company" placeholder="שם החברה"/></div>
+    <div class="form-group"><label>שם איש קשר</label><input type="text" id="sub-contact" placeholder="שם איש קשר"/></div>
+    <div class="grid-2">
+      <div class="form-group"><label>טלפון</label><input type="tel" id="sub-phone" placeholder="050-0000000"/></div>
+      <div class="form-group"><label>אימייל</label><input type="email" id="sub-email" placeholder="email@example.com"/></div>
+    </div>
+    <div class="form-group"><label>תחום התמחות</label><select id="sub-specialty"><option value="">—</option><option>שלד</option><option>חפירות</option><option>חשמל</option><option>אינסטלציה</option><option>טיח</option><option>ריצוף</option><option>גמר</option><option>אחר</option></select></div>
+    <div class="grid-2">
+      <div class="form-group"><label>תוקף ביטוח</label><input type="date" id="sub-insurance"/></div>
+      <div class="form-group"><label>תוקף אישור בטיחות</label><input type="date" id="sub-safety"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-subcontractor')">ביטול</button>
+      <button class="btn btn-primary" style="width:auto" onclick="saveSubcontractor()">שמור</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Phase -->
 <div class="modal-overlay" id="modal-phase">
   <div class="modal">
@@ -658,6 +687,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     </div>
     <div class="form-group"><label>אחוז השלמה: <span id="phase-pv">0%</span></label><input type="range" id="phase-prog" min="0" max="100" value="0" oninput="document.getElementById('phase-pv').textContent=this.value+'%'" style="width:100%;margin-top:8px"/></div>
     <div class="form-group"><label>סטטוס</label><select id="phase-status"><option value="pending">טרם התחיל</option><option value="active">בביצוע</option><option value="done">הושלם</option></select></div>
+    <div class="form-group"><label>קבלן אחראי</label><select id="phase-subcontractor"><option value="">— ללא —</option></select></div>
     <div class="form-group"><label>הערות</label><textarea id="phase-notes" placeholder="הערות לשלב זה"></textarea></div>
     <div class="modal-footer phase-modal-footer">
       <button class="btn btn-danger" id="phase-delete-btn" style="display:none;width:auto" onclick="deletePhaseFromModal()"><i data-lucide="trash-2"></i> מחק שלב</button>
@@ -1233,12 +1263,12 @@ function bindModalValidationClear(modalId){
   modal.addEventListener('input',clearGroup);
   modal.addEventListener('change',clearGroup);
 }
-['modal-project','modal-user','modal-payment','modal-phase','modal-update','modal-gallery-post'].forEach(bindModalValidationClear);
+['modal-project','modal-user','modal-payment','modal-phase','modal-subcontractor','modal-update','modal-gallery-post'].forEach(bindModalValidationClear);
 
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
 var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
-var appDataCache={projects:[],activityLog:[]},appUsers=[],authBootstrapped=false,skipAuthHandler=false;
+var appDataCache={projects:[],activityLog:[]},appUsers=[],subcontractorsCache=[],authBootstrapped=false,skipAuthHandler=false;
 const ACTIVITY_LOG_MAX=500;
 
 function getLoginLockData(){
@@ -1661,6 +1691,69 @@ async function refreshAppUsers(){
   return true;
 }
 
+function mapSubcontractorRow(r){
+  return {
+    id:r.id,
+    companyName:r.company_name,
+    contactName:r.contact_name||'',
+    phone:r.phone||'',
+    email:r.email||'',
+    specialty:r.specialty||'',
+    insuranceExpiry:r.insurance_expiry||'',
+    safetyCertExpiry:r.safety_cert_expiry||'',
+    createdAt:r.created_at
+  };
+}
+async function refreshSubcontractors(){
+  var res=await supabase.from('subcontractors').select('*').order('company_name',{ascending:true});
+  if(res.error){
+    console.error('refreshSubcontractors',res.error);
+    return {ok:false,error:res.error.message};
+  }
+  subcontractorsCache=(res.data||[]).map(mapSubcontractorRow);
+  return {ok:true};
+}
+function getSubcontractorById(id){
+  if(!id)return null;
+  return subcontractorsCache.find(function(s){return s.id===id;})||null;
+}
+function isDateExpired(isoDate){
+  if(!isoDate)return false;
+  var today=new Date();
+  today.setHours(0,0,0,0);
+  var d=new Date(String(isoDate).slice(0,10)+'T12:00:00');
+  return d<today;
+}
+function formatSubcontractorDate(isoDate){
+  if(!isoDate)return '—';
+  try{return new Date(String(isoDate).slice(0,10)+'T12:00:00').toLocaleDateString('he-IL');}
+  catch(e){return String(isoDate);}
+}
+function renderExpiryDateCell(isoDate){
+  if(!isoDate)return '<span style="color:var(--text-muted)">—</span>';
+  var label=formatSubcontractorDate(isoDate);
+  if(isDateExpired(isoDate))return '<span class="expiry-expired">'+ic('alert-triangle')+' '+escHtml(label)+'</span>';
+  return escHtml(label);
+}
+function subcontractorInsuranceExpired(sub){
+  return !!(sub&&sub.insuranceExpiry&&isDateExpired(sub.insuranceExpiry));
+}
+function phaseSubcontractorInsuranceWarningHtml(ph){
+  if(!ph||!ph.subcontractor_id)return '';
+  var sub=getSubcontractorById(ph.subcontractor_id);
+  if(!subcontractorInsuranceExpired(sub))return '';
+  return '<div class="phase-insurance-warning">'+ic('alert-triangle')+' ⚠ ביטוח הקבלן פג תוקף</div>';
+}
+function populatePhaseSubcontractorSelect(selectedId){
+  var sel=document.getElementById('phase-subcontractor');
+  if(!sel)return;
+  var html='<option value="">— ללא —</option>';
+  subcontractorsCache.forEach(function(s){
+    html+='<option value="'+s.id+'"'+(selectedId===s.id?' selected':'')+'>'+escHtml(s.companyName)+'</option>';
+  });
+  sel.innerHTML=html;
+}
+
 async function ensureUserProfile(authUser){
   var res=await supabase.from('profiles').select('*').eq('id',authUser.id).maybeSingle();
   if(res.data){
@@ -1704,6 +1797,7 @@ async function startApp(user){
     }
   }
   await refreshAppUsers();
+  await refreshSubcontractors();
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('login-error').classList.remove('show');
@@ -1851,6 +1945,7 @@ function renderSidebar(){
       '<div class="nav-item '+(currentView==='projects'?'active':'')+'" onclick="showView(\'projects\')"><span class="nav-icon">'+ic('construction')+'</span> פרויקטים</div>'+
       '<div class="nav-section-title">מערכת</div>'+
       '<div class="nav-item '+(currentView==='clients'?'active':'')+'" onclick="showView(\'clients\')"><span class="nav-icon">'+ic('users')+'</span> לקוחות</div>'+
+      '<div class="nav-item '+(currentView==='subcontractors'?'active':'')+'" onclick="showView(\'subcontractors\')"><span class="nav-icon">'+ic('hard-hat')+'</span> קבלני משנה</div>'+
       '<div class="nav-item '+(currentView==='activity-log'?'active':'')+'" onclick="showView(\'activity-log\')"><span class="nav-icon">'+ic('scroll-text')+'</span> לוג פעולות</div>'+
       '<div class="nav-item '+(currentView==='settings'?'active':'')+'" onclick="showView(\'settings\')"><span class="nav-icon">'+ic('settings')+'</span> הגדרות</div>';
   } else {
@@ -1860,7 +1955,7 @@ function renderSidebar(){
 }
 
 var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה',updates:'עדכונים',messages:'שאלות'};
-var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',clients:'לקוחות','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
+var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
   if(el)el.textContent=text||'ארונשטיין פיקוח וניהול';
@@ -1933,6 +2028,7 @@ function showView(view,pid){
   else if(view==='projects')renderProjectsList(el);
   else if(view==='project')renderProjectDetail(el);
   else if(view==='clients')renderClients(el);
+  else if(view==='subcontractors')renderSubcontractors(el);
   else if(view==='activity-log')renderActivityLog(el);
   else if(view==='settings')renderSettings(el);
   if(view!=='project')updateWhatsAppFab(false);
@@ -2215,6 +2311,7 @@ function renderProjectDetail(el){
         '<div class="phase-progress-row"><div class="phase-progress-track"><div class="phase-progress-fill" style="width:'+phPct+'%"></div></div><span class="phase-progress-pct">'+phPct+'%</span></div>'+
         '<div class="phase-end-date">'+ph.end+'</div>'+
         (ph.notes?'<p style="font-size:12px;color:var(--text-muted);margin-top:8px">'+ph.notes+'</p>':'')+
+        phaseSubcontractorInsuranceWarningHtml(ph)+
         (isAdminUser?'<div class="phase-actions">'+
         '<button class="btn btn-outline btn-sm" onclick="openEditPhaseModal(\''+ph.id+'\')">'+ic('pencil')+' עריכה</button>'+
         '<button class="btn btn-danger btn-sm" onclick="deletePhase(\''+ph.id+'\')">'+ic('trash-2')+'</button></div>':'')+
@@ -2494,6 +2591,95 @@ async function renderClients(el){
         (proj?'<button class="btn btn-outline btn-sm" onclick="showView(\'project\',\''+proj.id+'\')">צפה בפרויקט</button>':'')+
         '<button class="btn btn-danger btn-sm" onclick="deleteUser(\''+u.id+'\')">'+ic('trash-2')+'</button></div></div>';
     }).join('')+'</div>';
+}
+
+async function renderSubcontractors(el){
+  if(!isAdmin()){renderClientNoProject(el);return;}
+  var loaded=await refreshSubcontractors();
+  var subs=subcontractorsCache;
+  el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('hard-hat')+' קבלני משנה</h1><p>ניהול קבלני משנה ותוקפי ביטוח/בטיחות</p></div>'+
+    '<button class="btn btn-primary" onclick="openAddSubcontractorModal()">'+ic('plus')+' קבלן חדש</button></div>'+
+    (!loaded.ok?'<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינת קבלנים. הרץ את supabase-subcontractors-migration.sql ב-SQL Editor.</div>':'')+
+    (subs.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('hard-hat')+'</div><p>אין קבלני משנה עדיין</p></div>':
+    '<div class="card"><div class="table-scroll"><table class="subcontractors-table"><thead><tr>'+
+    '<th>שם חברה</th><th>איש קשר</th><th>טלפון</th><th>תחום התמחות</th><th>תוקף ביטוח</th><th>תוקף בטיחות</th><th></th>'+
+    '</tr></thead><tbody>'+
+    subs.map(function(s){
+      return '<tr><td style="font-weight:600">'+escHtml(s.companyName)+'</td>'+
+        '<td>'+escHtml(s.contactName||'—')+'</td>'+
+        '<td dir="ltr" style="text-align:right">'+escHtml(s.phone||'—')+'</td>'+
+        '<td>'+escHtml(s.specialty||'—')+'</td>'+
+        '<td>'+renderExpiryDateCell(s.insuranceExpiry)+'</td>'+
+        '<td>'+renderExpiryDateCell(s.safetyCertExpiry)+'</td>'+
+        '<td><div class="flex-gap">'+
+        '<button class="btn btn-outline btn-sm" onclick="openEditSubcontractorModal(\''+s.id+'\')">'+ic('pencil')+'</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="deleteSubcontractor(\''+s.id+'\')">'+ic('trash-2')+'</button>'+
+        '</div></td></tr>';
+    }).join('')+'</tbody></table></div></div>');
+  refreshIcons(el);
+}
+function openAddSubcontractorModal(){
+  if(!requireAdmin())return;
+  clearFormErrors('modal-subcontractor');
+  delete document.getElementById('modal-subcontractor').dataset.editId;
+  document.getElementById('modal-subcontractor-title').textContent='קבלן חדש';
+  ['sub-company','sub-contact','sub-phone','sub-email'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('sub-specialty').value='';
+  document.getElementById('sub-insurance').value='';
+  document.getElementById('sub-safety').value='';
+  openModal('modal-subcontractor');
+}
+function openEditSubcontractorModal(id){
+  if(!requireAdmin())return;
+  var s=getSubcontractorById(id);
+  if(!s)return;
+  clearFormErrors('modal-subcontractor');
+  document.getElementById('modal-subcontractor').dataset.editId=id;
+  document.getElementById('modal-subcontractor-title').textContent='עריכת קבלן';
+  document.getElementById('sub-company').value=s.companyName;
+  document.getElementById('sub-contact').value=s.contactName;
+  document.getElementById('sub-phone').value=s.phone;
+  document.getElementById('sub-email').value=s.email;
+  document.getElementById('sub-specialty').value=s.specialty||'';
+  document.getElementById('sub-insurance').value=s.insuranceExpiry?String(s.insuranceExpiry).slice(0,10):'';
+  document.getElementById('sub-safety').value=s.safetyCertExpiry?String(s.safetyCertExpiry).slice(0,10):'';
+  openModal('modal-subcontractor');
+}
+async function saveSubcontractor(){
+  if(!requireAdmin())return;
+  clearFormErrors('modal-subcontractor');
+  if(!validateRequired('sub-company')){focusFirstFormError('modal-subcontractor');return;}
+  var editId=document.getElementById('modal-subcontractor').dataset.editId;
+  var row={
+    company_name:document.getElementById('sub-company').value.trim(),
+    contact_name:document.getElementById('sub-contact').value.trim()||null,
+    phone:document.getElementById('sub-phone').value.trim()||null,
+    email:document.getElementById('sub-email').value.trim()||null,
+    specialty:document.getElementById('sub-specialty').value||null,
+    insurance_expiry:document.getElementById('sub-insurance').value||null,
+    safety_cert_expiry:document.getElementById('sub-safety').value||null
+  };
+  var res=editId
+    ?await supabase.from('subcontractors').update(row).eq('id',editId).select().single()
+    :await supabase.from('subcontractors').insert(row).select().single();
+  if(res.error){alert('שגיאה בשמירת הקבלן:\n'+formatSupabaseErrorHint(res.error.message));return;}
+  logActivity(editId?'עריכת קבלן משנה':'הוספת קבלן משנה',row.company_name);
+  await refreshSubcontractors();
+  if(!await saveData(getData()))return;
+  closeModal('modal-subcontractor');
+  if(currentView==='subcontractors')renderSubcontractors(document.getElementById('main-content'));
+}
+async function deleteSubcontractor(id){
+  if(!requireAdmin())return;
+  var s=getSubcontractorById(id);
+  if(!s)return;
+  if(!confirm('למחוק את הקבלן "'+s.companyName+'"?'))return;
+  var res=await supabase.from('subcontractors').delete().eq('id',id);
+  if(res.error){alert('שגיאה במחיקה:\n'+formatSupabaseErrorHint(res.error.message));return;}
+  logActivity('מחיקת קבלן משנה',s.companyName);
+  await refreshSubcontractors();
+  if(!await saveData(getData()))return;
+  if(currentView==='subcontractors')renderSubcontractors(document.getElementById('main-content'));
 }
 
 function renderActivityLog(el){
@@ -2843,6 +3029,7 @@ function openAddPhaseModal(){
   ['phase-name','phase-start','phase-end','phase-notes'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('phase-prog').value=0;document.getElementById('phase-pv').textContent='0%';
   document.getElementById('phase-status').value='pending';
+  refreshSubcontractors().then(function(){populatePhaseSubcontractorSelect('');});
   openModal('modal-phase');
 }
 function openEditPhaseModal(phId){
@@ -2859,6 +3046,8 @@ function openEditPhaseModal(phId){
   document.getElementById('phase-end').value=formatPhaseDateForInput(ph.end);document.getElementById('phase-prog').value=ph.progress;
   document.getElementById('phase-pv').textContent=ph.progress+'%';
   document.getElementById('phase-status').value=ph.status;document.getElementById('phase-notes').value=ph.notes||'';
+  var subId=ph.subcontractor_id||'';
+  refreshSubcontractors().then(function(){populatePhaseSubcontractorSelect(subId);});
   openModal('modal-phase');
   refreshIcons();
 }
@@ -2884,7 +3073,8 @@ async function savePhase(){
   clearFormErrors('modal-phase');
   if(!validateRequired('phase-name')){focusFirstFormError('modal-phase');return;}
   var data=getData();var proj=getCurrentProject();if(!proj)return;
-  var ph={id:editingPhaseId||('ph'+Date.now()),name:document.getElementById('phase-name').value.trim(),start:document.getElementById('phase-start').value,end:document.getElementById('phase-end').value,progress:Number(document.getElementById('phase-prog').value),status:document.getElementById('phase-status').value,notes:document.getElementById('phase-notes').value};
+  var subId=document.getElementById('phase-subcontractor').value||null;
+  var ph={id:editingPhaseId||('ph'+Date.now()),name:document.getElementById('phase-name').value.trim(),start:document.getElementById('phase-start').value,end:document.getElementById('phase-end').value,progress:Number(document.getElementById('phase-prog').value),status:document.getElementById('phase-status').value,notes:document.getElementById('phase-notes').value,subcontractor_id:subId};
   var oldPh=editingPhaseId?proj.phases.find(function(x){return x.id===editingPhaseId;}):null;
   if(editingPhaseId){
     var idx=proj.phases.findIndex(function(x){return x.id===editingPhaseId;});
@@ -3126,6 +3316,7 @@ Object.assign(window,{
   saveUser,deleteUser,changeAdminPass,sendAdminResetEmail,resetData,
   showView,switchTab,openModal,closeModal,toggleMobileSidebar,closeMobileSidebar,toggleMobileTabMenu,closeMobileTabMenu,
   openNewProjectModal,openEditProjectModal,saveProject,openAddUserModal,
+  openAddSubcontractorModal,openEditSubcontractorModal,saveSubcontractor,deleteSubcontractor,
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,
