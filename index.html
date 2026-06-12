@@ -2111,7 +2111,7 @@ async function initPunchListTab(){
   if(!blueprintPath||!punchBlueprintSignedUrl){
     html+='<div class="card blueprint-section"><p style="font-size:14px;color:var(--text-muted);margin-bottom:16px">העלה תוכנית (תמונה או PDF) כדי לנעוץ ליקויים על המפה.</p>';
     if(isAdminUser){
-      html+='<label class="btn btn-primary btn-sm" style="cursor:pointer"><i data-lucide="upload"></i> העלה תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none" onchange="handleBlueprintUpload(event)"/></label>'+
+      html+='<label class="btn btn-primary btn-sm" style="cursor:pointer"><i data-lucide="upload"></i> העלה תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none"/></label>'+
         '<div id="blueprint-upload-status" class="blueprint-upload-hint"></div>';
     }else{
       html+='<p style="font-size:13px;color:var(--text-muted)">טרם הועלתה תוכנית לפרויקט זה.</p>';
@@ -2125,7 +2125,7 @@ async function initPunchListTab(){
         '<iframe src="'+escHtml(punchBlueprintSignedUrl)+'" title="תוכנית פרויקט"></iframe>'+
         '<p class="blueprint-upload-hint">PDF — הוסף ליקוי בלחיצה על הכפתור למטה (ללא נעיצה על התוכנית).</p>'+
         '<button type="button" class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openNewPunchModal()">'+ic('plus')+' ליקוי חדש</button>'+
-        (isAdminUser?'<label class="btn btn-outline btn-sm" style="cursor:pointer;margin-right:8px"><i data-lucide="upload"></i> החלף תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none" onchange="handleBlueprintUpload(event)"/></label>':'')+
+        (isAdminUser?'<label class="btn btn-outline btn-sm" style="cursor:pointer;margin-right:8px"><i data-lucide="upload"></i> החלף תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none"/></label>':'')+
         '</div>';
     }else{
       html+='<div class="card blueprint-section">'+
@@ -2133,7 +2133,7 @@ async function initPunchListTab(){
         '<div class="blueprint-viewer-wrap clickable" id="blueprint-viewer" onclick="onBlueprintImageClick(event)">'+
         '<img id="blueprint-image" src="'+escHtml(punchBlueprintSignedUrl)+'" alt="תוכנית פרויקט"/>'+
         '<div class="blueprint-pins-layer">'+pinsHtml+'</div></div>'+
-        (isAdminUser?'<label class="btn btn-outline btn-sm" style="cursor:pointer;margin-top:12px"><i data-lucide="upload"></i> החלף תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none" onchange="handleBlueprintUpload(event)"/></label>':'')+
+        (isAdminUser?'<label class="btn btn-outline btn-sm" style="cursor:pointer;margin-top:12px"><i data-lucide="upload"></i> החלף תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none"/></label>':'')+
         '</div>';
     }
   }
@@ -2143,40 +2143,52 @@ async function initPunchListTab(){
   html+='<div class="section-title" style="margin-top:24px;margin-bottom:12px">'+ic('list')+' רשימת ליקויים</div>'+renderPunchTableHtml(punchItemsCache);
   root.innerHTML=html;
   refreshIcons(root);
+  bindBlueprintFileInput();
+}
+function bindBlueprintFileInput(){
+  var input=document.getElementById('blueprint-file-input');
+  if(!input||input.dataset.bound==='1')return;
+  input.dataset.bound='1';
+  input.addEventListener('change',function(ev){handleBlueprintUpload(ev);});
 }
 async function handleBlueprintUpload(ev){
   if(!requireAdmin()||!requireProjectAccess())return;
-  var file=ev.target.files&&ev.target.files[0];
-  if(ev.target)ev.target.value='';
+  var input=ev&&ev.target;
+  var file=input&&input.files&&input.files[0];
   if(!file)return;
   var statusEl=document.getElementById('blueprint-upload-status');
   if(statusEl)statusEl.textContent='מעלה תוכנית...';
-  var proj=getCurrentProject();if(!proj)return;
-  var uploadFile=file;
-  if(file.type&&file.type.startsWith('image/'))uploadFile=await compressImage(file);
-  var ext=paymentReceiptFileExt(uploadFile);
-  var path=proj.id+'/blueprint-'+Date.now()+'.'+ext;
-  var upRes=await supabase.storage.from(PROJECT_BLUEPRINTS_BUCKET).upload(path,uploadFile,{cacheControl:'3600',upsert:false});
-  if(upRes.error){
+  try{
+    var proj=getCurrentProject();if(!proj)return;
+    var uploadFile=file;
+    if(file.type&&file.type.startsWith('image/'))uploadFile=await compressImage(file);
+    var ext=paymentReceiptFileExt(uploadFile);
+    var path=proj.id+'/blueprint-'+Date.now()+'.'+ext;
+    var upRes=await supabase.storage.from(PROJECT_BLUEPRINTS_BUCKET).upload(path,uploadFile,{cacheControl:'3600',upsert:false});
+    if(upRes.error){
+      alert('שגיאה בהעלאת התוכנית:\n'+formatSupabaseErrorHint(upRes.error.message));
+      return;
+    }
+    var signed=await getBlueprintSignedUrl(path);
+    if(!signed||!await verifyStorageUrl(signed)){
+      await supabase.storage.from(PROJECT_BLUEPRINTS_BUCKET).remove([path]);
+      alert('שגיאה באימות התוכנית לאחר העלאה');
+      return;
+    }
+    var data=getData();
+    var p=data.projects.find(function(x){return x.id===proj.id;});
+    if(!p)return;
+    p.blueprint_path=path;
+    if(!(await saveData(data)))return;
+    logActivity('העלאת תוכנית','פרויקט: '+p.name);
+    await initPunchListTab();
+  }catch(err){
+    console.error('handleBlueprintUpload',err);
+    alert('שגיאה בהעלאת התוכנית:\n'+(err&&err.message?err.message:String(err)));
+  }finally{
     if(statusEl)statusEl.textContent='';
-    alert('שגיאה בהעלאת התוכנית:\n'+formatSupabaseErrorHint(upRes.error.message));
-    return;
+    if(input)input.value='';
   }
-  var signed=await getBlueprintSignedUrl(path);
-  if(!signed||!await verifyStorageUrl(signed)){
-    await supabase.storage.from(PROJECT_BLUEPRINTS_BUCKET).remove([path]);
-    if(statusEl)statusEl.textContent='';
-    alert('שגיאה באימות התוכנית לאחר העלאה');
-    return;
-  }
-  var data=getData();
-  var p=data.projects.find(function(x){return x.id===proj.id;});
-  if(!p){if(statusEl)statusEl.textContent='';return;}
-  p.blueprint_path=path;
-  if(!(await saveData(data))){if(statusEl)statusEl.textContent='';return;}
-  logActivity('העלאת תוכנית','פרויקט: '+p.name);
-  if(statusEl)statusEl.textContent='';
-  await initPunchListTab();
 }
 function onBlueprintImageClick(e){
   if(e.target.closest('.blueprint-pin'))return;
@@ -3843,7 +3855,8 @@ Object.assign(window,{
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,
   openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,
   toggleRemoveGalleryImage,removePendingGalleryFile,saveGalleryPost,deleteGalleryPost,
-  openPhotoLightbox,closePhotoLightbox
+  openPhotoLightbox,closePhotoLightbox,
+  handleBlueprintUpload,openNewPunchModal,openPunchItemView,onBlueprintImageClick,savePunchItem,markPunchFixed
 });
 window.addEventListener('resize',function(){
   if(window.innerWidth>=1024)closeMobileSidebar();
