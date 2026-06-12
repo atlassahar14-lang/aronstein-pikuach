@@ -120,6 +120,26 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .stat-icon{font-size:28px;margin-bottom:10px}
 .stat-value{font-size:28px;font-weight:800;color:var(--primary)}
 .stat-label{font-size:12px;color:var(--text-muted);margin-top:4px}
+.dash-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-bottom:28px}
+.dash-metric-card{background:var(--card);border-radius:16px;padding:24px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.06);position:relative;overflow:hidden}
+.dash-metric-card::before{content:'';position:absolute;top:0;right:0;left:0;height:4px;background:var(--primary)}
+.dash-metric-card.accent::before{background:var(--accent)}
+.dash-metric-card.success::before{background:var(--success)}
+.dash-metric-card.warn::before{background:var(--danger)}
+.dash-metric-icon{width:44px;height:44px;border-radius:12px;background:rgba(27,43,94,.1);color:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.dash-metric-icon svg{width:22px;height:22px}
+.dash-metric-card.accent .dash-metric-icon{background:rgba(232,160,32,.15);color:var(--accent)}
+.dash-metric-card.success .dash-metric-icon{background:rgba(34,197,94,.12);color:var(--success)}
+.dash-metric-card.warn .dash-metric-icon{background:rgba(239,68,68,.1);color:var(--danger)}
+.dash-metric-value{font-size:32px;font-weight:800;color:var(--primary);line-height:1.2;word-break:break-word}
+.dash-metric-card.accent .dash-metric-value{color:var(--accent)}
+.dash-metric-card.warn .dash-metric-value{color:var(--danger)}
+.dash-metric-label{font-size:13px;color:var(--text-muted);margin-top:8px;line-height:1.45}
+.dash-overdue-list{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.dash-overdue-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--bg);border-radius:12px;border:1px solid var(--border);font-size:13px;flex-wrap:wrap}
+.dash-overdue-row .overdue-name{font-weight:600;color:var(--primary)}
+.dash-overdue-row .overdue-meta{font-size:12px;color:var(--text-muted)}
+.dash-overdue-row .btn{flex-shrink:0}
 .projects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
 .project-card{background:var(--card);border-radius:16px;padding:22px;border:1px solid var(--border);cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.05)}
 .project-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.1);border-color:var(--primary-light)}
@@ -1046,7 +1066,7 @@ function renderSidebar(){
   var nav=document.getElementById('sidebar-nav');
   if(currentUser.role==='admin'){
     nav.innerHTML='<div class="nav-section-title">ניהול</div>'+
-      '<div class="nav-item '+(currentView==='dashboard'?'active':'')+'" onclick="showView(\'dashboard\')"><span class="nav-icon">'+ic('layout-dashboard')+'</span> לוח בקרה</div>'+
+      '<div class="nav-item '+(currentView==='dashboard'?'active':'')+'" onclick="showView(\'dashboard\')"><span class="nav-icon">'+ic('layout-dashboard')+'</span> דשבורד</div>'+
       '<div class="nav-item '+(currentView==='projects'?'active':'')+'" onclick="showView(\'projects\')"><span class="nav-icon">'+ic('construction')+'</span> פרויקטים</div>'+
       '<div class="nav-section-title">מערכת</div>'+
       '<div class="nav-item '+(currentView==='clients'?'active':'')+'" onclick="showView(\'clients\')"><span class="nav-icon">'+ic('users')+'</span> לקוחות</div>'+
@@ -1059,7 +1079,7 @@ function renderSidebar(){
 }
 
 var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'תקציב',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה',updates:'עדכונים',messages:'שאלות'};
-var MOBILE_VIEW_TITLES={dashboard:'לוח בקרה',projects:'פרויקטים',clients:'לקוחות','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
+var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',clients:'לקוחות','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
   if(el)el.textContent=text||'ארונשטיין פיקוח וניהול';
@@ -1200,23 +1220,69 @@ function projectCardHTML(p){
     '</div>';
 }
 
+function countOverduePhases(projects){
+  var today=new Date();today.setHours(0,0,0,0);
+  var count=0;
+  projects.forEach(function(p){
+    (p.phases||[]).forEach(function(ph){
+      if(ph.status==='done'||!ph.end)return;
+      var endDate=new Date(ph.end);
+      if(isNaN(endDate.getTime()))return;
+      endDate.setHours(0,0,0,0);
+      if(endDate<today)count++;
+    });
+  });
+  return count;
+}
+function getOverduePhasesList(projects){
+  var today=new Date();today.setHours(0,0,0,0);
+  var list=[];
+  projects.forEach(function(p){
+    (p.phases||[]).forEach(function(ph){
+      if(ph.status==='done'||!ph.end)return;
+      var endDate=new Date(ph.end);
+      if(isNaN(endDate.getTime()))return;
+      endDate.setHours(0,0,0,0);
+      if(endDate<today)list.push({projectName:p.name,projectId:p.id,phaseName:ph.name,end:ph.end,status:ph.status});
+    });
+  });
+  return list;
+}
+function dashMetricCard(cls,icon,value,label){
+  return '<div class="dash-metric-card '+cls+'"><div class="dash-metric-icon">'+ic(icon)+'</div><div class="dash-metric-value">'+value+'</div><div class="dash-metric-label">'+label+'</div></div>';
+}
+
 function renderDashboard(el){
   if(!isAdmin()){renderClientNoProject(el);return;}
   var data=getData();
-  var active=data.projects.filter(function(p){return p.status==='active';}).length;
-  var done=data.projects.filter(function(p){return p.status==='done';}).length;
-  var clients=appUsers.filter(function(u){return u.role!=='admin';}).length;
-  var totalPaid=data.projects.reduce(function(s,p){return s+p.payments.reduce(function(ss,pay){return ss+Number(pay.amount||0);},0);},0);
-  el.innerHTML='<div class="page-header"><h1>'+ic('hand')+' שלום, '+currentUser.name+'</h1><p>סקירה כללית של כל הפרויקטים</p></div>'+
-    '<div class="stats-grid">'+
-    '<div class="stat-card"><div class="stat-icon">'+ic('construction')+'</div><div class="stat-value">'+data.projects.length+'</div><div class="stat-label">פרויקטים</div></div>'+
-    '<div class="stat-card"><div class="stat-icon">'+ic('zap')+'</div><div class="stat-value">'+active+'</div><div class="stat-label">פעילים</div></div>'+
-    '<div class="stat-card"><div class="stat-icon">'+ic('circle-check')+'</div><div class="stat-value">'+done+'</div><div class="stat-label">פרויקטים גמורים</div></div>'+
-    '<div class="stat-card"><div class="stat-icon">'+ic('users')+'</div><div class="stat-value">'+clients+'</div><div class="stat-label">לקוחות</div></div>'+
-    '<div class="stat-card"><div class="stat-icon">'+ic('banknote')+'</div><div class="stat-value">'+fmtMoney(totalPaid)+'</div><div class="stat-label">שולם סה"כ</div></div>'+
-    '</div>'+
-    '<div class="card"><div class="section-actions"><div class="section-title">'+ic('construction')+' פרויקטים</div><button class="btn btn-primary btn-sm" onclick="openNewProjectModal()">'+ic('plus')+' פרויקט חדש</button></div>'+
-    '<div class="projects-grid">'+data.projects.map(projectCardHTML).join('')+'</div></div>';
+  var projects=data.projects;
+  var active=projects.filter(function(p){return p.status==='active';}).length;
+  var done=projects.filter(function(p){return p.status==='done';}).length;
+  var totalPaid=projects.reduce(function(s,p){return s+p.payments.reduce(function(ss,pay){return ss+Number(pay.amount||0);},0);},0);
+  var overdueCount=countOverduePhases(projects);
+  var overdueList=getOverduePhasesList(projects);
+  var statusLabels={active:'בביצוע',pending:'ממתין'};
+  var html='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('layout-dashboard')+' דשבורד</h1><p>תמונת מצב כללית על כל הפרויקטים</p></div>'+
+    '<button class="btn btn-primary btn-sm" onclick="showView(\'projects\')">'+ic('construction')+' כל הפרויקטים</button></div>'+
+    '<div class="dash-metrics">'+
+    dashMetricCard('accent','zap',active,'פרויקטים פעילים (בביצוע)')+
+    dashMetricCard('success','circle-check',done,'פרויקטים שהושלמו')+
+    dashMetricCard('', 'banknote',fmtMoney(totalPaid),'סכום תשלומים שבוצעו')+
+    dashMetricCard('warn','alert-triangle',overdueCount,'שלבים באיחור')+
+    '</div>';
+  if(overdueList.length>0){
+    html+='<div class="card"><div class="card-title">'+ic('alert-triangle')+' שלבים באיחור</div><p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">שלבים שתאריך הסיום שלהם עבר וטרם סומנו כהושלמו</p><div class="dash-overdue-list">'+
+      overdueList.map(function(item){
+        return '<div class="dash-overdue-row"><div><div class="overdue-name">'+escHtml(item.phaseName)+'</div><div class="overdue-meta">'+escHtml(item.projectName)+' · סיום: '+escHtml(item.end)+' · '+escHtml(statusLabels[item.status]||item.status)+'</div></div>'+
+          '<button class="btn btn-outline btn-sm" onclick="showView(\'project\',\''+item.projectId+'\');switchTab(\'timeline\')">'+ic('calendar')+' צפה בשלב</button></div>';
+      }).join('')+'</div></div>';
+  }
+  html+='<div class="card"><div class="section-actions"><div class="section-title">'+ic('construction')+' פרויקטים אחרונים</div><button class="btn btn-accent btn-sm" onclick="openNewProjectModal()">'+ic('plus')+' פרויקט חדש</button></div>'+
+    (projects.length===0?'<div class="empty-state"><div class="empty-icon">'+ic('construction')+'</div><p>אין פרויקטים עדיין — צור את הראשון</p></div>':
+    '<div class="projects-grid">'+projects.slice(0,6).map(projectCardHTML).join('')+'</div>')+
+    '</div>';
+  el.innerHTML=html;
+  refreshIcons(el);
 }
 
 function renderProjectsList(el){
