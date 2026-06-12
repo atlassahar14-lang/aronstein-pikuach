@@ -329,6 +329,12 @@ img,svg,video,canvas{max-width:100%;height:auto}
 @keyframes upload-spin{to{transform:rotate(360deg)}}
 .upload-error{font-size:13px;color:var(--danger);margin-top:8px;display:none}
 .upload-error.show{display:block}
+.migration-overlay{display:none;position:fixed;inset:0;background:rgba(27,43,94,.55);z-index:400;align-items:center;justify-content:center;padding:24px}
+.migration-overlay.show{display:flex}
+.migration-card{background:#fff;border-radius:14px;padding:24px 28px;max-width:420px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.2);text-align:center}
+.migration-card h3{font-size:18px;color:var(--primary);margin-bottom:8px}
+.migration-card p{font-size:14px;color:var(--text-muted);line-height:1.5;margin-bottom:14px}
+.migration-progress{font-size:13px;color:var(--steel);min-height:20px}
 .expiry-expired{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:#fef2f2;color:var(--danger);font-weight:600;font-size:13px}
 .phase-insurance-warning{display:flex;align-items:center;gap:6px;margin-top:8px;padding:8px 10px;border-radius:8px;background:#fef2f2;color:var(--danger);font-size:12px;font-weight:600}
 .subcontractors-table{width:100%;border-collapse:collapse}
@@ -564,6 +570,14 @@ img,svg,video,canvas{max-width:100%;height:auto}
 
 <div id="app">
   <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+  <div class="migration-overlay" id="migration-overlay" aria-live="polite">
+    <div class="migration-card">
+      <h3>מעביר קבצים ל-Storage</h3>
+      <p>מעלה תמונות ומסמכים ישנים מה-JSON ל-Supabase Storage. זה יכול לקחת דקה.</p>
+      <div class="upload-spinner show" style="justify-content:center;margin-bottom:10px"><span class="upload-spinner-icon"></span></div>
+      <div class="migration-progress" id="migration-progress">מתחיל...</div>
+    </div>
+  </div>
   <div class="app-layout">
     <header class="mobile-header">
       <div class="mobile-header-inner">
@@ -862,6 +876,188 @@ async function uploadMediaFile(folderPath,file){
   var publicUrl=supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path).data.publicUrl;
   return {ok:true,data:{url:publicUrl,name:file.name,type:file.type,path:path}};
 }
+function isDataUrl(str){return typeof str==='string'&&str.indexOf('data:')===0;}
+function isHttpStorageUrl(str){return typeof str==='string'&&/^https:\/\//i.test(str);}
+function extFromMime(mime,fallback){
+  var map={'image/jpeg':'jpg','image/jpg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','application/pdf':'pdf'};
+  return map[(mime||'').toLowerCase()]||fallback||'bin';
+}
+function extFromDataUrl(dataUrl,fallback){
+  var m=(dataUrl||'').match(/^data:([^;,]+)/);
+  return extFromMime(m?m[1]:'',fallback);
+}
+function dataUrlToBlob(dataUrl){
+  var parts=String(dataUrl).split(',');
+  if(parts.length<2)throw new Error('invalid data url');
+  var mimeMatch=parts[0].match(/data:([^;]+)/);
+  var mime=mimeMatch?mimeMatch[1]:'application/octet-stream';
+  var binary=atob(parts[1]);
+  var len=binary.length;
+  var bytes=new Uint8Array(len);
+  for(var i=0;i<len;i++)bytes[i]=binary.charCodeAt(i);
+  return new Blob([bytes],{type:mime});
+}
+async function verifyStorageUrl(url){
+  if(!isHttpStorageUrl(url))return false;
+  try{
+    var res=await fetch(url,{method:'HEAD',cache:'no-store'});
+    if(res.ok)return true;
+    if(res.status===405||res.status===403){
+      var getRes=await fetch(url,{method:'GET',headers:{Range:'bytes=0-0'},cache:'no-store'});
+      return getRes.ok||getRes.status===206;
+    }
+    return false;
+  }catch(e){
+    console.warn('verifyStorageUrl',url,e);
+    return false;
+  }
+}
+async function uploadBlobToStorage(storagePath,blob,contentType){
+  var res=await supabase.storage.from(STORAGE_BUCKET).upload(storagePath,blob,{
+    contentType:contentType||blob.type||'application/octet-stream',
+    cacheControl:'3600',
+    upsert:true
+  });
+  if(res.error)return {ok:false,error:res.error.message};
+  var publicUrl=supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath).data.publicUrl;
+  return {ok:true,url:publicUrl,path:storagePath};
+}
+async function migrateDataUrlField(item,urlKey,projectId,folder,itemId,label,onProgress){
+  var dataUrl=item[urlKey];
+  if(!isDataUrl(dataUrl)){
+    if(item.path&&isHttpStorageUrl(item[urlKey])&&await verifyStorageUrl(item[urlKey]))return {ok:true,skipped:true};
+    return {ok:true,skipped:true};
+  }
+  var ext=extFromDataUrl(dataUrl,extFromMime(item.type,'bin'));
+  var storagePath=folder+'/'+projectId+'/'+itemId+'.'+ext;
+  var existingUrl=supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath).data.publicUrl;
+  if(onProgress)onProgress(label+' — בודק Storage...');
+  if(await verifyStorageUrl(existingUrl)){
+    item[urlKey]=existingUrl;
+    item.path=storagePath;
+    if(!item.type){try{item.type=dataUrlToBlob(dataUrl).type;}catch(e){}}
+    return {ok:true,recovered:true};
+  }
+  if(onProgress)onProgress(label+' — מעלה...');
+  var blob=dataUrlToBlob(dataUrl);
+  var upload=await uploadBlobToStorage(storagePath,blob,blob.type);
+  if(!upload.ok)return {ok:false,error:upload.error,label:label};
+  if(onProgress)onProgress(label+' — מאמת URL...');
+  if(!await verifyStorageUrl(upload.url))return {ok:false,error:'URL verification failed',label:label};
+  item[urlKey]=upload.url;
+  item.path=storagePath;
+  if(!item.type&&blob.type)item.type=blob.type;
+  return {ok:true,migrated:true};
+}
+function projectHasBase64Media(proj){
+  if(!proj)return false;
+  if((proj.documents||[]).some(function(d){return isDataUrl(d.url);}))return true;
+  if((proj.photos||[]).some(function(p){return isDataUrl(p.url);}))return true;
+  if((proj.updates||[]).some(function(u){return isDataUrl(u.mediaUrl);}))return true;
+  return getProjectGalleryPosts(proj).some(function(post){
+    return (post.images||[]).some(function(img){return isDataUrl(img.url);});
+  });
+}
+function galleryImageById(proj,imgId){
+  var posts=getProjectGalleryPosts(proj);
+  for(var i=0;i<posts.length;i++){
+    var img=(posts[i].images||[]).find(function(x){return x.id===imgId;});
+    if(img)return img;
+  }
+  return null;
+}
+function cleanupLegacyPhotos(proj){
+  if(!proj||!Array.isArray(proj.photos)||!proj.photos.length)return;
+  var canRemove=proj.photos.every(function(ph){
+    if(isDataUrl(ph.url))return false;
+    var inGallery=galleryImageById(proj,ph.id);
+    if(inGallery&&isDataUrl(inGallery.url))return false;
+    return true;
+  });
+  if(canRemove)delete proj.photos;
+}
+function setMigrationProgress(text){
+  var el=document.getElementById('migration-progress');
+  if(el)el.textContent=text||'';
+}
+function showMigrationOverlay(show){
+  var el=document.getElementById('migration-overlay');
+  if(el)el.classList.toggle('show',!!show);
+  syncBodyScrollLock();
+}
+async function migrateBase64MediaToStorage(){
+  if(!isAdmin())return {ok:true,skipped:true};
+  if(!appDataCache.projects.some(projectHasBase64Media))return {ok:true,skipped:true};
+  showMigrationOverlay(true);
+  var stats={migrated:0,recovered:0,skipped:0,failed:[]};
+  try{
+    for(var pi=0;pi<appDataCache.projects.length;pi++){
+      var proj=appDataCache.projects[pi];
+      if(!projectHasBase64Media(proj))continue;
+      var pname=proj.name||proj.id;
+      for(var di=0;di<(proj.documents||[]).length;di++){
+        var doc=proj.documents[di];
+        if(!isDataUrl(doc.url))continue;
+        var r=await migrateDataUrlField(doc,'url',proj.id,'documents',doc.id,'מסמך: '+(doc.name||doc.id),setMigrationProgress);
+        if(!r.ok){stats.failed.push((r.label||'מסמך')+': '+r.error);continue;}
+        if(r.migrated)stats.migrated++;else if(r.recovered)stats.recovered++;else stats.skipped++;
+      }
+      normalizeProjectGallery(proj);
+      var posts=proj.galleryPosts||[];
+      for(var gi=0;gi<posts.length;gi++){
+        var post=posts[gi];
+        for(var ii=0;ii<(post.images||[]).length;ii++){
+          var img=post.images[ii];
+          if(!isDataUrl(img.url))continue;
+          var r2=await migrateDataUrlField(img,'url',proj.id,'gallery/'+post.id,img.id,'גלריה · '+pname,setMigrationProgress);
+          if(!r2.ok){stats.failed.push((r2.label||'גלריה')+': '+r2.error);continue;}
+          if(r2.migrated)stats.migrated++;else if(r2.recovered)stats.recovered++;else stats.skipped++;
+        }
+      }
+      for(var li=0;li<(proj.photos||[]).length;li++){
+        var ph=proj.photos[li];
+        if(!isDataUrl(ph.url))continue;
+        var galImg=galleryImageById(proj,ph.id);
+        if(galImg&&!isDataUrl(galImg.url)&&isHttpStorageUrl(galImg.url)&&await verifyStorageUrl(galImg.url)){
+          ph.url=galImg.url;
+          ph.path=galImg.path;
+          ph.type=galImg.type||ph.type;
+          stats.skipped++;
+          continue;
+        }
+        var r3=await migrateDataUrlField(ph,'url',proj.id,'gallery/legacy',ph.id,'תמונה ישנה · '+pname,setMigrationProgress);
+        if(!r3.ok){stats.failed.push((r3.label||'תמונה')+': '+r3.error);continue;}
+        if(r3.migrated)stats.migrated++;else if(r3.recovered)stats.recovered++;else stats.skipped++;
+        if(galImg&&isDataUrl(galImg.url)){
+          galImg.url=ph.url;
+          galImg.path=ph.path;
+          galImg.type=ph.type||galImg.type;
+        }
+      }
+      for(var ui=0;ui<(proj.updates||[]).length;ui++){
+        var upd=proj.updates[ui];
+        if(!isDataUrl(upd.mediaUrl))continue;
+        var r5=await migrateDataUrlField(upd,'mediaUrl',proj.id,'updates',upd.id,'עדכון · '+pname,setMigrationProgress);
+        if(!r5.ok){stats.failed.push((r5.label||'עדכון')+': '+r5.error);continue;}
+        if(r5.migrated)stats.migrated++;else if(r5.recovered)stats.recovered++;else stats.skipped++;
+      }
+      cleanupLegacyPhotos(proj);
+    }
+    if(stats.failed.length){
+      setMigrationProgress('שגיאה ב-'+(stats.failed.length)+' פריטים — לא נשמר. הרץ שוב.');
+      return {ok:false,error:stats.failed.join('\n'),stats:stats};
+    }
+    setMigrationProgress('שומר נתונים מעודכנים...');
+    var save=await persistAppData({skipSizeCheck:false});
+    if(!save.ok)return {ok:false,error:save.error,stats:stats};
+    logActivity('מיגרציית Storage','הועברו '+stats.migrated+' קבצים מ-Base64 ל-Storage');
+    await persistActivityLogOnly();
+    setMigrationProgress('הושלם!');
+    return {ok:true,stats:stats};
+  }finally{
+    setTimeout(function(){showMigrationOverlay(false);},600);
+  }
+}
 function paymentReceiptFileExt(file){
   var fromName=(file.name||'').split('.').pop();
   if(fromName&&fromName.length<=5)return fromName.toLowerCase();
@@ -940,25 +1136,27 @@ async function openPaymentReceipt(paymentId){
 }
 function normalizeProjectGallery(proj){
   if(!proj)return;
-  if(Array.isArray(proj.galleryPosts))return;
-  var legacy=proj.photos||[];
-  proj.galleryPosts=legacy.map(function(p){
-    var ts=p.uploadedAt||p.date||new Date().toISOString();
-    return {
-      id:'gpost_'+p.id,
-      text:p.caption||'',
-      createdAt:ts,
-      updatedAt:ts,
-      images:[{
-        id:p.id,
-        name:p.name||'',
-        url:p.url,
-        path:p.path||null,
-        type:p.type||'',
-        uploadedAt:ts
-      }]
-    };
-  });
+  if(!Array.isArray(proj.galleryPosts)){
+    var legacy=proj.photos||[];
+    proj.galleryPosts=legacy.map(function(p){
+      var ts=p.uploadedAt||p.date||new Date().toISOString();
+      return {
+        id:'gpost_'+p.id,
+        text:p.caption||'',
+        createdAt:ts,
+        updatedAt:ts,
+        images:[{
+          id:p.id,
+          name:p.name||'',
+          url:p.url,
+          path:p.path||null,
+          type:p.type||'',
+          uploadedAt:ts
+        }]
+      };
+    });
+  }
+  cleanupLegacyPhotos(proj);
 }
 function getProjectGalleryPosts(proj){
   normalizeProjectGallery(proj);
@@ -1581,32 +1779,47 @@ function estimatePayloadBytes(row){
     return new Blob([JSON.stringify(row.projects||[]),JSON.stringify(row.activity_log||[])]).size;
   }catch(e){return 0;}
 }
-async function persistAppData(){
+async function persistAppData(opts){
+  opts=opts||{};
   var row=prepareAppDataRow();
   var bytes=estimatePayloadBytes(row);
-  if(bytes>1500000){
+  if(!opts.skipSizeCheck&&bytes>1500000){
     return {ok:false,error:'נתוני הפרויקט גדולים מדי לשמירה ('+Math.round(bytes/1024)+'KB). הסר מסמכים/תמונות ישנים ב-Base64.'};
   }
   var rpc=await supabase.rpc('save_app_data',{
     p_projects:row.projects,
     p_activity_log:row.activity_log
   });
-  if(!rpc.error)return {ok:true};
+  if(!rpc.error)return {ok:true,bytes:bytes};
   console.warn('persistAppData rpc failed, trying update',rpc.error);
   var upd=await supabase.from('app_data').update({
     projects:row.projects,
     activity_log:row.activity_log,
     updated_at:row.updated_at
   }).eq('id','main');
-  if(!upd.error)return {ok:true};
+  if(!upd.error)return {ok:true,bytes:bytes};
   var ins=await supabase.from('app_data').insert({
     id:'main',
     projects:row.projects,
     activity_log:row.activity_log,
     updated_at:row.updated_at
   });
-  if(!ins.error)return {ok:true};
+  if(!ins.error)return {ok:true,bytes:bytes};
   return {ok:false,error:(ins.error.message||upd.error.message||rpc.error.message||'save failed')};
+}
+async function persistActivityLogOnly(){
+  if(!isAdmin())return {ok:true};
+  var activityLog=sanitizeJsonForDb(normalizeActivityLog(appDataCache.activityLog));
+  if(!Array.isArray(activityLog))activityLog=[];
+  var res=await supabase.from('app_data').update({
+    activity_log:activityLog,
+    updated_at:new Date().toISOString()
+  }).eq('id','main');
+  if(res.error){
+    console.error('persistActivityLogOnly',res.error);
+    return {ok:false,error:res.error.message};
+  }
+  return {ok:true};
 }
 
 async function refreshAppData(){
@@ -1798,6 +2011,12 @@ async function startApp(user){
   }
   await refreshAppUsers();
   await refreshSubcontractors();
+  if(isAdmin()&&appDataCache.projects.some(projectHasBase64Media)){
+    var mig=await migrateBase64MediaToStorage();
+    if(!mig.ok){
+      alert('מיגרציית קבצים ל-Storage נכשלה:\n\n'+formatSupabaseErrorHint(mig.error||'unknown')+'\n\nהנתונים המקוריים ב-JSON לא שונו. נסה לרענן ולהתחבר שוב.');
+    }
+  }
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('login-error').classList.remove('show');
@@ -2665,7 +2884,9 @@ async function saveSubcontractor(){
   if(res.error){alert('שגיאה בשמירת הקבלן:\n'+formatSupabaseErrorHint(res.error.message));return;}
   logActivity(editId?'עריכת קבלן משנה':'הוספת קבלן משנה',row.company_name);
   await refreshSubcontractors();
-  if(!await saveData(getData()))return;
+  if(!await persistActivityLogOnly()){
+    alert('הקבלן נשמר, אך לוג הפעולות לא עודכן.');
+  }
   closeModal('modal-subcontractor');
   if(currentView==='subcontractors')renderSubcontractors(document.getElementById('main-content'));
 }
@@ -2678,7 +2899,7 @@ async function deleteSubcontractor(id){
   if(res.error){alert('שגיאה במחיקה:\n'+formatSupabaseErrorHint(res.error.message));return;}
   logActivity('מחיקת קבלן משנה',s.companyName);
   await refreshSubcontractors();
-  if(!await saveData(getData()))return;
+  await persistActivityLogOnly();
   if(currentView==='subcontractors')renderSubcontractors(document.getElementById('main-content'));
 }
 
@@ -2724,7 +2945,8 @@ var modalOpenCount=0;
 function syncBodyScrollLock(){
   var sbOpen=document.getElementById('sidebar')&&document.getElementById('sidebar').classList.contains('open');
   var tabOpen=document.getElementById('mobile-tab-drawer')&&document.getElementById('mobile-tab-drawer').classList.contains('open');
-  document.body.style.overflow=(modalOpenCount>0||sbOpen||tabOpen)?'hidden':'';
+  var migOpen=document.getElementById('migration-overlay')&&document.getElementById('migration-overlay').classList.contains('show');
+  document.body.style.overflow=(modalOpenCount>0||sbOpen||tabOpen||migOpen)?'hidden':'';
 }
 function openModal(id){
   var overlay=document.getElementById(id);
@@ -2901,8 +3123,8 @@ async function deleteUser(id){
   var res=await supabase.from('profiles').delete().eq('id',id);
   if(res.error){alert(supabaseErrorToHebrew(res.error.message));return;}
   logActivity('מחיקת לקוח',u?(u.name+' ('+u.email+')'):id);
-  await saveData(getData());
   await refreshAppUsers();
+  if(!await persistActivityLogOnly())console.warn('activity log save failed after deleteUser');
   renderClients(document.getElementById('main-content'));
 }
 
