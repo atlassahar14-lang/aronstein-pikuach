@@ -288,9 +288,19 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .punch-status-fixed{color:var(--success);font-weight:600}
 .punch-detail-row{display:flex;gap:8px;font-size:14px;margin-bottom:8px;line-height:1.5}
 .punch-detail-row .label{color:var(--text-muted);min-width:72px}
-.subcontractors-filter-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;margin-bottom:12px}
-.subcontractors-filter-bar label{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap}
-.subcontractors-filter-bar select{min-width:180px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px;background:#fff;direction:rtl}
+.subcontractors-filter-bar,.list-filter-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;margin-bottom:12px}
+.subcontractors-filter-bar label,.list-filter-bar label{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap}
+.subcontractors-filter-bar select,.list-filter-bar select{min-width:160px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px;background:#fff;direction:rtl}
+.list-filter-bar .list-filter-actions{margin-right:auto;display:flex;gap:8px;flex-wrap:wrap}
+.payment-status-approved{color:var(--success);font-weight:600}
+.payment-status-pending{color:var(--warning);font-weight:600}
+.app-toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%) translateY(-130%);z-index:5000;max-width:min(92vw,520px);padding:16px 22px;border-radius:14px;font-size:17px;font-weight:700;line-height:1.45;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.2);opacity:0;transition:transform .35s ease,opacity .35s ease;pointer-events:none}
+.app-toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.app-toast.toast-success{background:#ecfdf5;color:#047857;border:2px solid #6ee7b7}
+.app-toast.toast-error{background:#fef2f2;color:#b91c1c;border:2px solid #fca5a5}
+@media(max-width:1023px){
+  .app-toast{top:calc(72px + env(safe-area-inset-top,0px))}
+}
 .daily-log-form-card{margin-bottom:24px}
 .daily-log-workers{display:flex;flex-direction:column;gap:10px;margin-top:8px}
 .daily-log-worker-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px}
@@ -520,7 +530,10 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .blueprint-pin::after{inset:-10px}
   .blueprint-section .btn,.blueprint-section label.btn{margin-top:8px!important;margin-right:0!important;width:100%;justify-content:center}
   .blueprint-section label.btn{display:inline-flex}
-  .subcontractors-filter-bar select{width:100%;min-width:0;min-height:44px;font-size:16px}
+  .subcontractors-filter-bar select,.list-filter-bar select{width:100%;min-width:0;min-height:44px;font-size:16px}
+  .list-filter-bar{flex-direction:column;align-items:stretch!important}
+  .list-filter-bar .list-filter-actions{margin-right:0;width:100%}
+  .list-filter-bar .list-filter-actions .btn{width:100%;justify-content:center}
   .daily-log-worker-count{min-height:44px;font-size:16px;padding:10px 12px}
   .daily-log-form-card .btn{width:100%;justify-content:center}
   .daily-log-form-card .flex-gap{flex-direction:column;width:100%}
@@ -1578,6 +1591,35 @@ function focusFirstFormError(modalId){
   if(!modal)return;
   var first=modal.querySelector('.form-group.has-error input, .form-group.has-error select, .form-group.has-error textarea');
   if(first)first.focus();
+  showFormValidationToast(modalId);
+}
+function showToast(message,type,duration){
+  type=type||'success';
+  duration=duration||(type==='error'?5500:3800);
+  var container=document.getElementById('app-toast');
+  if(!container){
+    container=document.createElement('div');
+    container.id='app-toast';
+    container.className='app-toast';
+    container.setAttribute('role','status');
+    container.setAttribute('aria-live','polite');
+    document.body.appendChild(container);
+  }
+  if(toastTimer){clearTimeout(toastTimer);toastTimer=null;}
+  var prefix=type==='success'?'✓ ':type==='error'?'✗ ':'';
+  container.className='app-toast show toast-'+type;
+  container.textContent=prefix+message;
+  toastTimer=setTimeout(function(){container.classList.remove('show');},duration);
+}
+function showFormValidationToast(modalId){
+  var modal=document.getElementById(modalId);
+  if(!modal)return;
+  var errGroup=modal.querySelector('.form-group.has-error');
+  if(!errGroup)return;
+  var err=errGroup.querySelector('.field-error');
+  var label=errGroup.querySelector('label');
+  var detail=err&&err.textContent?err.textContent:(label?('חסר '+label.textContent.replace(/\*/g,'').trim()):'יש למלא את כל השדות הנדרשים');
+  showToast('שגיאה: '+detail,'error');
 }
 function bindModalValidationClear(modalId){
   var modal=document.getElementById(modalId);
@@ -1601,6 +1643,8 @@ var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[
 var appDataCache={projects:[],activityLog:[]},appUsers=[],subcontractorsCache=[],punchItemsCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false;
 var viewingPunchItemId=null,punchPinDraft={x:null,y:null},punchBlueprintSignedUrl=null;
 var subcontractorSpecialtyFilter='',showDailyLogForm=false;
+var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='';
+var toastTimer=null;
 const DAILY_LOG_WEATHER=['בהיר','גשום','מעונן','רוח חזקה'];
 const ACTIVITY_LOG_MAX=500;
 
@@ -1744,6 +1788,52 @@ function getPaymentsForView(payments){
   var list=payments||[];
   if(isAdmin())return list;
   return list.filter(paymentIsClientVisible);
+}
+function paymentIsApproved(pay){
+  if(!pay)return false;
+  if(pay.approved===false||pay.confirmed===false)return false;
+  var status=String(pay.status||'').toLowerCase();
+  if(status==='pending'||status==='ממתין'||status==='waiting')return false;
+  if(pay.approved===true||pay.confirmed===true)return true;
+  if(status==='confirmed'||status==='approved'||status==='מאושר')return true;
+  return true;
+}
+function getPaymentStatusLabel(pay){
+  return paymentIsApproved(pay)?'מאושר':'ממתין';
+}
+function paymentStatusCssClass(pay){
+  return paymentIsApproved(pay)?'payment-status-approved':'payment-status-pending';
+}
+function filterAndSortPayments(payments){
+  var list=getPaymentsForView(payments||[]);
+  if(paymentStatusFilter==='approved')list=list.filter(paymentIsApproved);
+  else if(paymentStatusFilter==='pending')list=list.filter(function(p){return !paymentIsApproved(p);});
+  list=list.slice().sort(function(a,b){
+    var da=parsePhaseDate(a.date),db=parsePhaseDate(b.date);
+    var ta=da?da.getTime():0,tb=db?db.getTime():0;
+    return paymentSortOrder==='asc'?ta-tb:tb-ta;
+  });
+  return list;
+}
+function filterPunchItems(items){
+  var list=(items||[]).slice();
+  if(punchStatusFilter==='open')list=list.filter(function(it){return it.status==='open';});
+  else if(punchStatusFilter==='fixed')list=list.filter(function(it){return it.status==='fixed';});
+  if(punchUrgencyFilter)list=list.filter(function(it){return it.urgency===punchUrgencyFilter;});
+  return list;
+}
+function filterDailyLogs(logs){
+  if(!dailyLogWeatherFilter)return logs||[];
+  return (logs||[]).filter(function(l){return l.weather===dailyLogWeatherFilter;});
+}
+function formatDailyLogWorkersForCsv(workers){
+  if(!Array.isArray(workers)||!workers.length)return '';
+  return workers.map(function(w){
+    var subId=w.subcontractor_id||w.subcontractorId;
+    var sub=subId?getSubcontractorById(subId):null;
+    var name=sub?sub.companyName:'לא ידוע';
+    return name+': '+(Number(w.count)||0);
+  }).join('; ');
 }
 function sumProjectPaidFromList(payments){
   return (payments||[]).reduce(function(s,x){return s+Number(x.amount||0);},0);
@@ -1914,6 +2004,48 @@ function exportGanttToCsv(){
   var fname=sanitizeFileName(proj.name||'project').slice(0,48)+'-gantt-msproject.csv';
   downloadTextFile(fname,csv,'text/csv;charset=utf-8');
 }
+function exportPaymentsCsv(){
+  if(!requireProjectAccess())return;
+  var proj=getCurrentProject();if(!proj)return;
+  var list=filterAndSortPayments(proj.payments);
+  if(!list.length){showToast('אין תשלומים לייצוא','error');return;}
+  var headers=['תיאור','נמען','קטגוריה','תאריך','סכום','סטטוס','קבלה'];
+  var rows=list.map(function(pay){
+    return [
+      csvEscape(pay.desc),
+      csvEscape(pay.to),
+      csvEscape(pay.category),
+      csvEscape(pay.date),
+      csvEscape(pay.amount),
+      csvEscape(getPaymentStatusLabel(pay)),
+      csvEscape(paymentHasReceipt(pay)?'כן':'לא')
+    ].join(',');
+  });
+  var csv=headers.join(',')+'\r\n'+rows.join('\r\n');
+  var fname=sanitizeFileName(proj.name||'project').slice(0,48)+'-payments.csv';
+  downloadTextFile(fname,csv,'text/csv;charset=utf-8');
+  showToast('קובץ התשלומים יורד למכשיר');
+}
+function exportDailyLogsCsv(){
+  if(!requireProjectAccess())return;
+  var proj=getCurrentProject();if(!proj)return;
+  var list=filterDailyLogs(dailyLogsCache);
+  if(!list.length){showToast('אין יומנים לייצוא','error');return;}
+  var headers=['תאריך','מזג אוויר','סה"כ פועלים','פירוט קבלנים','תקלות'];
+  var rows=list.map(function(log){
+    return [
+      csvEscape(formatSubcontractorDate(log.logDate)),
+      csvEscape(log.weather),
+      csvEscape(totalDailyLogWorkers(log.workers)),
+      csvEscape(formatDailyLogWorkersForCsv(log.workers)),
+      csvEscape(log.issues||'')
+    ].join(',');
+  });
+  var csv=headers.join(',')+'\r\n'+rows.join('\r\n');
+  var fname=sanitizeFileName(proj.name||'project').slice(0,48)+'-daily-logs.csv';
+  downloadTextFile(fname,csv,'text/csv;charset=utf-8');
+  showToast('קובץ היומנים יורד למכשיר');
+}
 
 function logActivity(action,details){
   if(!isAdmin()||!currentUser)return;
@@ -2051,7 +2183,7 @@ async function saveData(d){
   var res=await persistAppData();
   if(!res.ok){
     console.error('saveData',res.error);
-    alert('שגיאה בשמירת הנתונים:\n'+formatSupabaseErrorHint(res.error));
+    showToast('שגיאה בשמירת הנתונים: '+formatSupabaseErrorHint(res.error),'error');
     return false;
   }
   return true;
@@ -2209,9 +2341,25 @@ function renderPunchPinsHtml(items,isImage){
     return '<button type="button" class="blueprint-pin '+cls+'" style="left:'+(it.pinX*100)+'%;top:'+(it.pinY*100)+'%" title="'+escHtml(it.description)+'" onclick="event.stopPropagation();openPunchItemView(\''+it.id+'\')"></button>';
   }).join('');
 }
+function renderPunchFilterBarHtml(){
+  return '<div class="card list-filter-bar">'+
+    '<label for="punch-status-filter">סטטוס:</label>'+
+    '<select id="punch-status-filter" onchange="onPunchFilterChange()">'+
+    '<option value=""'+(punchStatusFilter===''?' selected':'')+'>כל</option>'+
+    '<option value="open"'+(punchStatusFilter==='open'?' selected':'')+'>פתוח</option>'+
+    '<option value="fixed"'+(punchStatusFilter==='fixed'?' selected':'')+'>תוקן</option>'+
+    '</select>'+
+    '<label for="punch-urgency-filter">דחיפות:</label>'+
+    '<select id="punch-urgency-filter" onchange="onPunchFilterChange()">'+
+    '<option value=""'+(punchUrgencyFilter===''?' selected':'')+'>כל</option>'+
+    '<option value="נמוכה"'+(punchUrgencyFilter==='נמוכה'?' selected':'')+'>נמוכה</option>'+
+    '<option value="בינונית"'+(punchUrgencyFilter==='בינונית'?' selected':'')+'>בינונית</option>'+
+    '<option value="קריטית"'+(punchUrgencyFilter==='קריטית'?' selected':'')+'>קריטית</option>'+
+    '</select></div>';
+}
 function renderPunchTableHtml(items){
   if(!items.length){
-    return '<div class="empty-state card"><div class="empty-icon">'+ic('map-pin')+'</div><p>אין ליקויים עדיין</p></div>';
+    return '<div class="empty-state card"><div class="empty-icon">'+ic('map-pin')+'</div><p>'+(punchItemsCache.length?'אין ליקויים לסינון הנוכחי':'אין ליקויים עדיין')+'</p></div>';
   }
   return '<div class="card"><div class="table-scroll"><table class="payments-table punch-items-table"><thead><tr>'+
     '<th>תיאור</th><th>קבלן</th><th>דחיפות</th><th>דד-ליין</th><th>סטטוס</th></tr></thead><tbody>'+
@@ -2272,7 +2420,9 @@ async function initPunchListTab(){
   if(!loaded.ok){
     html+='<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינת ליקויים. הרץ את supabase-punch-list-migration.sql.</div>';
   }
-  html+='<div class="section-title" style="margin-top:24px;margin-bottom:12px">'+ic('list')+' רשימת ליקויים</div>'+renderPunchTableHtml(punchItemsCache);
+  html+='<div class="section-title" style="margin-top:24px;margin-bottom:12px">'+ic('list')+' רשימת ליקויים</div>'+
+    renderPunchFilterBarHtml()+
+    '<div id="punch-list-root">'+renderPunchTableHtml(filterPunchItems(punchItemsCache))+'</div>';
   root.innerHTML=html;
   refreshIcons(root);
   bindBlueprintFileInput();
@@ -2386,9 +2536,10 @@ async function savePunchItem(){
     pin_y:punchPinDraft.y
   };
   var res=await supabase.from('punch_items').insert(row).select().single();
-  if(res.error){alert('שגיאה בשמירת הליקוי:\n'+formatSupabaseErrorHint(res.error.message));return;}
+  if(res.error){showToast('שגיאה בשמירת הליקוי: '+formatSupabaseErrorHint(res.error.message),'error');return;}
   logActivity('ליקוי חדש','פרויקט: '+proj.name+' · '+row.description);
   closeModal('modal-punch-item');
+  showToast('הליקוי נשמר בהצלחה');
   await initPunchListTab();
 }
 async function markPunchFixed(){
@@ -2397,9 +2548,10 @@ async function markPunchFixed(){
   var item=punchItemsCache.find(function(x){return x.id===viewingPunchItemId;});
   if(!item||item.status==='fixed')return;
   var res=await supabase.from('punch_items').update({status:'fixed'}).eq('id',viewingPunchItemId).select().single();
-  if(res.error){alert('שגיאה בעדכון הסטטוס:\n'+formatSupabaseErrorHint(res.error.message));return;}
+  if(res.error){showToast('שגיאה בעדכון הסטטוס: '+formatSupabaseErrorHint(res.error.message),'error');return;}
   logActivity('ליקוי סומן כתוקן','פרויקט: '+proj.name+' · '+item.description);
   closeModal('modal-punch-item');
+  showToast('הליקוי סומן כתוקן');
   await initPunchListTab();
 }
 
@@ -2461,9 +2613,35 @@ function renderDailyLogFormHtml(){
     '<button type="button" class="btn btn-outline btn-sm" onclick="cancelDailyLogForm()">ביטול</button>'+
     '</div></div>';
 }
+function onPunchFilterChange(){
+  var statusEl=document.getElementById('punch-status-filter');
+  var urgEl=document.getElementById('punch-urgency-filter');
+  punchStatusFilter=statusEl?statusEl.value:'';
+  punchUrgencyFilter=urgEl?urgEl.value:'';
+  refreshPunchListSection();
+}
+function refreshPunchListSection(){
+  var el=document.getElementById('punch-list-root');
+  if(!el)return;
+  el.innerHTML=renderPunchTableHtml(filterPunchItems(punchItemsCache));
+  refreshIcons(el);
+}
+function renderDailyLogFilterBarHtml(){
+  return '<div class="card list-filter-bar">'+
+    '<label for="daily-log-weather-filter">מזג אוויר:</label>'+
+    '<select id="daily-log-weather-filter" onchange="onDailyLogFilterChange()">'+
+    '<option value=""'+(dailyLogWeatherFilter===''?' selected':'')+'>הכל</option>'+
+    DAILY_LOG_WEATHER.map(function(w){
+      return '<option value="'+w+'"'+(dailyLogWeatherFilter===w?' selected':'')+'>'+w+'</option>';
+    }).join('')+
+    '</select>'+
+    '<div class="list-filter-actions">'+
+    '<button type="button" class="btn btn-outline btn-sm" onclick="exportDailyLogsCsv()">'+ic('download')+' ייצוא ל-CSV</button>'+
+    '</div></div>';
+}
 function renderDailyLogListHtml(logs){
   if(!logs.length){
-    return '<div class="empty-state card"><div class="empty-icon">'+ic('clipboard-list')+'</div><p>אין יומני עבודה עדיין</p></div>';
+    return '<div class="empty-state card"><div class="empty-icon">'+ic('clipboard-list')+'</div><p>'+(dailyLogsCache.length?'אין יומנים לסינון הנוכחי':'אין יומני עבודה עדיין')+'</p></div>';
   }
   return '<div class="daily-log-list">'+logs.map(function(log){
     var total=totalDailyLogWorkers(log.workers);
@@ -2498,9 +2676,21 @@ async function initDailyLogTab(){
     html+='<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינת יומני עבודה. הרץ את supabase-daily-logs-migration.sql.</div>';
   }
   html+='<div class="section-title" style="margin-top:'+(isAdminUser&&showDailyLogForm?'8px':'0')+';margin-bottom:12px">'+ic('history')+' יומנים קודמים</div>'+
-    renderDailyLogListHtml(dailyLogsCache);
+    renderDailyLogFilterBarHtml()+
+    '<div id="daily-log-list-root">'+renderDailyLogListHtml(filterDailyLogs(dailyLogsCache))+'</div>';
   root.innerHTML=html;
   refreshIcons(root);
+}
+function onDailyLogFilterChange(){
+  var el=document.getElementById('daily-log-weather-filter');
+  dailyLogWeatherFilter=el?el.value:'';
+  refreshDailyLogListSection();
+}
+function refreshDailyLogListSection(){
+  var el=document.getElementById('daily-log-list-root');
+  if(!el)return;
+  el.innerHTML=renderDailyLogListHtml(filterDailyLogs(dailyLogsCache));
+  refreshIcons(el);
 }
 function openDailyLogForm(){
   if(!requireAdmin())return;
@@ -2527,9 +2717,9 @@ async function saveDailyLog(){
   var issuesEl=document.getElementById('daily-log-issues');
   if(!dateEl||!weatherEl)return;
   var logDate=dateEl.value;
-  if(!logDate){alert('יש לבחור תאריך');return;}
+  if(!logDate){showToast('שגיאה: יש לבחור תאריך','error');return;}
   var workers=collectDailyLogWorkers();
-  if(!workers.length){alert('יש להזין לפחות קבלן אחד עם מספר פועלים גדול מ-0');return;}
+  if(!workers.length){showToast('שגיאה: יש להזין לפחות קבלן אחד עם מספר פועלים','error');return;}
   var proj=getCurrentProject();if(!proj)return;
   var row={
     project_id:proj.id,
@@ -2539,9 +2729,10 @@ async function saveDailyLog(){
     issues:issuesEl&&issuesEl.value.trim()?issuesEl.value.trim():null
   };
   var res=await supabase.from('daily_logs').insert(row).select().single();
-  if(res.error){alert('שגיאה בשמירת היומן:\n'+formatSupabaseErrorHint(res.error.message));return;}
+  if(res.error){showToast('שגיאה בשמירת היומן: '+formatSupabaseErrorHint(res.error.message),'error');return;}
   logActivity('יומן עבודה חדש','פרויקט: '+proj.name+' · '+formatSubcontractorDate(logDate)+' · '+totalDailyLogWorkers(workers)+' פועלים');
   showDailyLogForm=false;
+  showToast('יומן העבודה נשמר בהצלחה');
   await initDailyLogTab();
 }
 
@@ -3013,10 +3204,60 @@ function renderPaymentActionsHtml(pay){
     '<button type="button" class="btn btn-outline btn-sm admin-only-action" onclick="openEditPaymentModal(\''+pay.id+'\')">'+ic('pencil')+'</button>'+
     '<button type="button" class="btn btn-danger btn-sm admin-only-action" onclick="deletePayment(\''+pay.id+'\')">'+ic('trash-2')+'</button>';
 }
+function renderPaymentFilterBarHtml(){
+  return '<div class="card list-filter-bar">'+
+    '<label for="pay-status-filter">סטטוס:</label>'+
+    '<select id="pay-status-filter" onchange="onPaymentFilterChange()">'+
+    '<option value=""'+(paymentStatusFilter===''?' selected':'')+'>כל</option>'+
+    '<option value="approved"'+(paymentStatusFilter==='approved'?' selected':'')+'>מאושר</option>'+
+    '<option value="pending"'+(paymentStatusFilter==='pending'?' selected':'')+'>ממתין</option>'+
+    '</select>'+
+    '<label for="pay-sort-order">מיון תאריך:</label>'+
+    '<select id="pay-sort-order" onchange="onPaymentFilterChange()">'+
+    '<option value="desc"'+(paymentSortOrder==='desc'?' selected':'')+'>חדש → ישן</option>'+
+    '<option value="asc"'+(paymentSortOrder==='asc'?' selected':'')+'>ישן → חדש</option>'+
+    '</select>'+
+    '<div class="list-filter-actions">'+
+    '<button type="button" class="btn btn-outline btn-sm" onclick="exportPaymentsCsv()">'+ic('download')+' ייצוא ל-CSV</button>'+
+    '</div></div>';
+}
+function renderBudgetPaymentsContentHtml(proj){
+  var list=filterAndSortPayments(proj.payments);
+  if(!list.length){
+    return renderPaymentFilterBarHtml()+
+      '<div class="empty-state"><div class="empty-icon">'+ic('banknote')+'</div><p>'+(proj.payments&&proj.payments.length?'אין תשלומים לסינון הנוכחי':'אין תשלומים עדיין')+'</p></div>';
+  }
+  return renderPaymentFilterBarHtml()+
+    '<div class="payments-desktop"><div class="table-scroll"><table class="payments-table"><thead><tr><th>תיאור</th><th>נמען</th><th>קטגוריה</th><th>תאריך</th><th>סכום</th><th>סטטוס</th><th></th></tr></thead><tbody>'+
+    list.map(function(pay){
+      return '<tr><td style="font-weight:600">'+escHtml(pay.desc)+'</td><td style="color:var(--text-muted)">'+escHtml(pay.to)+'</td>'+
+        '<td><span class="badge badge-blue">'+escHtml(pay.category)+'</span></td>'+
+        '<td style="color:var(--text-muted)">'+escHtml(pay.date)+'</td>'+
+        '<td style="font-weight:700;color:var(--primary)">'+fmtMoney(pay.amount)+'</td>'+
+        '<td class="'+paymentStatusCssClass(pay)+'">'+getPaymentStatusLabel(pay)+'</td>'+
+        '<td><div class="payment-actions">'+renderPaymentActionsHtml(pay)+'</div></td></tr>';
+    }).join('')+'</tbody></table></div></div>'+
+    '<div class="payments-mobile-list">'+list.map(function(pay){return renderPaymentCardHtml(pay);}).join('')+'</div>';
+}
+function onPaymentFilterChange(){
+  var statusEl=document.getElementById('pay-status-filter');
+  var sortEl=document.getElementById('pay-sort-order');
+  paymentStatusFilter=statusEl?statusEl.value:'';
+  paymentSortOrder=sortEl?sortEl.value:'desc';
+  refreshBudgetPaymentsList();
+}
+function refreshBudgetPaymentsList(){
+  var el=document.getElementById('budget-payments-root');
+  if(!el)return;
+  var proj=getCurrentProject();
+  if(!proj)return;
+  el.innerHTML=renderBudgetPaymentsContentHtml(proj);
+  refreshIcons(el);
+}
 function renderPaymentCardHtml(pay){
   return '<div class="payment-card">'+
     '<div class="payment-card-header"><span class="payment-card-desc">'+escHtml(pay.desc)+'</span><span class="payment-card-amount">'+fmtMoney(pay.amount)+'</span></div>'+
-    '<div class="payment-card-meta"><span>'+escHtml(pay.to)+'</span><span class="badge badge-blue">'+escHtml(pay.category)+'</span><span>'+escHtml(pay.date)+'</span></div>'+
+    '<div class="payment-card-meta"><span>'+escHtml(pay.to)+'</span><span class="badge badge-blue">'+escHtml(pay.category)+'</span><span>'+escHtml(pay.date)+'</span><span class="'+paymentStatusCssClass(pay)+'">'+getPaymentStatusLabel(pay)+'</span></div>'+
     '<div class="payment-actions">'+renderPaymentActionsHtml(pay)+'</div></div>';
 }
 
@@ -3124,17 +3365,7 @@ function renderProjectDetail(el){
     '</div><div class="card"><div class="section-actions"><div class="section-title">'+ic('credit-card')+' תשלומים</div>'+
     '<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddPaymentModal()">'+ic('plus')+' תשלום חדש</button>'+
     '</div>'+
-    (paymentsForView.length===0?'<div class="empty-state"><div class="empty-icon">'+ic('banknote')+'</div><p>אין תשלומים עדיין</p></div>':
-    '<div class="payments-desktop"><div class="table-scroll"><table class="payments-table"><thead><tr><th>תיאור</th><th>נמען</th><th>קטגוריה</th><th>תאריך</th><th>סכום</th><th></th></tr></thead><tbody>'+
-    paymentsForView.map(function(pay){
-      return '<tr><td style="font-weight:600">'+pay.desc+'</td><td style="color:var(--text-muted)">'+pay.to+'</td>'+
-        '<td><span class="badge badge-blue">'+pay.category+'</span></td>'+
-        '<td style="color:var(--text-muted)">'+pay.date+'</td>'+
-        '<td style="font-weight:700;color:var(--primary)">'+fmtMoney(pay.amount)+'</td>'+
-        '<td><div class="payment-actions">'+renderPaymentActionsHtml(pay)+'</div></td></tr>';
-    }).join('')+'</tbody></table></div></div>'+
-    '<div class="payments-mobile-list">'+paymentsForView.map(function(pay){return renderPaymentCardHtml(pay);}).join('')+'</div>')+
-    '</div></div>';
+    '<div id="budget-payments-root">'+renderBudgetPaymentsContentHtml(p)+'</div></div></div>';
 
   // BUDGET ANALYSIS TAB (admin)
   if(isAdminUser)html+='<div id="tab-budget-analysis" class="tab-content '+(currentTab==='budget-analysis'?'active':'')+'">'+
@@ -3512,11 +3743,13 @@ async function saveSubcontractor(){
   var res=editId
     ?await supabase.from('subcontractors').update(row).eq('id',editId).select().single()
     :await supabase.from('subcontractors').insert(row).select().single();
-  if(res.error){alert('שגיאה בשמירת הקבלן:\n'+formatSupabaseErrorHint(res.error.message));return;}
+  if(res.error){showToast('שגיאה בשמירת הקבלן: '+formatSupabaseErrorHint(res.error.message),'error');return;}
   logActivity(editId?'עריכת קבלן משנה':'הוספת קבלן משנה',row.company_name);
   await refreshSubcontractors();
   if(!await persistActivityLogOnly()){
-    alert('הקבלן נשמר, אך לוג הפעולות לא עודכן.');
+    showToast('הקבלן נשמר, אך לוג הפעולות לא עודכן','error');
+  }else{
+    showToast(editId?'הקבלן עודכן בהצלחה':'הקבלן נשמר בהצלחה');
   }
   closeModal('modal-subcontractor');
   if(currentView==='subcontractors')renderSubcontractors(document.getElementById('main-content'));
@@ -3683,7 +3916,7 @@ async function saveProject(){
     var linked=getProjectLinkedClient(editingProjectId);
     if(linked){
       var profileRes=await supabase.from('profiles').update({name:clientName||linked.name,phone:clientPhone||null}).eq('id',linked.id);
-      if(profileRes.error){alert('שגיאה בעדכון פרטי הלקוח:\n'+formatSupabaseErrorHint(profileRes.error.message));return;}
+      if(profileRes.error){showToast('שגיאה בעדכון פרטי הלקוח: '+formatSupabaseErrorHint(profileRes.error.message),'error');return;}
       mergeAppUser({id:linked.id,email:linked.email,name:clientName||linked.name,role:linked.role,projectId:linked.projectId,phone:clientPhone});
     }
     logActivity('עריכת פרויקט','פרויקט: '+proj.name);
@@ -3694,7 +3927,9 @@ async function saveProject(){
     logActivity('יצירת פרויקט','פרויקט חדש: '+proj.name);
   }
   if(!await saveData(data))return;
-  closeModal('modal-project');showView(currentView);
+  closeModal('modal-project');
+  showToast(editingProjectId?'הפרויקט עודכן בהצלחה':'הפרויקט נוצר בהצלחה');
+  showView(currentView);
 }
 
 function openAddUserModal(){
@@ -3718,11 +3953,11 @@ async function saveUser(){
   var email=document.getElementById('new-user-email').value.trim();
   var pass=document.getElementById('new-user-pass').value;
   var projectId=document.getElementById('new-user-project').value;
-  if(!pass)return alert('יש למלא את כל השדות');
-  if(pass.length<6)return alert('הסיסמה חייבת להכיל לפחות 6 תווים');
-  if(appUsers.find(function(u){return u.email===email;}))return alert('אימייל כבר קיים במערכת');
+  if(!pass){showToast('שגיאה: יש למלא את כל השדות','error');return;}
+  if(pass.length<6){showToast('שגיאה: הסיסמה חייבת להכיל לפחות 6 תווים','error');return;}
+  if(appUsers.find(function(u){return u.email===email;})){showToast('שגיאה: אימייל כבר קיים במערכת','error');return;}
   var proj=appDataCache.projects.find(function(p){return p.id===projectId;});
-  if(!proj)return alert('הפרויקט שנבחר לא קיים');
+  if(!proj){showToast('שגיאה: הפרויקט שנבחר לא קיים','error');return;}
   var btn=document.querySelector('#modal-user .btn-primary');
   var origText=btn.textContent;
   btn.disabled=true;btn.textContent='יוצר לקוח...';
@@ -3806,6 +4041,7 @@ async function deletePayment(id){
   proj.payments=proj.payments.filter(function(x){return x.id!==id;});
   logActivity('מחיקת תשלום','פרויקט: '+proj.name+(removed?' · '+removed.desc:''));
   if(!await saveData(data))return;
+  showToast('התשלום נמחק');
   renderProjectDetail(document.getElementById('main-content'));
 }
 function openAddPaymentModal(){
@@ -3853,7 +4089,7 @@ async function savePayment(){
       var upload=await uploadPaymentReceiptFile(proj.id,payId,uploadFile);
       if(!upload.ok){
         setPaymentReceiptUploadUi(false,null,'שגיאה בהעלאת הקבלה: '+formatSupabaseErrorHint(upload.error));
-        alert('שגיאה בהעלאת הקבלה:\n'+formatSupabaseErrorHint(upload.error));
+        showToast('שגיאה בהעלאת הקבלה: '+formatSupabaseErrorHint(upload.error),'error');
         return;
       }
       pay.receipt_url=upload.data.path;
@@ -3880,7 +4116,9 @@ async function savePayment(){
     }
     if(!await saveData(data))return;
     setPaymentReceiptUploadUi(false);
-    closeModal('modal-payment');renderProjectDetail(document.getElementById('main-content'));
+    closeModal('modal-payment');
+    showToast(editId?'התשלום עודכן בהצלחה':'התשלום נשמר בהצלחה');
+    renderProjectDetail(document.getElementById('main-content'));
   }finally{
     btn.disabled=false;
     if(cancelBtn)cancelBtn.disabled=false;
@@ -3961,8 +4199,11 @@ async function savePhase(){
     logActivity('הוספת שלב','פרויקט: '+proj.name+' · שלב "'+ph.name+'" ('+phaseStatusLabel(ph.status)+')');
   }
   if(!await saveData(data))return;
+  var wasEditing=!!editingPhaseId;
   editingPhaseId=null;
-  closeModal('modal-phase');renderProjectDetail(document.getElementById('main-content'));
+  closeModal('modal-phase');
+  showToast(wasEditing?'השלב עודכן בהצלחה':'השלב נשמר בהצלחה');
+  renderProjectDetail(document.getElementById('main-content'));
 }
 async function saveOverallProgress(){
   if(!requireAdmin()||!requireProjectAccess())return;
@@ -3971,7 +4212,7 @@ async function saveOverallProgress(){
   proj.progress=Number(val);
   logActivity('עדכון התקדמות כללית','פרויקט: '+proj.name+' · '+val+'%');
   if(!await saveData(data))return;
-  alert('ההתקדמות עודכנה!');
+  showToast('ההתקדמות עודכנה בהצלחה');
 }
 
 async function saveUpdate(){
@@ -3979,7 +4220,7 @@ async function saveUpdate(){
   var data=getData();var proj=getCurrentProject();if(!proj)return;
   var title=document.getElementById('upd-title').value.trim();
   var body=document.getElementById('upd-body').value.trim();
-  if(!title||!body)return alert('יש למלא כותרת ותוכן');
+  if(!title||!body){showToast('שגיאה: יש למלא כותרת ותוכן','error');return;}
   var updId='u'+Date.now();
   var upd={id:updId,title:title,body:body,date:new Date().toLocaleDateString('he-IL'),sender:'admin'};
   var file=document.getElementById('upd-media').files[0];
@@ -4003,6 +4244,7 @@ async function saveUpdate(){
     document.getElementById('upd-title').value='';
     document.getElementById('upd-body').value='';
     clearFilePreview('upd-media','upd-media-preview');
+    showToast('העדכון נשלח בהצלחה');
     renderProjectDetail(document.getElementById('main-content'));
   }finally{
     btn.disabled=false;btn.textContent=origText;
@@ -4187,15 +4429,15 @@ Object.assign(window,{
   showView,switchTab,openModal,closeModal,toggleMobileSidebar,closeMobileSidebar,toggleMobileTabMenu,closeMobileTabMenu,
   openNewProjectModal,openEditProjectModal,saveProject,openAddUserModal,
   openAddSubcontractorModal,openEditSubcontractorModal,saveSubcontractor,deleteSubcontractor,onSubcontractorSpecialtyFilterChange,
-  openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,
+  openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,onPaymentFilterChange,exportPaymentsCsv,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
-  saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,
+  saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,exportDailyLogsCsv,
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,
   openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,
   toggleRemoveGalleryImage,removePendingGalleryFile,saveGalleryPost,deleteGalleryPost,
   openPhotoLightbox,closePhotoLightbox,
-  handleBlueprintUpload,openNewPunchModal,openPunchItemView,onBlueprintImageClick,savePunchItem,markPunchFixed,
-  openDailyLogForm,cancelDailyLogForm,saveDailyLog
+  handleBlueprintUpload,openNewPunchModal,openPunchItemView,onBlueprintImageClick,savePunchItem,markPunchFixed,onPunchFilterChange,
+  openDailyLogForm,cancelDailyLogForm,saveDailyLog,onDailyLogFilterChange
 });
 window.addEventListener('resize',function(){
   if(window.innerWidth>=1024)closeMobileSidebar();
