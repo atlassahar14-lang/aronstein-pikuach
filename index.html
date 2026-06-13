@@ -10,6 +10,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%;overflow-x:hidden}
 body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+.client-mode .admin-only-action{display:none!important}
 img,svg,video,canvas{max-width:100%;height:auto}
 #login-screen{min-height:100vh;min-height:100dvh;background:#fff}
 .login-split{display:flex;min-height:100vh;min-height:100dvh;width:100%}
@@ -737,7 +738,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="form-group"><label>קבלן אחראי</label><select id="phase-subcontractor"><option value="">— ללא —</option></select></div>
     <div class="form-group"><label>הערות</label><textarea id="phase-notes" placeholder="הערות לשלב זה"></textarea></div>
     <div class="modal-footer phase-modal-footer">
-      <button class="btn btn-danger" id="phase-delete-btn" style="display:none;width:auto" onclick="deletePhaseFromModal()"><i data-lucide="trash-2"></i> מחק שלב</button>
+      <button class="btn btn-danger admin-only-action" id="phase-delete-btn" style="display:none;width:auto" onclick="deletePhaseFromModal()"><i data-lucide="trash-2"></i> מחק שלב</button>
       <div class="modal-footer-actions">
         <button class="btn btn-outline" onclick="closeModal('modal-phase')">ביטול</button>
         <button class="btn btn-primary" style="width:auto" onclick="savePhase()">שמור</button>
@@ -765,8 +766,8 @@ img,svg,video,canvas{max-width:100%;height:auto}
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-punch-item')">סגור</button>
-      <button class="btn btn-primary" id="punch-save-btn" style="width:auto" onclick="savePunchItem()">שמור</button>
-      <button class="btn btn-accent" id="punch-fixed-btn" style="display:none;width:auto" onclick="markPunchFixed()"><i data-lucide="check-circle"></i> סמן כתוקן</button>
+      <button class="btn btn-primary admin-only-action" id="punch-save-btn" style="width:auto" onclick="savePunchItem()">שמור</button>
+      <button class="btn btn-accent admin-only-action" id="punch-fixed-btn" style="display:none;width:auto" onclick="markPunchFixed()"><i data-lucide="check-circle"></i> סמן כתוקן</button>
     </div>
   </div>
 </div>
@@ -796,7 +797,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div id="gallery-post-images" class="gallery-modal-images"></div>
     </div>
     <div class="modal-footer phase-modal-footer">
-      <button class="btn btn-danger" id="gallery-post-delete-btn" style="display:none;width:auto" onclick="deleteGalleryPost()"><i data-lucide="trash-2"></i> מחק פוסט</button>
+      <button class="btn btn-danger admin-only-action" id="gallery-post-delete-btn" style="display:none;width:auto" onclick="deleteGalleryPost()"><i data-lucide="trash-2"></i> מחק פוסט</button>
       <div class="modal-footer-actions">
         <button class="btn btn-outline" onclick="closeGalleryPostModal()">ביטול</button>
         <button class="btn btn-primary" id="gallery-post-save-btn" style="width:auto" onclick="saveGalleryPost()">שמור</button>
@@ -1244,10 +1245,10 @@ function renderGalleryThumbnails(post){
     '</button>';
   }).join('');
 }
-function renderGalleryPostRow(post,isAdminUser){
+function renderGalleryPostRow(post){
   var dateStr=formatGalleryPostDateTime(post);
   var thumbs=renderGalleryThumbnails(post);
-  var actions=isAdminUser?'<button type="button" class="btn btn-outline btn-sm" onclick="openEditGalleryPostModal(\''+post.id+'\')">'+ic('pencil')+' עריכה</button>':'';
+  var actions='<button type="button" class="btn btn-outline btn-sm admin-only-action" onclick="openEditGalleryPostModal(\''+post.id+'\')">'+ic('pencil')+' עריכה</button>';
   return '<div class="gallery-post">'+
     '<div class="gallery-post-header">'+
       '<div class="gallery-row-date">'+ic('clock')+' '+dateStr+'</div>'+
@@ -1638,6 +1639,45 @@ function getDefaultProjects(){
 }
 
 function isAdmin(){return !!(currentUser&&currentUser.role==='admin');}
+var CLIENT_HIDDEN_TABS=['budget-analysis','financial','docs'];
+function normalizeClientTab(tab){
+  if(isAdmin())return tab;
+  if(CLIENT_HIDDEN_TABS.indexOf(tab)>=0)return 'overview';
+  return tab;
+}
+function getProjectTabDefs(messagesTabBadge){
+  var tabDefs=[
+    ['overview','סקירה','layout-dashboard',''],
+    ['timeline','לוח זמנים','calendar',''],
+    ['budget','מעקב תשלומים','banknote',''],
+    ['budget-analysis','ניתוח כספי','scale',''],
+    ['financial','דוח פיננסי','trending-up',''],
+    ['docs','מסמכים','folder',''],
+    ['gallery','גלריה','camera',''],
+    ['punch','ליקויים','map-pin',''],
+    ['daily-log','יומן עבודה','clipboard-list',''],
+    ['updates','עדכונים','bell',''],
+    ['messages','שאלות','message-circle',messagesTabBadge]
+  ];
+  if(isAdmin())return tabDefs;
+  return tabDefs.filter(function(td){return CLIENT_HIDDEN_TABS.indexOf(td[0])===-1;});
+}
+function paymentIsClientVisible(pay){
+  if(!pay)return false;
+  if(pay.approved===true||pay.confirmed===true)return true;
+  var status=String(pay.status||'').toLowerCase();
+  if(status==='confirmed'||status==='approved'||status==='מאושר')return true;
+  if(pay.approved===undefined&&pay.confirmed===undefined&&(!pay.status||status===''))return true;
+  return false;
+}
+function getPaymentsForView(payments){
+  var list=payments||[];
+  if(isAdmin())return list;
+  return list.filter(paymentIsClientVisible);
+}
+function sumProjectPaidFromList(payments){
+  return (payments||[]).reduce(function(s,x){return s+Number(x.amount||0);},0);
+}
 function clientCanAccessProject(projectId){
   if(!projectId||!currentUser)return false;
   if(isAdmin())return true;
@@ -2127,31 +2167,31 @@ async function initPunchListTab(){
   punchBlueprintSignedUrl=blueprintPath?await getBlueprintSignedUrl(blueprintPath):null;
   var html='<div class="section-actions"><div class="section-title">'+ic('map-pin')+' ליקויים</div></div>';
   if(!blueprintPath||!punchBlueprintSignedUrl){
-    html+='<div class="card blueprint-section"><p style="font-size:14px;color:var(--text-muted);margin-bottom:16px">העלה תוכנית (תמונה או PDF) כדי לנעוץ ליקויים על המפה.</p>';
-    if(isAdminUser){
-      html+='<label class="btn btn-primary btn-sm" style="cursor:pointer"><i data-lucide="upload"></i> העלה תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none"/></label>'+
-        '<div id="blueprint-upload-status" class="blueprint-upload-hint"></div>';
-    }else{
-      html+='<p style="font-size:13px;color:var(--text-muted)">טרם הועלתה תוכנית לפרויקט זה.</p>';
-    }
-    html+='</div>';
+    html+='<div class="card blueprint-section"><p style="font-size:14px;color:var(--text-muted);margin-bottom:16px">'+
+      (isAdminUser?'העלה תוכנית (תמונה או PDF) כדי לנעוץ ליקויים על המפה.':'טרם הועלתה תוכנית לפרויקט זה.')+'</p>'+
+      '<label class="btn btn-primary btn-sm admin-only-action" style="cursor:pointer"><i data-lucide="upload"></i> העלה תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none"/></label>'+
+      '<div id="blueprint-upload-status" class="blueprint-upload-hint admin-only-action"></div>'+
+      '</div>';
   }else{
     var isPdf=isBlueprintPdfPath(blueprintPath);
     var pinsHtml=renderPunchPinsHtml(punchItemsCache,!isPdf);
     if(isPdf){
       html+='<div class="card blueprint-section">'+
         '<iframe src="'+escHtml(punchBlueprintSignedUrl)+'" title="תוכנית פרויקט"></iframe>'+
-        '<p class="blueprint-upload-hint">PDF — הוסף ליקוי בלחיצה על הכפתור למטה (ללא נעיצה על התוכנית).</p>'+
-        '<button type="button" class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openNewPunchModal()">'+ic('plus')+' ליקוי חדש</button>'+
-        (isAdminUser?'<label class="btn btn-outline btn-sm" style="cursor:pointer;margin-right:8px"><i data-lucide="upload"></i> החלף תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none"/></label>':'')+
+        '<p class="blueprint-upload-hint admin-only-action">PDF — הוסף ליקוי בלחיצה על הכפתור למטה (ללא נעיצה על התוכנית).</p>'+
+        '<button type="button" class="btn btn-primary btn-sm admin-only-action" style="margin-top:12px" onclick="openNewPunchModal()">'+ic('plus')+' ליקוי חדש</button>'+
+        '<label class="btn btn-outline btn-sm admin-only-action" style="cursor:pointer;margin-right:8px"><i data-lucide="upload"></i> החלף תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none"/></label>'+
         '</div>';
     }else{
+      var viewerClass='blueprint-viewer-wrap'+(isAdminUser?' clickable':'');
+      var viewerClick=isAdminUser?' onclick="onBlueprintImageClick(event)"':'';
+      var hintText=isAdminUser?'לחץ על התוכנית כדי להוסיף ליקוי חדש במיקום הנבחר.':'תצוגת תוכנית וליקויים מסומנים (צפייה בלבד).';
       html+='<div class="card blueprint-section">'+
-        '<p class="blueprint-upload-hint" style="margin-bottom:10px">לחץ על התוכנית כדי להוסיף ליקוי חדש במיקום הנבחר.</p>'+
-        '<div class="blueprint-viewer-wrap clickable" id="blueprint-viewer" onclick="onBlueprintImageClick(event)">'+
+        '<p class="blueprint-upload-hint" style="margin-bottom:10px">'+hintText+'</p>'+
+        '<div class="'+viewerClass+'" id="blueprint-viewer"'+viewerClick+'>'+
         '<img id="blueprint-image" src="'+escHtml(punchBlueprintSignedUrl)+'" alt="תוכנית פרויקט"/>'+
         '<div class="blueprint-pins-layer">'+pinsHtml+'</div></div>'+
-        (isAdminUser?'<label class="btn btn-outline btn-sm" style="cursor:pointer;margin-top:12px"><i data-lucide="upload"></i> החלף תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none"/></label>':'')+
+        '<label class="btn btn-outline btn-sm admin-only-action" style="cursor:pointer;margin-top:12px"><i data-lucide="upload"></i> החלף תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none"/></label>'+
         '</div>';
     }
   }
@@ -2331,7 +2371,7 @@ function renderDailyLogWorkerRows(){
   }).join('')+'</div>';
 }
 function renderDailyLogFormHtml(){
-  return '<div class="card daily-log-form-card" id="daily-log-form">'+
+  return '<div class="card daily-log-form-card admin-only-action" id="daily-log-form">'+
     '<div class="card-title">'+ic('clipboard-list')+' יומן חדש</div>'+
     '<div class="grid-2">'+
     '<div class="form-group"><label for="daily-log-date">תאריך</label><input type="date" id="daily-log-date" value="'+todayDateInputValue()+'"/></div>'+
@@ -2377,7 +2417,7 @@ async function initDailyLogTab(){
   await refreshSubcontractors();
   var loaded=await refreshDailyLogs(proj.id);
   var html='<div class="section-actions"><div class="section-title">'+ic('clipboard-list')+' יומן עבודה יומי</div>'+
-    (isAdminUser&&!showDailyLogForm?'<button type="button" class="btn btn-primary btn-sm" onclick="openDailyLogForm()">'+ic('plus')+' יומן חדש</button>':'')+
+    (!showDailyLogForm?'<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openDailyLogForm()">'+ic('plus')+' יומן חדש</button>':'')+
     '</div>';
   if(isAdminUser&&showDailyLogForm)html+=renderDailyLogFormHtml();
   if(!loaded.ok){
@@ -2488,7 +2528,7 @@ async function startApp(user){
   renderSidebar();
   if(isAdmin()){showView('dashboard');}
   else if(!user.projectId){renderClientNoProject(document.getElementById('main-content'));}
-  else{currentProjectId=user.projectId;currentTab='overview';showView('project',user.projectId);}
+  else{currentProjectId=user.projectId;currentTab=normalizeClientTab('overview');showView('project',user.projectId);}
 }
 
 function showLoginScreen(){
@@ -2879,7 +2919,7 @@ function renderDashboard(el){
           '<button class="btn btn-outline btn-sm" onclick="showView(\'project\',\''+item.projectId+'\');switchTab(\'timeline\')">'+ic('calendar')+' צפה בשלב</button></div>';
       }).join('')+'</div></div>';
   }
-  html+='<div class="card"><div class="section-actions"><div class="section-title">'+ic('construction')+' פרויקטים אחרונים</div><button class="btn btn-accent btn-sm" onclick="openNewProjectModal()">'+ic('plus')+' פרויקט חדש</button></div>'+
+  html+='<div class="card"><div class="section-actions"><div class="section-title">'+ic('construction')+' פרויקטים אחרונים</div><button class="btn btn-accent btn-sm admin-only-action" onclick="openNewProjectModal()">'+ic('plus')+' פרויקט חדש</button></div>'+
     (projects.length===0?'<div class="empty-state"><div class="empty-icon">'+ic('construction')+'</div><p>אין פרויקטים עדיין — צור את הראשון</p></div>':
     '<div class="projects-grid">'+projects.slice(0,6).map(projectCardHTML).join('')+'</div>')+
     '</div>';
@@ -2890,20 +2930,20 @@ function renderDashboard(el){
 function renderProjectsList(el){
   if(!isAdmin()){renderClientNoProject(el);return;}
   var data=getData();
-  el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('construction')+' פרויקטים</h1><p>ניהול כל הפרויקטים</p></div><button class="btn btn-primary" onclick="openNewProjectModal()">'+ic('plus')+' פרויקט חדש</button></div>'+
+  el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('construction')+' פרויקטים</h1><p>ניהול כל הפרויקטים</p></div><button class="btn btn-primary admin-only-action" onclick="openNewProjectModal()">'+ic('plus')+' פרויקט חדש</button></div>'+
     '<div class="projects-grid">'+data.projects.map(projectCardHTML).join('')+'</div>';
 }
 
-function renderPaymentActionsHtml(pay,isAdminUser){
+function renderPaymentActionsHtml(pay){
   return (paymentHasReceipt(pay)?'<button type="button" class="btn btn-outline btn-sm" onclick="openPaymentReceipt(\''+pay.id+'\')">'+ic('file-text')+' צפייה בקבלה</button>':'')+
-    (isAdminUser?'<button class="btn btn-outline btn-sm" onclick="openEditPaymentModal(\''+pay.id+'\')">'+ic('pencil')+'</button>'+
-    '<button class="btn btn-danger btn-sm" onclick="deletePayment(\''+pay.id+'\')">'+ic('trash-2')+'</button>':'');
+    '<button type="button" class="btn btn-outline btn-sm admin-only-action" onclick="openEditPaymentModal(\''+pay.id+'\')">'+ic('pencil')+'</button>'+
+    '<button type="button" class="btn btn-danger btn-sm admin-only-action" onclick="deletePayment(\''+pay.id+'\')">'+ic('trash-2')+'</button>';
 }
-function renderPaymentCardHtml(pay,isAdminUser){
+function renderPaymentCardHtml(pay){
   return '<div class="payment-card">'+
     '<div class="payment-card-header"><span class="payment-card-desc">'+escHtml(pay.desc)+'</span><span class="payment-card-amount">'+fmtMoney(pay.amount)+'</span></div>'+
     '<div class="payment-card-meta"><span>'+escHtml(pay.to)+'</span><span class="badge badge-blue">'+escHtml(pay.category)+'</span><span>'+escHtml(pay.date)+'</span></div>'+
-    '<div class="payment-actions">'+renderPaymentActionsHtml(pay,isAdminUser)+'</div></div>';
+    '<div class="payment-actions">'+renderPaymentActionsHtml(pay)+'</div></div>';
 }
 
 function renderProjectDetail(el){
@@ -2915,8 +2955,10 @@ function renderProjectDetail(el){
   }
   currentProjectId=p.id;
   var isAdminUser=isAdmin();
+  currentTab=normalizeClientTab(currentTab);
   var showWhatsApp=!!(currentUser&&!isAdminUser);
-  var paid=sumProjectPaid(p);
+  var paymentsForView=getPaymentsForView(p.payments);
+  var paid=sumProjectPaidFromList(isAdminUser?p.payments:paymentsForView);
   var projectBudget=getProjectBudget(p);
   var remaining=projectBudget-paid;
   var budgetUtilPct=calcBudgetUtilPct(paid,projectBudget);
@@ -2925,24 +2967,12 @@ function renderProjectDetail(el){
   var unreadMessages=isAdminUser?countUnreadClientMessages(p):0;
   var messagesTabBadge=unreadMessages?'<span class="tab-badge show"></span>':'';
 
-  var html=(isAdminUser?'<button class="back-btn" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>':'');
+  var html='<button type="button" class="back-btn admin-only-action" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>';
   html+='<div class="flex-between responsive-stack mb-24"><div><h1 class="project-detail-title">'+p.name+'</h1><p class="project-detail-address">'+projectAddressLine(p,false)+'</p></div>';
-  if(isAdminUser)html+='<div class="flex-gap"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-accent btn-sm" onclick="openNewUpdateModal()">'+ic('bell')+' עדכון חדש</button></div>';
+  html+='<div class="flex-gap admin-only-action"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-accent btn-sm" onclick="openNewUpdateModal()">'+ic('bell')+' עדכון חדש</button></div>';
   html+='</div>';
 
-  var tabDefs=[
-    ['overview','סקירה','layout-dashboard',''],
-    ['timeline','לוח זמנים','calendar',''],
-    ['budget','מעקב תשלומים','banknote',''],
-    ['budget-analysis','ניתוח כספי','scale',''],
-    ['financial','דוח פיננסי','trending-up',''],
-    ['docs','מסמכים','folder',''],
-    ['gallery','גלריה','camera',''],
-    ['punch','ליקויים','map-pin',''],
-    ['daily-log','יומן עבודה','clipboard-list',''],
-    ['updates','עדכונים','bell',''],
-    ['messages','שאלות','message-circle',messagesTabBadge]
-  ];
+  var tabDefs=getProjectTabDefs(messagesTabBadge);
   html+='<div class="mobile-tab-bar">'+
     '<button type="button" class="mobile-tab-toggle" id="mobile-tab-toggle" onclick="toggleMobileTabMenu()" aria-expanded="false" aria-label="בחר תצוגה">'+
     '<i data-lucide="menu"></i><span id="mobile-tab-current-label">'+TAB_LABELS[currentTab]+'</span><i data-lucide="chevron-down" class="mobile-tab-chevron"></i></button></div>'+
@@ -2986,7 +3016,7 @@ function renderProjectDetail(el){
   html+='<div id="tab-timeline" class="tab-content '+(currentTab==='timeline'?'active':'')+'">'+
     renderGanttChartHtml(p.phases)+
     '<div class="section-actions"><div class="section-title">'+ic('layout-grid')+' פירוט שלבים</div>'+
-    (isAdminUser?'<button class="btn btn-primary btn-sm" onclick="openAddPhaseModal()">'+ic('plus')+' שלב חדש</button>':'')+
+    '<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddPhaseModal()">'+ic('plus')+' שלב חדש</button>'+
     '</div><div class="timeline-phases">'+
     p.phases.map(function(ph){
       var phPct=phaseProgressPct(ph.progress);
@@ -2997,17 +3027,17 @@ function renderProjectDetail(el){
         '<div class="phase-end-date">'+ph.end+'</div>'+
         (ph.notes?'<p style="font-size:12px;color:var(--text-muted);margin-top:8px">'+ph.notes+'</p>':'')+
         phaseSubcontractorInsuranceWarningHtml(ph)+
-        (isAdminUser?'<div class="phase-actions">'+
+        '<div class="phase-actions admin-only-action">'+
         '<button class="btn btn-outline btn-sm" onclick="openEditPhaseModal(\''+ph.id+'\')">'+ic('pencil')+' עריכה</button>'+
-        '<button class="btn btn-danger btn-sm" onclick="deletePhase(\''+ph.id+'\')">'+ic('trash-2')+'</button></div>':'')+
+        '<button class="btn btn-danger btn-sm" onclick="deletePhase(\''+ph.id+'\')">'+ic('trash-2')+'</button></div>'+
         '</div>';
     }).join('')+
     '</div>'+
-    (isAdminUser?'<div class="card" style="margin-top:20px"><div class="card-title">'+ic('trending-up')+' התקדמות כללית</div>'+
+    '<div class="card admin-only-action" style="margin-top:20px"><div class="card-title">'+ic('trending-up')+' התקדמות כללית</div>'+
     '<div class="overall-progress-wrap" style="display:flex;align-items:center;gap:12px">'+
     '<input type="range" min="0" max="100" value="'+(p.progress||0)+'" id="overall-prog" style="flex:1" oninput="document.getElementById(\'overall-prog-val\').textContent=this.value+\'%\'"/>'+
     '<span id="overall-prog-val" style="font-weight:700;color:var(--primary);min-width:40px">'+(p.progress||0)+'%</span>'+
-    '<button class="btn btn-primary btn-sm" onclick="saveOverallProgress()">שמור</button></div></div>':'')+
+    '<button class="btn btn-primary btn-sm" onclick="saveOverallProgress()">שמור</button></div></div>'+
     '</div>';
 
   // BUDGET TAB
@@ -3018,26 +3048,27 @@ function renderProjectDetail(el){
     '<div class="budget-item"><div class="label">נותר</div><div class="amount remaining">'+fmtMoney(remaining)+'</div></div>'+
     '<div class="budget-item"><div class="label">אחוז ניצול</div><div class="amount total">'+budgetUtilPct+'%</div></div>'+
     '</div><div class="card"><div class="section-actions"><div class="section-title">'+ic('credit-card')+' תשלומים</div>'+
-    (isAdminUser?'<button class="btn btn-primary btn-sm" onclick="openAddPaymentModal()">'+ic('plus')+' תשלום חדש</button>':'')+
+    '<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddPaymentModal()">'+ic('plus')+' תשלום חדש</button>'+
     '</div>'+
-    (p.payments.length===0?'<div class="empty-state"><div class="empty-icon">'+ic('banknote')+'</div><p>אין תשלומים עדיין</p></div>':
+    (paymentsForView.length===0?'<div class="empty-state"><div class="empty-icon">'+ic('banknote')+'</div><p>אין תשלומים עדיין</p></div>':
     '<div class="payments-desktop"><div class="table-scroll"><table class="payments-table"><thead><tr><th>תיאור</th><th>נמען</th><th>קטגוריה</th><th>תאריך</th><th>סכום</th><th></th></tr></thead><tbody>'+
-    p.payments.map(function(pay){
+    paymentsForView.map(function(pay){
       return '<tr><td style="font-weight:600">'+pay.desc+'</td><td style="color:var(--text-muted)">'+pay.to+'</td>'+
         '<td><span class="badge badge-blue">'+pay.category+'</span></td>'+
         '<td style="color:var(--text-muted)">'+pay.date+'</td>'+
         '<td style="font-weight:700;color:var(--primary)">'+fmtMoney(pay.amount)+'</td>'+
-        '<td><div class="payment-actions">'+renderPaymentActionsHtml(pay,isAdminUser)+'</div></td></tr>';
+        '<td><div class="payment-actions">'+renderPaymentActionsHtml(pay)+'</div></td></tr>';
     }).join('')+'</tbody></table></div></div>'+
-    '<div class="payments-mobile-list">'+p.payments.map(function(pay){return renderPaymentCardHtml(pay,isAdminUser);}).join('')+'</div>')+
+    '<div class="payments-mobile-list">'+paymentsForView.map(function(pay){return renderPaymentCardHtml(pay);}).join('')+'</div>')+
     '</div></div>';
 
-  // BUDGET ANALYSIS TAB
-  html+='<div id="tab-budget-analysis" class="tab-content '+(currentTab==='budget-analysis'?'active':'')+'">'+
+  // BUDGET ANALYSIS TAB (admin)
+  if(isAdminUser)html+='<div id="tab-budget-analysis" class="tab-content '+(currentTab==='budget-analysis'?'active':'')+'">'+
     renderBudgetAnalysisTabHtml(p,budgetAnalysis)+
     '</div>';
 
-  // FINANCIAL REPORT TAB
+  // FINANCIAL REPORT TAB (admin)
+  if(isAdminUser){
   var budgetBarColor=budgetUtilPct>=100?'var(--danger)':budgetUtilPct>=80?'var(--warning)':'var(--success)';
   html+='<div id="tab-financial" class="tab-content '+(currentTab==='financial'?'active':'')+'">'+
     '<div class="section-title mb-16">'+ic('trending-up')+' דוח פיננסי</div>'+
@@ -3056,9 +3087,10 @@ function renderProjectDetail(el){
     '<div class="card"><div class="card-title">'+ic('chart-pie')+' פילוח הוצאות לפי קטגוריה</div><canvas id="fin-pie-chart"></canvas></div>'+
     '<div class="card"><div class="card-title">'+ic('layout-dashboard')+' תקציב מתוכנן מול ביצוע בפועל</div><canvas id="fin-bar-chart"></canvas></div>'+
     '</div></div>';
+  }
 
-  // DOCS TAB
-  html+='<div id="tab-docs" class="tab-content '+(currentTab==='docs'?'active':'')+'">'+
+  // DOCS TAB (admin)
+  if(isAdminUser)html+='<div id="tab-docs" class="tab-content '+(currentTab==='docs'?'active':'')+'">'+
     '<div class="section-title" style="margin-bottom:16px">'+ic('folder')+' מסמכים ותוכניות</div>'+
     '<div class="doc-categories">'+
     ['תוכניות אדריכלות','קונסטרוקטור','היתרים','הסכמים','אחר'].map(function(cat){
@@ -3076,14 +3108,13 @@ function renderProjectDetail(el){
             '<div class="doc-item-actions">'+
             (isHttp?'<a href="'+escHtml(d.url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">פתח</a>':'')+
             (isData?'<a href="'+escHtml(d.url)+'" download="'+escHtml(d.name)+'" class="btn btn-outline btn-sm">'+ic('download')+'</a>':'')+
-            (isAdminUser?'<button class="btn btn-danger btn-sm" onclick="deleteDoc(\''+d.id+'\')">'+ic('trash-2')+'</button>':'')+
+            '<button class="btn btn-danger btn-sm admin-only-action" onclick="deleteDoc(\''+d.id+'\')">'+ic('trash-2')+'</button>'+
             '</div></div>';
         }).join('')+
-        (isAdminUser?
-          '<div style="display:flex;gap:6px;margin-top:12px">'+
+          '<div class="admin-only-action" style="display:flex;gap:6px;margin-top:12px">'+
           '<label class="btn btn-outline btn-sm" style="cursor:pointer;flex:1;justify-content:center">'+ic('paperclip')+' העלה קובץ<input type="file" style="display:none" onchange="uploadDocFile(event,\''+cat+'\')"/></label>'+
           '<button class="btn btn-outline btn-sm" style="flex:1" onclick="addDocLink(\''+cat+'\')">'+ic('link')+' הוסף לינק</button>'+
-          '</div>':'')+
+          '</div>'+
         '</div>';
     }).join('')+'</div></div>';
 
@@ -3091,11 +3122,11 @@ function renderProjectDetail(el){
   var galleryPosts=getGalleryPostsSorted(getProjectGalleryPosts(p));
   html+='<div id="tab-gallery" class="tab-content '+(currentTab==='gallery'?'active':'')+'">'+
     '<div class="section-actions"><div class="section-title">'+ic('camera')+' גלריית תמונות מהשטח</div>'+
-    (isAdminUser?'<button class="btn btn-primary btn-sm" onclick="openNewGalleryPostModal()">'+ic('plus')+' פוסט חדש</button>':'')+
+    '<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openNewGalleryPostModal()">'+ic('plus')+' פוסט חדש</button>'+
     '</div>'+
-    (galleryPosts.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('camera')+'</div><p>אין תמונות עדיין'+(isAdminUser?' — צור את הפוסט הראשון':'')+' </p></div>':
+    (galleryPosts.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('camera')+'</div><p>אין תמונות עדיין<span class="admin-only-action"> — צור את הפוסט הראשון</span></p></div>':
     '<div class="gallery-list">'+galleryPosts.map(function(post){
-      return renderGalleryPostRow(post,isAdminUser);
+      return renderGalleryPostRow(post);
     }).join('')+'</div>')+
     '</div>';
 
@@ -3108,7 +3139,7 @@ function renderProjectDetail(el){
   // UPDATES TAB
   html+='<div id="tab-updates" class="tab-content '+(currentTab==='updates'?'active':'')+'">'+
     '<div class="section-actions"><div class="section-title">'+ic('bell')+' עדכונים</div>'+
-    (isAdminUser?'<button class="btn btn-primary btn-sm" onclick="openNewUpdateModal()">'+ic('plus')+' עדכון חדש</button>':'')+
+    '<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openNewUpdateModal()">'+ic('plus')+' עדכון חדש</button>'+
     '</div>'+
     (p.updates.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('bell')+'</div><p>אין עדכונים עדיין</p></div>':
     '<div style="display:flex;flex-direction:column;gap:14px">'+
@@ -3118,7 +3149,7 @@ function renderProjectDetail(el){
         '<div style="font-size:12px;color:var(--text-muted)">'+u.date+'</div></div>'+
         '<p style="font-size:14px;line-height:1.6">'+u.body+'</p>'+
         renderUpdateMediaHtml(u)+
-        (isAdminUser?'<button class="btn btn-danger btn-sm" style="margin-top:10px" onclick="deleteUpdate(\''+u.id+'\')">'+ic('trash-2')+' מחק</button>':'')+
+        '<button class="btn btn-danger btn-sm admin-only-action" style="margin-top:10px" onclick="deleteUpdate(\''+u.id+'\')">'+ic('trash-2')+' מחק</button>'+
         '</div>';
     }).join('')+'</div>')+
     '</div>';
@@ -3231,6 +3262,7 @@ function renderFinancialCharts(p){
 
 async function switchTab(t){
   if(!clientCanAccessProject(currentProjectId))return;
+  t=normalizeClientTab(t);
   currentTab=t;
   if(t==='messages'&&isAdmin()){
     var data=getData();var proj=getCurrentProject();
@@ -3272,7 +3304,7 @@ async function renderClients(el){
   var data=getData();
   var clients=appUsers.filter(function(u){return u.role!=='admin';});
   el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('users')+' לקוחות</h1><p>ניהול משתמשי הלקוחות (Supabase)</p></div>'+
-    '<button class="btn btn-primary" onclick="openAddUserModal()">'+ic('plus')+' לקוח חדש</button></div>'+
+    '<button class="btn btn-primary admin-only-action" onclick="openAddUserModal()">'+ic('plus')+' לקוח חדש</button></div>'+
     '<div class="users-list">'+
     (!loaded?'<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינת רשימת הלקוחות. הרץ את supabase-setup.sql המעודכן (פונקציית is_admin).</div>':'')+
     (clients.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('users')+'</div><p>אין לקוחות עדיין</p></div>':'')+
@@ -3284,7 +3316,7 @@ async function renderClients(el){
         '<div class="user-row-meta">אימייל: '+u.email+' · פרויקט: '+(proj?proj.name:'לא משויך')+'</div></div></div>'+
         '<div class="flex-gap">'+
         (proj?'<button class="btn btn-outline btn-sm" onclick="showView(\'project\',\''+proj.id+'\')">צפה בפרויקט</button>':'')+
-        '<button class="btn btn-danger btn-sm" onclick="deleteUser(\''+u.id+'\')">'+ic('trash-2')+'</button></div></div>';
+        '<button class="btn btn-danger btn-sm admin-only-action" onclick="deleteUser(\''+u.id+'\')">'+ic('trash-2')+'</button></div></div>';
     }).join('')+'</div>';
 }
 
@@ -3316,8 +3348,8 @@ function renderSubcontractorTableRows(subs){
       '<td>'+renderExpiryDateCell(s.insuranceExpiry)+'</td>'+
       '<td>'+renderExpiryDateCell(s.safetyCertExpiry)+'</td>'+
       '<td><div class="flex-gap">'+
-      '<button class="btn btn-outline btn-sm" onclick="openEditSubcontractorModal(\''+s.id+'\')">'+ic('pencil')+'</button>'+
-      '<button class="btn btn-danger btn-sm" onclick="deleteSubcontractor(\''+s.id+'\')">'+ic('trash-2')+'</button>'+
+        '<button class="btn btn-outline btn-sm admin-only-action" onclick="openEditSubcontractorModal(\''+s.id+'\')">'+ic('pencil')+'</button>'+
+        '<button class="btn btn-danger btn-sm admin-only-action" onclick="deleteSubcontractor(\''+s.id+'\')">'+ic('trash-2')+'</button>'+
       '</div></td></tr>';
   }).join('');
 }
@@ -3350,7 +3382,7 @@ async function renderSubcontractors(el){
       '</select></div>';
   }
   el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('hard-hat')+' קבלני משנה</h1><p>ניהול קבלני משנה ותוקפי ביטוח/בטיחות</p></div>'+
-    '<button class="btn btn-primary" onclick="openAddSubcontractorModal()">'+ic('plus')+' קבלן חדש</button></div>'+
+    '<button class="btn btn-primary admin-only-action" onclick="openAddSubcontractorModal()">'+ic('plus')+' קבלן חדש</button></div>'+
     (!loaded.ok?'<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינת קבלנים. הרץ את supabase-subcontractors-migration.sql ב-SQL Editor.</div>':'')+
     (allSubs.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('hard-hat')+'</div><p>אין קבלני משנה עדיין</p></div>':
     filterHtml+
@@ -3460,7 +3492,7 @@ function renderSettings(el){
     '<div class="card" style="max-width:480px;margin-top:20px">'+
     '<div class="card-title">'+ic('trash-2')+' איפוס נתונים</div>'+
     '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">מחיקת כל הנתונים מ-Supabase — פעולה בלתי הפיכה!</p>'+
-    '<button class="btn btn-danger" onclick="if(confirm(\'בטוח? כל הנתונים יימחקו!\'))resetData()">איפוס מלא</button></div>';
+    '<button class="btn btn-danger admin-only-action" onclick="if(confirm(\'בטוח? כל הנתונים יימחקו!\'))resetData()">איפוס מלא</button></div>';
 }
 
 function resetModalPosition(modal){
