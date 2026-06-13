@@ -290,6 +290,18 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .subcontractors-filter-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;margin-bottom:12px}
 .subcontractors-filter-bar label{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap}
 .subcontractors-filter-bar select{min-width:180px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px;background:#fff;direction:rtl}
+.daily-log-form-card{margin-bottom:24px}
+.daily-log-workers{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.daily-log-worker-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px}
+.daily-log-worker-name{font-size:14px;font-weight:600;flex:1}
+.daily-log-worker-count{width:88px;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-family:'Heebo',sans-serif;font-size:14px;text-align:center;direction:ltr}
+.daily-log-list{display:flex;flex-direction:column;gap:12px}
+.daily-log-item{padding:16px 18px}
+.daily-log-item-header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:8px}
+.daily-log-item-date{font-size:16px;font-weight:700;color:var(--primary)}
+.daily-log-item-meta{font-size:13px;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:12px}
+.daily-log-item-meta span{display:inline-flex;align-items:center;gap:4px}
+.daily-log-issues{font-size:14px;color:var(--text);line-height:1.5;margin:0;padding-top:8px;border-top:1px solid var(--border)}
 .activity-log-list{display:flex;flex-direction:column;gap:8px}
 .activity-log-row{display:grid;grid-template-columns:minmax(100px,130px) minmax(120px,1fr) 2fr minmax(110px,140px);gap:12px;padding:14px 18px;background:var(--card);border-radius:12px;border:1px solid var(--border);font-size:13px;align-items:center}
 .activity-log-row .log-user{font-weight:600;color:var(--primary)}
@@ -838,7 +850,8 @@ function tabIc(name){
     'bell':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
     'message-circle':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
     'scale':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16v6"/><path d="M8 16v6"/><path d="M12 2v20"/><path d="M12 2 8 6"/><path d="M12 2l4 4"/><path d="M2 10h20"/></svg>',
-    'map-pin':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>'
+    'map-pin':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
+    'clipboard-list':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>'
   };
   return icons[name]||'';
 }
@@ -1514,9 +1527,10 @@ function bindModalValidationClear(modalId){
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
 var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
-var appDataCache={projects:[],activityLog:[]},appUsers=[],subcontractorsCache=[],punchItemsCache=[],authBootstrapped=false,skipAuthHandler=false;
+var appDataCache={projects:[],activityLog:[]},appUsers=[],subcontractorsCache=[],punchItemsCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false;
 var viewingPunchItemId=null,punchPinDraft={x:null,y:null},punchBlueprintSignedUrl=null;
-var subcontractorSpecialtyFilter='';
+var subcontractorSpecialtyFilter='',showDailyLogForm=false;
+const DAILY_LOG_WEATHER=['בהיר','גשום','מעונן','רוח חזקה'];
 const ACTIVITY_LOG_MAX=500;
 
 function getLoginLockData(){
@@ -2275,6 +2289,148 @@ async function markPunchFixed(){
   await initPunchListTab();
 }
 
+function todayDateInputValue(){
+  var d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function mapDailyLogRow(r){
+  return {
+    id:r.id,
+    projectId:r.project_id,
+    logDate:r.log_date,
+    weather:r.weather||'בהיר',
+    workers:Array.isArray(r.workers)?r.workers:[],
+    issues:r.issues||'',
+    createdAt:r.created_at
+  };
+}
+async function refreshDailyLogs(projectId){
+  if(!projectId){dailyLogsCache=[];return {ok:false};}
+  var res=await supabase.from('daily_logs').select('*').eq('project_id',projectId).order('log_date',{ascending:false}).order('created_at',{ascending:false});
+  if(res.error){
+    console.error('refreshDailyLogs',res.error);
+    dailyLogsCache=[];
+    return {ok:false,error:res.error.message};
+  }
+  dailyLogsCache=(res.data||[]).map(mapDailyLogRow);
+  return {ok:true};
+}
+function totalDailyLogWorkers(workers){
+  if(!Array.isArray(workers))return 0;
+  return workers.reduce(function(sum,w){return sum+(Number(w.count)||0);},0);
+}
+function renderDailyLogWorkerRows(){
+  if(!subcontractorsCache.length){
+    return '<p style="font-size:13px;color:var(--text-muted);margin:0">אין קבלני משנה — הוסף קבלנים בתפריט "קבלני משנה".</p>';
+  }
+  return '<div class="daily-log-workers">'+subcontractorsCache.map(function(s){
+    return '<div class="daily-log-worker-row">'+
+      '<span class="daily-log-worker-name">'+escHtml(s.companyName)+'</span>'+
+      '<input type="number" min="0" step="1" class="daily-log-worker-count" data-sub-id="'+s.id+'" placeholder="0" aria-label="מספר פועלים — '+escHtml(s.companyName)+'"/>'+
+      '</div>';
+  }).join('')+'</div>';
+}
+function renderDailyLogFormHtml(){
+  return '<div class="card daily-log-form-card" id="daily-log-form">'+
+    '<div class="card-title">'+ic('clipboard-list')+' יומן חדש</div>'+
+    '<div class="grid-2">'+
+    '<div class="form-group"><label for="daily-log-date">תאריך</label><input type="date" id="daily-log-date" value="'+todayDateInputValue()+'"/></div>'+
+    '<div class="form-group"><label for="daily-log-weather">מזג אוויר</label><select id="daily-log-weather">'+
+    DAILY_LOG_WEATHER.map(function(w,i){
+      return '<option value="'+w+'"'+(i===0?' selected':'')+'>'+w+'</option>';
+    }).join('')+
+    '</select></div></div>'+
+    '<div class="form-group"><label>פועלים לפי קבלן</label>'+renderDailyLogWorkerRows()+'</div>'+
+    '<div class="form-group"><label for="daily-log-issues">תקלות / חוסרים / עיכובים</label><textarea id="daily-log-issues" placeholder="פרט תקלות, חוסרים או עיכובים (אופציונלי)..."></textarea></div>'+
+    '<div class="flex-gap" style="margin-top:8px">'+
+    '<button type="button" class="btn btn-primary btn-sm" onclick="saveDailyLog()">'+ic('check')+' שמור יומן</button>'+
+    '<button type="button" class="btn btn-outline btn-sm" onclick="cancelDailyLogForm()">ביטול</button>'+
+    '</div></div>';
+}
+function renderDailyLogListHtml(logs){
+  if(!logs.length){
+    return '<div class="empty-state card"><div class="empty-icon">'+ic('clipboard-list')+'</div><p>אין יומני עבודה עדיין</p></div>';
+  }
+  return '<div class="daily-log-list">'+logs.map(function(log){
+    var total=totalDailyLogWorkers(log.workers);
+    var dateLabel=formatSubcontractorDate(log.logDate);
+    return '<div class="card daily-log-item">'+
+      '<div class="daily-log-item-header">'+
+      '<div class="daily-log-item-date">'+ic('calendar')+' '+escHtml(dateLabel)+'</div>'+
+      '<div class="daily-log-item-meta">'+
+      '<span>'+ic('cloud')+' '+escHtml(log.weather)+'</span>'+
+      '<span>'+ic('users')+' סה"כ '+total+' פועלים</span>'+
+      '</div></div>'+
+      (log.issues?'<p class="daily-log-issues"><strong>תקלות:</strong> '+escHtml(log.issues)+'</p>':'')+
+      '</div>';
+  }).join('')+'</div>';
+}
+async function initDailyLogTab(){
+  var root=document.getElementById('daily-log-tab-root');
+  if(!root)return;
+  if(!requireProjectAccess()){root.innerHTML='<p>אין גישה לפרויקט</p>';return;}
+  var proj=getCurrentProject();
+  if(!proj){root.innerHTML='<p>פרויקט לא נמצא</p>';return;}
+  root.innerHTML='<div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען יומן עבודה...</p></div>';
+  refreshIcons(root);
+  var isAdminUser=isAdmin();
+  await refreshSubcontractors();
+  var loaded=await refreshDailyLogs(proj.id);
+  var html='<div class="section-actions"><div class="section-title">'+ic('clipboard-list')+' יומן עבודה יומי</div>'+
+    (isAdminUser&&!showDailyLogForm?'<button type="button" class="btn btn-primary btn-sm" onclick="openDailyLogForm()">'+ic('plus')+' יומן חדש</button>':'')+
+    '</div>';
+  if(isAdminUser&&showDailyLogForm)html+=renderDailyLogFormHtml();
+  if(!loaded.ok){
+    html+='<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינת יומני עבודה. הרץ את supabase-daily-logs-migration.sql.</div>';
+  }
+  html+='<div class="section-title" style="margin-top:'+(isAdminUser&&showDailyLogForm?'8px':'0')+';margin-bottom:12px">'+ic('history')+' יומנים קודמים</div>'+
+    renderDailyLogListHtml(dailyLogsCache);
+  root.innerHTML=html;
+  refreshIcons(root);
+}
+function openDailyLogForm(){
+  if(!requireAdmin())return;
+  showDailyLogForm=true;
+  initDailyLogTab();
+}
+function cancelDailyLogForm(){
+  showDailyLogForm=false;
+  initDailyLogTab();
+}
+function collectDailyLogWorkers(){
+  var workers=[];
+  document.querySelectorAll('.daily-log-worker-count').forEach(function(input){
+    var subId=input.getAttribute('data-sub-id');
+    var count=Number(input.value);
+    if(subId&&count>0)workers.push({subcontractor_id:subId,count:count});
+  });
+  return workers;
+}
+async function saveDailyLog(){
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var dateEl=document.getElementById('daily-log-date');
+  var weatherEl=document.getElementById('daily-log-weather');
+  var issuesEl=document.getElementById('daily-log-issues');
+  if(!dateEl||!weatherEl)return;
+  var logDate=dateEl.value;
+  if(!logDate){alert('יש לבחור תאריך');return;}
+  var workers=collectDailyLogWorkers();
+  if(!workers.length){alert('יש להזין לפחות קבלן אחד עם מספר פועלים גדול מ-0');return;}
+  var proj=getCurrentProject();if(!proj)return;
+  var row={
+    project_id:proj.id,
+    log_date:logDate,
+    weather:weatherEl.value,
+    workers:workers,
+    issues:issuesEl&&issuesEl.value.trim()?issuesEl.value.trim():null
+  };
+  var res=await supabase.from('daily_logs').insert(row).select().single();
+  if(res.error){alert('שגיאה בשמירת היומן:\n'+formatSupabaseErrorHint(res.error.message));return;}
+  logActivity('יומן עבודה חדש','פרויקט: '+proj.name+' · '+formatSubcontractorDate(logDate)+' · '+totalDailyLogWorkers(workers)+' פועלים');
+  showDailyLogForm=false;
+  await initDailyLogTab();
+}
+
 async function ensureUserProfile(authUser){
   var res=await supabase.from('profiles').select('*').eq('id',authUser.id).maybeSingle();
   if(res.data){
@@ -2481,7 +2637,7 @@ function renderSidebar(){
   refreshIcons(nav);
 }
 
-var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה',punch:'ליקויים',updates:'עדכונים',messages:'שאלות'};
+var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה',punch:'ליקויים','daily-log':'יומן עבודה',updates:'עדכונים',messages:'שאלות'};
 var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
@@ -2783,6 +2939,7 @@ function renderProjectDetail(el){
     ['docs','מסמכים','folder',''],
     ['gallery','גלריה','camera',''],
     ['punch','ליקויים','map-pin',''],
+    ['daily-log','יומן עבודה','clipboard-list',''],
     ['updates','עדכונים','bell',''],
     ['messages','שאלות','message-circle',messagesTabBadge]
   ];
@@ -2945,6 +3102,9 @@ function renderProjectDetail(el){
   // PUNCH LIST TAB
   html+='<div id="tab-punch" class="tab-content '+(currentTab==='punch'?'active':'')+'"><div id="punch-tab-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div></div>';
 
+  // DAILY LOG TAB
+  html+='<div id="tab-daily-log" class="tab-content '+(currentTab==='daily-log'?'active':'')+'"><div id="daily-log-tab-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div></div>';
+
   // UPDATES TAB
   html+='<div id="tab-updates" class="tab-content '+(currentTab==='updates'?'active':'')+'">'+
     '<div class="section-actions"><div class="section-title">'+ic('bell')+' עדכונים</div>'+
@@ -2984,6 +3144,7 @@ function renderProjectDetail(el){
     var ml=document.getElementById('messages-list');if(ml)ml.scrollTop=ml.scrollHeight;
     if(currentTab==='financial')renderFinancialCharts(p);
     if(currentTab==='punch')initPunchListTab();
+    if(currentTab==='daily-log')initDailyLogTab();
   },50);
 }
 
@@ -3097,6 +3258,7 @@ async function switchTab(t){
       if(p)setTimeout(function(){renderFinancialCharts(p);},50);
     }
     if(t==='punch')initPunchListTab();
+    if(t==='daily-log')initDailyLogTab();
     var ml=document.getElementById('messages-list');
     if(ml)setTimeout(function(){ml.scrollTop=ml.scrollHeight;},50);
     return;
@@ -3909,7 +4071,8 @@ Object.assign(window,{
   openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,
   toggleRemoveGalleryImage,removePendingGalleryFile,saveGalleryPost,deleteGalleryPost,
   openPhotoLightbox,closePhotoLightbox,
-  handleBlueprintUpload,openNewPunchModal,openPunchItemView,onBlueprintImageClick,savePunchItem,markPunchFixed
+  handleBlueprintUpload,openNewPunchModal,openPunchItemView,onBlueprintImageClick,savePunchItem,markPunchFixed,
+  openDailyLogForm,cancelDailyLogForm,saveDailyLog
 });
 window.addEventListener('resize',function(){
   if(window.innerWidth>=1024)closeMobileSidebar();
