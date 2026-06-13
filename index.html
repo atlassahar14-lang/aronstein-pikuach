@@ -407,11 +407,16 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .mobile-tab-item .tab-svg{width:18px;height:18px;flex-shrink:0}
 .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:280;opacity:0;transition:opacity .3s}
 .sidebar-backdrop.open{display:block;opacity:1}
-.table-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:4px}
+.table-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:4px;max-width:100%}
 .table-scroll .payments-table{min-width:560px}
+.table-scroll .punch-items-table{min-width:520px}
+.table-scroll-cards{overflow-x:visible}
+.table-scroll-cards .subcontractors-table,.table-scroll-cards .punch-items-table{min-width:0!important;width:100%}
 .tabs-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:4px}
 .tabs-scroll .tabs{flex-wrap:nowrap;min-width:max-content}
 .responsive-stack{flex-wrap:wrap;gap:12px}
+.blueprint-pin::after{content:'';position:absolute;inset:-8px;border-radius:50%}
+.card:has(>.table-scroll){overflow:visible}
 @supports(padding:max(0px,env(safe-area-inset-top))){
   .login-panel{padding-left:max(28px,env(safe-area-inset-left));padding-right:max(28px,env(safe-area-inset-right));padding-bottom:max(28px,env(safe-area-inset-bottom))}
 }
@@ -505,6 +510,21 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .gantt-card-head{flex-direction:column;align-items:stretch!important}
   .gantt-card-actions{width:100%}
   .gantt-card-actions .btn{flex:1;justify-content:center}
+  .modal-overlay.open{display:flex!important;align-items:flex-start;justify-content:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+  .modal-overlay.open .modal{position:relative;top:auto;left:auto;transform:none;margin:0 auto;flex-shrink:0}
+  .modal-footer .btn-primary,.modal-footer .btn-accent,.modal-footer .btn-danger{width:100%!important;max-width:100%}
+  .blueprint-viewer-wrap.clickable{cursor:pointer;touch-action:manipulation}
+  .blueprint-viewer-wrap img{max-height:min(55vh,480px)}
+  .blueprint-viewer-wrap iframe{min-height:360px;max-height:55vh}
+  .blueprint-pin{width:30px;height:30px;border-width:3px}
+  .blueprint-pin::after{inset:-10px}
+  .blueprint-section .btn,.blueprint-section label.btn{margin-top:8px!important;margin-right:0!important;width:100%;justify-content:center}
+  .blueprint-section label.btn{display:inline-flex}
+  .subcontractors-filter-bar select{width:100%;min-width:0;min-height:44px;font-size:16px}
+  .daily-log-worker-count{min-height:44px;font-size:16px;padding:10px 12px}
+  .daily-log-form-card .btn{width:100%;justify-content:center}
+  .daily-log-form-card .flex-gap{flex-direction:column;width:100%}
+  .blueprint-viewer-wrap img{-webkit-touch-callout:none;touch-action:manipulation}
 }
 @media(max-width:639px){
   .login-hero{min-height:200px}
@@ -537,6 +557,48 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .modal{padding:20px 16px;max-width:calc(100vw - 16px)}
   .modal-title{font-size:18px}
   .empty-state{padding:32px 16px}
+  .subcontractors-filter-bar{flex-direction:column;align-items:stretch!important;gap:10px}
+  .subcontractors-filter-bar label{white-space:normal}
+  .daily-log-worker-row{flex-direction:column;align-items:stretch;gap:10px;padding:14px}
+  .daily-log-worker-name{font-size:15px;line-height:1.4}
+  .daily-log-worker-count{width:100%;min-height:48px}
+  .daily-log-item{padding:14px}
+  .daily-log-item-date{font-size:15px}
+  .punch-detail-row{flex-direction:column;gap:4px;align-items:flex-start}
+  .punch-detail-row .label{min-width:0;font-weight:700;color:var(--primary)}
+  .blueprint-pin{width:34px;height:34px;border-width:4px}
+  .blueprint-pin::after{inset:-12px}
+  .blueprint-viewer-wrap iframe{min-height:280px}
+  .table-scroll:not(.table-scroll-cards){margin:0 -8px;padding:4px 8px}
+  .table-scroll:not(.table-scroll-cards):not(:has(.subcontractors-table)):not(:has(.punch-items-table))::after{content:'← גלול לצפייה →';display:block;text-align:center;font-size:11px;color:var(--text-muted);padding:6px 0 2px;opacity:.85}
+  .table-scroll:has(.subcontractors-table),.table-scroll:has(.punch-items-table){overflow-x:visible;margin:0;padding:0}
+  .table-scroll .subcontractors-table,.table-scroll .punch-items-table{min-width:0!important}
+  .subcontractors-table thead,.punch-items-table thead{display:none}
+  .subcontractors-table tbody tr,.punch-items-table tbody tr{display:block;background:var(--bg);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;padding:2px 0;cursor:pointer}
+  .subcontractors-table td,.punch-items-table td{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);text-align:left;font-size:14px}
+  .subcontractors-table td:last-child,.punch-items-table td:last-child{border-bottom:none}
+  .subcontractors-table td::before,.punch-items-table td::before{content:'';font-size:12px;font-weight:600;color:var(--text-muted);flex-shrink:0}
+  .subcontractors-table td:nth-child(1)::before{content:'שם חברה'}
+  .subcontractors-table td:nth-child(2)::before{content:'איש קשר'}
+  .subcontractors-table td:nth-child(3)::before{content:'טלפון'}
+  .subcontractors-table td:nth-child(4)::before{content:'תחום'}
+  .subcontractors-table td:nth-child(5)::before{content:'ביטוח'}
+  .subcontractors-table td:nth-child(6)::before{content:'בטיחות'}
+  .subcontractors-table td:nth-child(7)::before{content:'פעולות'}
+  .subcontractors-table td:nth-child(7){flex-direction:column;align-items:stretch}
+  .subcontractors-table td:nth-child(7) .flex-gap{width:100%;justify-content:stretch}
+  .subcontractors-table td:nth-child(7) .btn{flex:1;justify-content:center}
+  .subcontractors-table td[colspan],.punch-items-table td[colspan]{display:block;text-align:center!important;justify-content:center}
+  .subcontractors-table td[colspan]::before,.punch-items-table td[colspan]::before{display:none}
+  .punch-items-table td:nth-child(1)::before{content:'תיאור'}
+  .punch-items-table td:nth-child(2)::before{content:'קבלן'}
+  .punch-items-table td:nth-child(3)::before{content:'דחיפות'}
+  .punch-items-table td:nth-child(4)::before{content:'דד-ליין'}
+  .punch-items-table td:nth-child(5)::before{content:'סטטוס'}
+  .punch-items-table td:nth-child(1){font-weight:600;color:var(--primary)}
+  .gallery-modal-images{justify-content:center}
+  .gallery-modal-image-item{width:80px;height:80px}
+  .gallery-modal-image-remove{width:32px;height:32px;min-width:32px;min-height:32px}
 }
 @media(min-width:640px) and (max-width:1023px){
   .projects-grid{grid-template-columns:repeat(2,1fr)}
@@ -555,6 +617,10 @@ img,svg,video,canvas{max-width:100%;height:auto}
 }
 @media(pointer:coarse){
   .modal-header{cursor:default}
+  .blueprint-viewer-wrap.clickable{touch-action:manipulation}
+  .blueprint-pin{width:32px;height:32px;border-width:4px}
+  .blueprint-pin::after{inset:-14px}
+  .btn,.tab,.mobile-tab-item,.mobile-tab-toggle,.nav-item,.hamburger-btn,.modal-close,.upload-label,.file-preview-remove{touch-action:manipulation}
 }
 </style>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
