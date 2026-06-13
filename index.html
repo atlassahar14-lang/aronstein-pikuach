@@ -652,6 +652,10 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="form-group"><label>שם הפרויקט</label><input type="text" id="proj-name" placeholder="לדוגמה: בית פרטי - כפר סבא"/></div>
     <div class="form-group"><label>כתובת</label><input type="text" id="proj-addr" placeholder="רחוב, עיר"/></div>
     <div class="form-group"><label>מספר בית</label><input type="text" id="proj-house" placeholder="לדוגמה: 12"/></div>
+    <div class="grid-2">
+      <div class="form-group"><label>שם לקוח</label><input type="text" id="proj-client-name" placeholder="שם הלקוח"/></div>
+      <div class="form-group"><label>טלפון</label><input type="tel" id="proj-client-phone" placeholder="050-0000000" dir="ltr" style="text-align:left"/></div>
+    </div>
     <div class="form-group"><label>תיאור</label><textarea id="proj-desc" placeholder="תיאור קצר"></textarea></div>
     <div class="grid-2">
       <div class="form-group"><label>תאריך התחלה</label><input type="date" id="proj-start"/></div>
@@ -1988,7 +1992,11 @@ async function saveData(d){
 }
 
 function mapProfileRow(p){
-  return {id:p.id,email:p.email,name:p.name,role:p.role,projectId:p.project_id};
+  return {id:p.id,email:p.email,name:p.name,role:p.role,projectId:p.project_id,phone:p.phone||''};
+}
+function getProjectLinkedClient(projectId){
+  if(!projectId)return null;
+  return appUsers.find(function(u){return u.role!=='admin'&&u.projectId===projectId;})||null;
 }
 
 function mergeAppUser(user){
@@ -3562,11 +3570,11 @@ function openNewProjectModal(){
   editingProjectId=null;
   clearFormErrors('modal-project');
   document.getElementById('modal-proj-title').textContent='פרויקט חדש';
-  ['proj-name','proj-addr','proj-house','proj-desc','proj-start','proj-end','proj-built','proj-property','proj-budget'].forEach(function(id){document.getElementById(id).value='';});
+  ['proj-name','proj-addr','proj-house','proj-client-name','proj-client-phone','proj-desc','proj-start','proj-end','proj-built','proj-property','proj-budget'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('proj-status').value='active';
   openModal('modal-project');
 }
-function openEditProjectModal(id){
+async function openEditProjectModal(id){
   if(!requireAdmin())return;
   var data=getData();
   var p=data.projects.find(function(x){return x.id===id;});
@@ -3584,17 +3592,34 @@ function openEditProjectModal(id){
   document.getElementById('proj-property').value=p.propertyArea||'';
   document.getElementById('proj-budget').value=p.budget;
   document.getElementById('proj-status').value=p.status;
+  await refreshAppUsers();
+  var linked=getProjectLinkedClient(id);
+  if(linked){
+    document.getElementById('proj-client-name').value=linked.name||'';
+    document.getElementById('proj-client-phone').value=linked.phone||'';
+  }else{
+    document.getElementById('proj-client-name').value=p.clientName||'';
+    document.getElementById('proj-client-phone').value=p.clientPhone||'';
+  }
   openModal('modal-project');
 }
 async function saveProject(){
   if(!requireAdmin())return;
   clearFormErrors('modal-project');
   if(!validateRequired('proj-name')){focusFirstFormError('modal-project');return;}
+  var clientName=document.getElementById('proj-client-name').value.trim();
+  var clientPhone=document.getElementById('proj-client-phone').value.trim();
   var data=getData();
-  var proj={name:document.getElementById('proj-name').value.trim(),address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:Number(document.getElementById('proj-budget').value)||0,status:document.getElementById('proj-status').value};
+  var proj={name:document.getElementById('proj-name').value.trim(),address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:Number(document.getElementById('proj-budget').value)||0,status:document.getElementById('proj-status').value,clientName:clientName,clientPhone:clientPhone};
   if(editingProjectId){
     var idx=data.projects.findIndex(function(p){return p.id===editingProjectId;});
     data.projects[idx]=Object.assign({},data.projects[idx],proj);
+    var linked=getProjectLinkedClient(editingProjectId);
+    if(linked){
+      var profileRes=await supabase.from('profiles').update({name:clientName||linked.name,phone:clientPhone||null}).eq('id',linked.id);
+      if(profileRes.error){alert('שגיאה בעדכון פרטי הלקוח:\n'+formatSupabaseErrorHint(profileRes.error.message));return;}
+      mergeAppUser({id:linked.id,email:linked.email,name:clientName||linked.name,role:linked.role,projectId:linked.projectId,phone:clientPhone});
+    }
     logActivity('עריכת פרויקט','פרויקט: '+proj.name);
   }else{
     var perCat=proj.budget?Math.round(Number(proj.budget)/FIN_CATEGORIES.length):0;
