@@ -273,7 +273,8 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .blueprint-section{margin-bottom:24px}
 .blueprint-viewer-wrap{position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#eef1f5;line-height:0}
 .blueprint-viewer-wrap.clickable{cursor:crosshair}
-.blueprint-viewer-wrap img{display:block;width:100%;max-height:70vh;object-fit:contain;user-select:none;-webkit-user-drag:none}
+.blueprint-image-frame{position:relative;display:block;width:100%;line-height:0}
+.blueprint-viewer-wrap img{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;user-select:none;-webkit-user-drag:none}
 .blueprint-viewer-wrap iframe{display:block;width:100%;min-height:480px;border:none;background:#fff}
 .blueprint-pins-layer{position:absolute;inset:0;pointer-events:none}
 .blueprint-pin{position:absolute;width:22px;height:22px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer;z-index:2}
@@ -1267,7 +1268,7 @@ async function openPaymentReceipt(paymentId){
   if(!requireProjectAccess())return;
   var proj=getCurrentProject();if(!proj)return;
   var pay=proj.payments.find(function(p){return p.id===paymentId;});
-  if(!pay||!paymentHasReceipt(pay)){alert('לא נמצאה קבלה לתשלום זה');return;}
+  if(!pay||!paymentHasReceipt(pay)||!paymentIsClientVisible(pay)){showToast('לא נמצאה קבלה לתשלום זה','error');return;}
   if(pay.receipt_url){
     var res=await supabase.storage.from(PAYMENT_RECEIPTS_BUCKET).createSignedUrl(pay.receipt_url,3600);
     if(res.error||!res.data||!res.data.signedUrl){
@@ -1645,6 +1646,24 @@ var viewingPunchItemId=null,punchPinDraft={x:null,y:null},punchBlueprintSignedUr
 var subcontractorSpecialtyFilter='',showDailyLogForm=false;
 var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='';
 var toastTimer=null;
+function resetListFilters(){
+  paymentStatusFilter='';
+  paymentSortOrder='desc';
+  dailyLogWeatherFilter='';
+  punchStatusFilter='';
+  punchUrgencyFilter='';
+}
+function resetAppSessionState(){
+  appDataCache={projects:[],activityLog:[]};
+  appUsers=[];
+  subcontractorsCache=[];
+  punchItemsCache=[];
+  dailyLogsCache=[];
+  resetListFilters();
+  document.querySelectorAll('.modal-overlay.open').forEach(function(o){o.classList.remove('open');});
+  modalOpenCount=0;
+  document.body.style.overflow='';
+}
 const DAILY_LOG_WEATHER=['בהיר','גשום','מעונן','רוח חזקה'];
 const ACTIVITY_LOG_MAX=500;
 
@@ -2029,22 +2048,25 @@ function exportPaymentsCsv(){
 function exportDailyLogsCsv(){
   if(!requireProjectAccess())return;
   var proj=getCurrentProject();if(!proj)return;
-  var list=filterDailyLogs(dailyLogsCache);
-  if(!list.length){showToast('אין יומנים לייצוא','error');return;}
-  var headers=['תאריך','מזג אוויר','סה"כ פועלים','פירוט קבלנים','תקלות'];
-  var rows=list.map(function(log){
-    return [
-      csvEscape(formatSubcontractorDate(log.logDate)),
-      csvEscape(log.weather),
-      csvEscape(totalDailyLogWorkers(log.workers)),
-      csvEscape(formatDailyLogWorkersForCsv(log.workers)),
-      csvEscape(log.issues||'')
-    ].join(',');
+  refreshDailyLogs(proj.id).then(function(loaded){
+    if(!loaded.ok){showToast('שגיאה בטעינת יומנים לייצוא','error');return;}
+    var list=filterDailyLogs(dailyLogsCache);
+    if(!list.length){showToast('אין יומנים לייצוא','error');return;}
+    var headers=['תאריך','מזג אוויר','סה"כ פועלים','פירוט קבלנים','תקלות'];
+    var rows=list.map(function(log){
+      return [
+        csvEscape(formatSubcontractorDate(log.logDate)),
+        csvEscape(log.weather),
+        csvEscape(totalDailyLogWorkers(log.workers)),
+        csvEscape(formatDailyLogWorkersForCsv(log.workers)),
+        csvEscape(log.issues||'')
+      ].join(',');
+    });
+    var csv=headers.join(',')+'\r\n'+rows.join('\r\n');
+    var fname=sanitizeFileName(proj.name||'project').slice(0,48)+'-daily-logs.csv';
+    downloadTextFile(fname,csv,'text/csv;charset=utf-8');
+    showToast('קובץ היומנים יורד למכשיר');
   });
-  var csv=headers.join(',')+'\r\n'+rows.join('\r\n');
-  var fname=sanitizeFileName(proj.name||'project').slice(0,48)+'-daily-logs.csv';
-  downloadTextFile(fname,csv,'text/csv;charset=utf-8');
-  showToast('קובץ היומנים יורד למכשיר');
 }
 
 function logActivity(action,details){
@@ -2245,6 +2267,7 @@ function isDateExpired(isoDate){
   var today=new Date();
   today.setHours(0,0,0,0);
   var d=new Date(String(isoDate).slice(0,10)+'T12:00:00');
+  if(isNaN(d.getTime()))return false;
   return d<today;
 }
 function formatSubcontractorDate(isoDate){
@@ -2261,11 +2284,18 @@ function renderExpiryDateCell(isoDate){
 function subcontractorInsuranceExpired(sub){
   return !!(sub&&sub.insuranceExpiry&&isDateExpired(sub.insuranceExpiry));
 }
+function subcontractorSafetyExpired(sub){
+  return !!(sub&&sub.safetyCertExpiry&&isDateExpired(sub.safetyCertExpiry));
+}
 function phaseSubcontractorInsuranceWarningHtml(ph){
   if(!ph||!ph.subcontractor_id)return '';
   var sub=getSubcontractorById(ph.subcontractor_id);
-  if(!subcontractorInsuranceExpired(sub))return '';
-  return '<div class="phase-insurance-warning">'+ic('alert-triangle')+' ⚠ ביטוח הקבלן פג תוקף</div>';
+  if(!sub)return '<div class="phase-insurance-warning">'+ic('alert-triangle')+' ⚠ קבלן לא נמצא — לא ניתן לבדוק ביטוח/בטיחות</div>';
+  var warnings=[];
+  if(subcontractorInsuranceExpired(sub))warnings.push('ביטוח הקבלן פג תוקף');
+  if(subcontractorSafetyExpired(sub))warnings.push('אישור הבטיחות פג תוקף');
+  if(!warnings.length)return '';
+  return '<div class="phase-insurance-warning">'+ic('alert-triangle')+' ⚠ '+warnings.join(' · ')+'</div>';
 }
 function populatePhaseSubcontractorSelect(selectedId){
   var sel=document.getElementById('phase-subcontractor');
@@ -2411,8 +2441,9 @@ async function initPunchListTab(){
       html+='<div class="card blueprint-section">'+
         '<p class="blueprint-upload-hint" style="margin-bottom:10px">'+hintText+'</p>'+
         '<div class="'+viewerClass+'" id="blueprint-viewer"'+viewerClick+'>'+
+        '<div class="blueprint-image-frame">'+
         '<img id="blueprint-image" src="'+escHtml(punchBlueprintSignedUrl)+'" alt="תוכנית פרויקט"/>'+
-        '<div class="blueprint-pins-layer">'+pinsHtml+'</div></div>'+
+        '<div class="blueprint-pins-layer">'+pinsHtml+'</div></div></div>'+
         '<label class="btn btn-outline btn-sm admin-only-action" style="cursor:pointer;margin-top:12px"><i data-lucide="upload"></i> החלף תוכנית<input type="file" id="blueprint-file-input" accept="image/*,application/pdf" style="display:none"/></label>'+
         '</div>';
     }
@@ -2472,19 +2503,26 @@ async function handleBlueprintUpload(ev){
     if(input)input.value='';
   }
 }
+function getBlueprintImageNormCoords(img,clientX,clientY){
+  if(!img)return null;
+  var rect=img.getBoundingClientRect();
+  if(!rect.width||!rect.height)return null;
+  var x=(clientX-rect.left)/rect.width;
+  var y=(clientY-rect.top)/rect.height;
+  if(x<0||y<0||x>1||y>1)return null;
+  return {x:Math.max(0,Math.min(1,x)),y:Math.max(0,Math.min(1,y))};
+}
 function onBlueprintImageClick(e){
   if(e.target.closest('.blueprint-pin'))return;
-  if(!requireProjectAccess())return;
-  var wrap=document.getElementById('blueprint-viewer');
-  if(!wrap||!e.target.closest('#blueprint-image'))return;
-  var rect=wrap.getBoundingClientRect();
-  if(!rect.width||!rect.height)return;
-  var x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
-  var y=Math.max(0,Math.min(1,(e.clientY-rect.top)/rect.height));
-  openNewPunchModal(x,y);
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var img=document.getElementById('blueprint-image');
+  if(!img||!e.target.closest('#blueprint-image'))return;
+  var coords=getBlueprintImageNormCoords(img,e.clientX,e.clientY);
+  if(!coords)return;
+  openNewPunchModal(coords.x,coords.y);
 }
 function openNewPunchModal(pinX,pinY){
-  if(!requireProjectAccess())return;
+  if(!requireAdmin()||!requireProjectAccess())return;
   viewingPunchItemId=null;
   punchPinDraft={x:pinX!=null?pinX:null,y:pinY!=null?pinY:null};
   document.getElementById('modal-punch-title').textContent='ליקוי חדש';
@@ -2521,7 +2559,7 @@ function openPunchItemView(itemId){
   refreshIcons(document.getElementById('modal-punch-item'));
 }
 async function savePunchItem(){
-  if(!requireProjectAccess())return;
+  if(!requireAdmin()||!requireProjectAccess())return;
   clearFormErrors('modal-punch-item');
   if(!validateRequired('punch-desc')){focusFirstFormError('modal-punch-item');return;}
   var proj=getCurrentProject();if(!proj)return;
@@ -2543,7 +2581,7 @@ async function savePunchItem(){
   await initPunchListTab();
 }
 async function markPunchFixed(){
-  if(!requireProjectAccess()||!viewingPunchItemId)return;
+  if(!requireAdmin()||!requireProjectAccess()||!viewingPunchItemId)return;
   var proj=getCurrentProject();if(!proj)return;
   var item=punchItemsCache.find(function(x){return x.id===viewingPunchItemId;});
   if(!item||item.status==='fixed')return;
@@ -2797,6 +2835,7 @@ async function startApp(user){
 }
 
 function showLoginScreen(){
+  resetAppSessionState();
   currentUser=null;
   updateWhatsAppFab(false);
   document.getElementById('login-screen').style.display='flex';
@@ -2804,6 +2843,8 @@ function showLoginScreen(){
   document.getElementById('login-email').value='';
   document.getElementById('login-pass').value='';
   document.getElementById('login-error').classList.remove('show');
+  var btn=document.getElementById('login-btn');
+  if(btn){btn.disabled=false;btn.textContent='כניסה לחשבון';}
   showLoginForm();
   updateLoginLockUI();
 }
@@ -2897,6 +2938,7 @@ async function doLogin(){
   }finally{
     skipAuthHandler=false;
     btn.textContent='כניסה לחשבון';
+    if(!isLoginLocked())btn.disabled=false;
     if(failed)recordLoginFailure();
     updateLoginLockUI();
     if(failed&&!isLoginLocked()){err.textContent=LOGIN_ERROR_MSG;err.classList.add('show');}
@@ -3009,6 +3051,7 @@ function showView(view,pid){
     pid=currentUser.projectId;
   }
   if(view==='project'&&pid&&!clientCanAccessProject(pid))pid=currentUser.projectId;
+  if(view==='project'&&pid&&pid!==currentProjectId)resetListFilters();
   currentView=view;
   if(pid)currentProjectId=pid;
   renderSidebar();
@@ -3309,7 +3352,9 @@ function renderProjectDetail(el){
     '<div class="stat-card"><div class="stat-icon">'+ic('trending-up')+'</div><div class="stat-value">'+(p.progress||0)+'%</div><div class="stat-label">התקדמות כללית</div></div>'+
     '<div class="stat-card"><div class="stat-icon">'+ic('banknote')+'</div><div class="stat-value">'+fmtMoney(paid)+'</div><div class="stat-label">שולם עד כה</div></div>'+
     '<div class="stat-card"><div class="stat-icon">'+ic('calendar')+'</div><div class="stat-value">'+p.phases.filter(function(x){return x.status==='done';}).length+'/'+p.phases.length+'</div><div class="stat-label">שלבים הושלמו</div></div>'+
-    '<div class="stat-card"><div class="stat-icon">'+ic('file-text')+'</div><div class="stat-value">'+p.documents.length+'</div><div class="stat-label">מסמכים</div></div>'+
+    (isAdminUser?
+    '<div class="stat-card"><div class="stat-icon">'+ic('file-text')+'</div><div class="stat-value">'+p.documents.length+'</div><div class="stat-label">מסמכים</div></div>':
+    '<div class="stat-card"><div class="stat-icon">'+ic('bell')+'</div><div class="stat-value">'+(p.updates||[]).length+'</div><div class="stat-label">עדכונים</div></div>')+
     '</div>'+
     '<div class="grid-2" style="gap:20px">'+
     '<div class="card"><div class="card-title">'+ic('clipboard-list')+' פרטי הפרויקט</div>'+
@@ -3753,6 +3798,7 @@ async function saveSubcontractor(){
   }
   closeModal('modal-subcontractor');
   if(currentView==='subcontractors')renderSubcontractors(document.getElementById('main-content'));
+  else if(currentView==='project')renderProjectDetail(document.getElementById('main-content'));
 }
 async function deleteSubcontractor(id){
   if(!requireAdmin())return;
@@ -3912,6 +3958,7 @@ async function saveProject(){
   var proj={name:document.getElementById('proj-name').value.trim(),address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:Number(document.getElementById('proj-budget').value)||0,status:document.getElementById('proj-status').value,clientName:clientName,clientPhone:clientPhone};
   if(editingProjectId){
     var idx=data.projects.findIndex(function(p){return p.id===editingProjectId;});
+    if(idx<0){showToast('שגיאה: הפרויקט לא נמצא — רענן את העמוד','error');return;}
     data.projects[idx]=Object.assign({},data.projects[idx],proj);
     var linked=getProjectLinkedClient(editingProjectId);
     if(linked){
@@ -4083,7 +4130,7 @@ async function savePayment(){
       if(file.size>MEDIA_MAX_BYTES){alert('הקובץ גדול מדי (מקסימום 20MB)');return;}
       btn.disabled=true;
       if(cancelBtn)cancelBtn.disabled=true;
-      if(file.type.startsWith('image/')&&file.size>RECEIPT_COMPRESS_BYTES)setPaymentReceiptUploadUi(true,'מכווץ תמונה...');
+      if((file.type||'').startsWith('image/')&&file.size>RECEIPT_COMPRESS_BYTES)setPaymentReceiptUploadUi(true,'מכווץ תמונה...');
       var uploadFile=await compressImage(file);
       setPaymentReceiptUploadUi(true,'מעלה קבלה...');
       var upload=await uploadPaymentReceiptFile(proj.id,payId,uploadFile);
@@ -4410,10 +4457,7 @@ async function resetData(){
 
 document.querySelectorAll('.modal-overlay').forEach(function(overlay){
   overlay.addEventListener('click',function(e){
-    if(e.target===overlay){
-      overlay.classList.remove('open');
-      resetModalPosition(overlay.querySelector('.modal'));
-    }
+    if(e.target===overlay)closeModal(overlay.id);
   });
 });
 document.getElementById('login-pass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
