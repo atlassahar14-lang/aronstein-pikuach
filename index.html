@@ -1035,6 +1035,22 @@ function icWhatsApp(){
 function getWhatsAppUrl(){
   return 'https://wa.me/'+WHATSAPP_PHONE+'?text='+encodeURIComponent(WHATSAPP_MSG);
 }
+function toWhatsAppInternationalPhone(phone){
+  var digits=String(phone||'').replace(/\D/g,'');
+  if(!digits)return '';
+  if(digits.indexOf('972')===0)return digits;
+  if(digits.charAt(0)==='0')digits=digits.slice(1);
+  return '972'+digits;
+}
+function getSubcontractorWhatsAppUrl(phone){
+  var intl=toWhatsAppInternationalPhone(phone);
+  return intl?'https://wa.me/'+intl:'';
+}
+function renderSubcontractorWhatsAppBtn(phone){
+  var url=getSubcontractorWhatsAppUrl(phone);
+  if(!url)return '';
+  return '<a class="btn btn-sm btn-whatsapp" href="'+url+'" target="_blank" rel="noopener noreferrer" title="וואטסאפ" aria-label="וואטסאפ">'+icWhatsApp()+'</a>';
+}
 function updateWhatsAppFab(show){
   var existing=document.getElementById('whatsapp-fab');
   if(!show){if(existing)existing.remove();return;}
@@ -4379,6 +4395,7 @@ function renderSubcontractorTableRows(subs){
       '<td>'+renderExpiryDateCell(s.insuranceExpiry)+'</td>'+
       '<td>'+renderExpiryDateCell(s.safetyCertExpiry)+'</td>'+
       '<td><div class="flex-gap">'+
+        renderSubcontractorWhatsAppBtn(s.phone)+
         '<button class="btn btn-outline btn-sm admin-only-action" onclick="openEditSubcontractorModal(\''+s.id+'\')">'+ic('pencil')+'</button>'+
         '<button class="btn btn-danger btn-sm admin-only-action" onclick="deleteSubcontractor(\''+s.id+'\')">'+ic('trash-2')+'</button>'+
       '</div></td></tr>';
