@@ -860,7 +860,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="form-group"><label>טלפון</label><input type="tel" id="sub-phone" placeholder="050-0000000"/></div>
       <div class="form-group"><label>אימייל</label><input type="email" id="sub-email" placeholder="email@example.com"/></div>
     </div>
-    <div class="form-group"><label>תחום התמחות</label><select id="sub-specialty"><option value="">—</option><option>שלד</option><option>חפירות</option><option>חשמל</option><option>אינסטלציה</option><option>טיח</option><option>ריצוף</option><option>גמר</option><option>אחר</option></select></div>
+    <div class="form-group"><label>תחום התמחות</label><select id="sub-specialty"><option value="">—</option></select></div>
     <div class="grid-2">
       <div class="form-group"><label>תוקף ביטוח</label><input type="date" id="sub-insurance"/></div>
       <div class="form-group"><label>תוקף אישור בטיחות</label><input type="date" id="sub-safety"/></div>
@@ -1738,6 +1738,7 @@ var toastTimer=null;
 var budgetsCache=[],budgetItemsByBudget={},budgetBuilderMode='list',editingBudgetId=null;
 var budgetBuilderDraft=null,budgetPendingContactCategory=null;
 const BUDGET_BUILDER_CATEGORIES=['חפירות','שלד','חשמל','אינסטלציה','טיח','ריצוף','גמר','אחר'];
+const SUBCONTRACTOR_SPECIALTIES=['שלד','חפירות וביסוס','חשמל','אינסטלציה סניטרית','טיח וגבס','ריצוף וחיפוי','גמר פנים','גמר חוץ','צבע וטיח דק','נגרות ואלומיניום','מיזוג אוויר','ריהוט מטבח','גגות ואיטום','פיתוח שטח וגינון','מעליות','שערים וגדרות','פרגולות וסככות','בריכות','אינטרקום וסלקום','ביטחון ומצלמות','אחר'];
 const VAT_RATE=0.17;
 function resetListFilters(){
   paymentStatusFilter='';
@@ -4343,12 +4344,23 @@ function compareSubcontractorCompanyName(a,b){
   return (a.companyName||'').localeCompare(b.companyName||'','he',{sensitivity:'base'});
 }
 function getSubcontractorSpecialtyOptions(){
-  var seen={};
+  var seen={},extras=[];
+  SUBCONTRACTOR_SPECIALTIES.forEach(function(sp){seen[sp]=true;});
   subcontractorsCache.forEach(function(s){
     var sp=(s.specialty||'').trim();
-    if(sp)seen[sp]=true;
+    if(sp&&!seen[sp]){seen[sp]=true;extras.push(sp);}
   });
-  return Object.keys(seen).sort(function(a,b){return a.localeCompare(b,'he');});
+  extras.sort(function(a,b){return a.localeCompare(b,'he');});
+  return SUBCONTRACTOR_SPECIALTIES.concat(extras);
+}
+function populateSubcontractorSpecialtySelect(selectedValue){
+  var sel=document.getElementById('sub-specialty');
+  if(!sel)return;
+  var selected=selectedValue==null?'':String(selectedValue);
+  var opts=getSubcontractorSpecialtyOptions();
+  sel.innerHTML='<option value="">—</option>'+opts.map(function(opt){
+    return '<option'+(opt===selected?' selected':'')+'>'+escHtml(opt)+'</option>';
+  }).join('');
 }
 function getSubcontractorsForDisplay(){
   var subs=subcontractorsCache.slice();
@@ -4419,7 +4431,7 @@ function openAddSubcontractorModal(){
   delete document.getElementById('modal-subcontractor').dataset.editId;
   document.getElementById('modal-subcontractor-title').textContent='קבלן חדש';
   ['sub-company','sub-contact','sub-phone','sub-email'].forEach(function(id){document.getElementById(id).value='';});
-  document.getElementById('sub-specialty').value='';
+  populateSubcontractorSpecialtySelect('');
   document.getElementById('sub-insurance').value='';
   document.getElementById('sub-safety').value='';
   openModal('modal-subcontractor');
@@ -4435,7 +4447,7 @@ function openEditSubcontractorModal(id){
   document.getElementById('sub-contact').value=s.contactName;
   document.getElementById('sub-phone').value=s.phone;
   document.getElementById('sub-email').value=s.email;
-  document.getElementById('sub-specialty').value=s.specialty||'';
+  populateSubcontractorSpecialtySelect(s.specialty||'');
   document.getElementById('sub-insurance').value=s.insuranceExpiry?String(s.insuranceExpiry).slice(0,10):'';
   document.getElementById('sub-safety').value=s.safetyCertExpiry?String(s.safetyCertExpiry).slice(0,10):'';
   openModal('modal-subcontractor');
