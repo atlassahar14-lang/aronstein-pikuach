@@ -954,7 +954,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="budget-client-overlay" id="budget-client-overlay" onclick="closeBudgetClientView(event)">
   <div class="budget-client-sheet" id="budget-print-root" onclick="event.stopPropagation()">
     <div class="budget-client-toolbar">
-      <button type="button" class="btn btn-primary btn-sm" onclick="printBudgetClientView()"><i data-lucide="printer"></i> הדפס / PDF</button>
+      <button type="button" class="btn btn-primary btn-sm" onclick="printBudgetClientView()"><i data-lucide="printer"></i> ייצוא ל-PDF</button>
       <button type="button" class="btn btn-outline btn-sm" onclick="closeBudgetClientView()"><i data-lucide="x"></i> סגור</button>
     </div>
     <div class="budget-client-body" id="budget-client-body"></div>
@@ -1718,10 +1718,9 @@ var subcontractorSpecialtyFilter='',showDailyLogForm=false;
 var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='';
 var toastTimer=null;
 var budgetsCache=[],budgetItemsByBudget={},budgetBuilderMode='list',editingBudgetId=null;
-var budgetBuilderDraft=null,budgetExtraCategories=[];
-const BUDGET_BUILDER_CATEGORIES=['חפירות וביסוס','שלד','טיח','חשמל','אינסטלציה (אינסטלציה סניטרית)','ריצוף וחיפוי','גמר פנים','גמר חוץ','אחר'];
+var budgetBuilderDraft=null;
+const BUDGET_BUILDER_CATEGORIES=['חפירות','שלד','חשמל','אינסטלציה','טיח','ריצוף','גמר','אחר'];
 const VAT_RATE=0.17;
-const BUDGET_UNITS=['יח\'','מ"ר','מ"א','קומפ\'','יום','שעה','ק"ג','טון'];
 function resetListFilters(){
   paymentStatusFilter='';
   paymentSortOrder='desc';
@@ -1740,7 +1739,6 @@ function resetAppSessionState(){
   budgetBuilderMode='list';
   editingBudgetId=null;
   budgetBuilderDraft=null;
-  budgetExtraCategories=[];
   resetListFilters();
   document.querySelectorAll('.modal-overlay.open,.budget-client-overlay.open').forEach(function(o){o.classList.remove('open');});
   modalOpenCount=0;
@@ -1865,7 +1863,6 @@ function getProjectTabDefs(messagesTabBadge){
     ['overview','סקירה','layout-dashboard',''],
     ['timeline','לוח זמנים','calendar',''],
     ['budget','מעקב תשלומים','banknote',''],
-    ['budget-builder','בניית תקציב','calculator',''],
     ['budget-analysis','ניתוח כספי','scale',''],
     ['financial','דוח פיננסי','trending-up',''],
     ['docs','מסמכים','folder',''],
@@ -2860,7 +2857,9 @@ async function saveDailyLog(){
 function mapBudgetRow(r){
   return {
     id:r.id,
-    projectId:r.project_id,
+    projectId:r.project_id||null,
+    clientName:r.client_name||'',
+    projectAddress:r.project_address||'',
     title:r.title,
     budgetDate:r.budget_date,
     notes:r.notes||'',
@@ -2894,20 +2893,12 @@ function calcBudgetTotals(items,marginPercent){
   return {subtotal:subtotal,marginAmt:marginAmt,beforeVat:beforeVat,vat:vat,total:total};
 }
 function getBudgetDraftCategories(){
-  var seen={},order=[];
-  BUDGET_BUILDER_CATEGORIES.forEach(function(c){seen[c]=1;order.push(c);});
-  budgetExtraCategories.forEach(function(c){if(c&&!seen[c]){seen[c]=1;order.push(c);}});
-  if(budgetBuilderDraft&&budgetBuilderDraft.items){
-    budgetBuilderDraft.items.forEach(function(it){
-      var c=(it.category||'').trim();
-      if(c&&!seen[c]){seen[c]=1;order.push(c);}
-    });
-  }
-  return order;
+  return BUDGET_BUILDER_CATEGORIES.slice();
 }
 function createEmptyBudgetDraft(){
   return {
-    title:'הצעת תקציב ראשונית',
+    clientName:'',
+    projectAddress:'',
     budgetDate:todayDateInputValue(),
     notes:'',
     marginPercent:0,
@@ -2915,11 +2906,11 @@ function createEmptyBudgetDraft(){
   };
 }
 function newBudgetItemId(){return 'bi'+Date.now()+Math.random().toString(36).slice(2,7);}
-async function refreshBudgets(projectId){
-  if(!projectId){budgetsCache=[];return {ok:false};}
-  var res=await supabase.from('budgets').select('*').eq('project_id',projectId).order('created_at',{ascending:false});
+function getBudgetBuilderRoot(){return document.getElementById('budget-builder-root');}
+async function refreshAllStandaloneBudgets(){
+  var res=await supabase.from('budgets').select('*').is('project_id',null).order('created_at',{ascending:false});
   if(res.error){
-    console.error('refreshBudgets',res.error);
+    console.error('refreshAllStandaloneBudgets',res.error);
     budgetsCache=[];
     return {ok:false,error:res.error.message};
   }
@@ -2940,33 +2931,19 @@ async function refreshBudgetItems(budgetId){
 function getBudgetItems(budgetId){
   return budgetItemsByBudget[budgetId]||[];
 }
-function openBudgetBuilderTab(startNew){
-  if(!requireProjectAccess())return;
-  if(startNew&&isAdmin()){
-    budgetBuilderMode='edit';
-    editingBudgetId=null;
-    budgetBuilderDraft=createEmptyBudgetDraft();
-    budgetExtraCategories=[];
-  }else{
-    budgetBuilderMode='list';
-    editingBudgetId=null;
-    budgetBuilderDraft=null;
-  }
-  switchTab('budget-builder');
-}
 function backToBudgetList(){
   budgetBuilderMode='list';
   editingBudgetId=null;
   budgetBuilderDraft=null;
-  initBudgetBuilderTab();
+  initBudgetBuilderView();
 }
 function startNewBudgetDraft(){
   if(!requireAdmin())return;
   budgetBuilderMode='edit';
   editingBudgetId=null;
   budgetBuilderDraft=createEmptyBudgetDraft();
-  budgetExtraCategories=[];
-  initBudgetBuilderTab();
+  if(currentView==='budget-builder')initBudgetBuilderView();
+  else showView('budget-builder');
 }
 async function openBudgetEdit(id){
   if(!requireAdmin())return;
@@ -2976,20 +2953,20 @@ async function openBudgetEdit(id){
   if(!loaded.ok){showToast('שגיאה בטעינת פריטי התקציב','error');return;}
   editingBudgetId=id;
   budgetBuilderMode='edit';
-  budgetExtraCategories=[];
   budgetBuilderDraft={
-    title:b.title,
+    clientName:b.clientName,
+    projectAddress:b.projectAddress,
     budgetDate:String(b.budgetDate||'').slice(0,10)||todayDateInputValue(),
     notes:b.notes||'',
     marginPercent:b.marginPercent||0,
     items:getBudgetItems(id).map(function(it){
-      return {id:it.id,category:it.category,description:it.description,quantity:it.quantity,unit:it.unit,unitPrice:it.unitPrice};
+      return {id:it.id,category:it.category,description:it.description,quantity:it.quantity,unitPrice:it.unitPrice};
     })
   };
-  initBudgetBuilderTab();
+  initBudgetBuilderView();
 }
 function renderBudgetBuilderEditorInPlace(){
-  var root=document.getElementById('budget-builder-tab-root');
+  var root=getBudgetBuilderRoot();
   if(!root||!budgetBuilderDraft)return;
   root.innerHTML=renderBudgetBuilderEditorHtml();
   refreshIcons(root);
@@ -2997,25 +2974,15 @@ function renderBudgetBuilderEditorInPlace(){
 function addBudgetItemToCategory(categoryEnc){
   var category=typeof categoryEnc==='string'?decodeURIComponent(categoryEnc):categoryEnc;
   if(!budgetBuilderDraft)budgetBuilderDraft=createEmptyBudgetDraft();
-  budgetBuilderDraft.items.push({id:newBudgetItemId(),category:category,description:'',quantity:1,unit:'יח\'',unitPrice:0});
+  budgetBuilderDraft.items.push({id:newBudgetItemId(),category:category,description:'',quantity:1,unitPrice:0});
   if(budgetBuilderMode==='edit')renderBudgetBuilderEditorInPlace();
-  else initBudgetBuilderTab();
+  else initBudgetBuilderView();
 }
 function removeBudgetItem(itemId){
   if(!budgetBuilderDraft)return;
   budgetBuilderDraft.items=budgetBuilderDraft.items.filter(function(it){return it.id!==itemId;});
   if(budgetBuilderMode==='edit')renderBudgetBuilderEditorInPlace();
-  else initBudgetBuilderTab();
-}
-function addBudgetCustomCategory(){
-  var input=document.getElementById('budget-new-category');
-  var name=input?input.value.trim():'';
-  if(!name){showToast('שגיאה: הזן שם קטגוריה','error');return;}
-  if(BUDGET_BUILDER_CATEGORIES.indexOf(name)===-1&&budgetExtraCategories.indexOf(name)===-1){
-    budgetExtraCategories.push(name);
-  }
-  if(input)input.value='';
-  addBudgetItemToCategory(name);
+  else initBudgetBuilderView();
 }
 function onBudgetDraftFieldChange(field,value){
   if(!budgetBuilderDraft)return;
@@ -3036,8 +3003,6 @@ function updateBudgetSummaryDisplay(){
   if(!budgetBuilderDraft)return;
   var t=calcBudgetTotals(budgetBuilderDraft.items,budgetBuilderDraft.marginPercent);
   var map={
-    'budget-subtotal':fmtMoney(t.subtotal),
-    'budget-margin-amt':fmtMoney(t.marginAmt),
     'budget-before-vat':fmtMoney(t.beforeVat),
     'budget-vat':fmtMoney(t.vat),
     'budget-grand-total':fmtMoney(t.total)
@@ -3054,14 +3019,10 @@ function updateBudgetSummaryDisplay(){
   });
 }
 function renderBudgetItemEditorRow(it){
-  var units=BUDGET_UNITS.map(function(u){
-    return '<option value="'+escHtml(u)+'"'+(it.unit===u?' selected':'')+'>'+escHtml(u)+'</option>';
-  }).join('');
   return '<tr>'+
     '<td><input type="text" value="'+escHtml(it.description)+'" placeholder="תיאור פריט" oninput="onBudgetItemFieldChange(\''+it.id+'\',\'description\',this.value)"/></td>'+
     '<td style="width:88px"><input type="number" min="0" step="0.01" value="'+it.quantity+'" oninput="onBudgetItemFieldChange(\''+it.id+'\',\'quantity\',this.value)"/></td>'+
-    '<td style="width:100px"><select onchange="onBudgetItemFieldChange(\''+it.id+'\',\'unit\',this.value)">'+units+'</select></td>'+
-    '<td style="width:110px"><input type="number" min="0" step="0.01" value="'+it.unitPrice+'" oninput="onBudgetItemFieldChange(\''+it.id+'\',\'unitPrice\',this.value)"/></td>'+
+    '<td style="width:120px"><input type="number" min="0" step="0.01" value="'+it.unitPrice+'" oninput="onBudgetItemFieldChange(\''+it.id+'\',\'unitPrice\',this.value)"/></td>'+
     '<td class="budget-item-total" data-budget-item-total="'+it.id+'">'+fmtMoney(calcBudgetLineTotal(it.quantity,it.unitPrice))+'</td>'+
     '<td style="width:52px"><button type="button" class="btn btn-danger btn-sm" onclick="removeBudgetItem(\''+it.id+'\')" title="מחק">'+ic('trash-2')+'</button></td></tr>';
 }
@@ -3077,7 +3038,7 @@ function renderBudgetBuilderEditorHtml(){
       '<span class="budget-category-title">'+escHtml(cat)+'</span>'+
       '<span class="budget-category-subtotal" data-budget-cat-subtotal="'+escHtml(cat)+'">'+fmtMoney(catSum)+'</span></div>'+
       (rows.length?'<div class="budget-items-scroll"><table class="budget-items-table"><thead><tr>'+
-      '<th>תיאור</th><th>כמות</th><th>יחידה</th><th>מחיר יח\'</th><th>סה"כ</th><th></th></tr></thead><tbody>'+
+      '<th>תיאור</th><th>כמות</th><th>מחיר יח\'</th><th>סה"כ</th><th></th></tr></thead><tbody>'+
       rows.map(renderBudgetItemEditorRow).join('')+'</tbody></table></div>':'')+
       '<div style="padding:12px 16px;border-top:1px solid var(--border)">'+
       '<button type="button" class="btn btn-outline btn-sm" onclick="addBudgetItemToCategory(\''+encodeURIComponent(cat)+'\')">'+ic('plus')+' הוסף פריט</button></div></div>';
@@ -3085,37 +3046,29 @@ function renderBudgetBuilderEditorHtml(){
   return '<div class="budget-builder-editor">'+
     '<div class="flex-between responsive-stack mb-16">'+
     '<button type="button" class="btn btn-outline btn-sm" onclick="backToBudgetList()">'+ic('arrow-right')+' חזרה לרשימה</button>'+
-    '<div class="flex-gap"><button type="button" class="btn btn-outline btn-sm" onclick="previewBudgetDraftClientView()">'+ic('eye')+' תצוגת לקוח</button>'+
+    '<div class="flex-gap"><button type="button" class="btn btn-outline btn-sm" onclick="previewBudgetDraftClientView()">'+ic('file-text')+' ייצוא ל-PDF</button>'+
     '<button type="button" class="btn btn-primary btn-sm" onclick="saveBudgetBuilder()">'+ic('save')+' שמור תקציב</button></div></div>'+
     '<div class="card mb-24"><div class="card-title">'+ic('calculator')+' '+(editingBudgetId?'עריכת תקציב':'תקציב חדש')+'</div>'+
     '<div class="budget-builder-editor form-row">'+
-    '<div class="form-group"><label for="budget-title">שם התקציב</label><input type="text" id="budget-title" value="'+escHtml(d.title)+'" oninput="onBudgetDraftFieldChange(\'title\',this.value)"/></div>'+
-    '<div class="form-group"><label for="budget-date">תאריך</label><input type="date" id="budget-date" value="'+escHtml(d.budgetDate)+'" onchange="onBudgetDraftFieldChange(\'budgetDate\',this.value)"/></div></div>'+
-    '<div class="form-group admin-only-action"><label for="budget-margin">אחוז רווח / הפרשה (לא מוצג ללקוח)</label>'+
-    '<input type="number" id="budget-margin" min="0" step="0.1" value="'+d.marginPercent+'" oninput="onBudgetDraftFieldChange(\'marginPercent\',this.value)"/></div>'+
+    '<div class="form-group"><label for="budget-client-name">שם לקוח</label><input type="text" id="budget-client-name" value="'+escHtml(d.clientName)+'" placeholder="שם הלקוח" oninput="onBudgetDraftFieldChange(\'clientName\',this.value)"/></div>'+
+    '<div class="form-group"><label for="budget-project-address">כתובת פרויקט</label><input type="text" id="budget-project-address" value="'+escHtml(d.projectAddress)+'" placeholder="כתובת הפרויקט" oninput="onBudgetDraftFieldChange(\'projectAddress\',this.value)"/></div></div>'+
+    '<div class="form-group" style="max-width:280px"><label for="budget-date">תאריך</label><input type="date" id="budget-date" value="'+escHtml(d.budgetDate)+'" onchange="onBudgetDraftFieldChange(\'budgetDate\',this.value)"/></div>'+
     catSections+
-    '<div class="budget-add-category-wrap admin-only-action">'+
-    '<input type="text" id="budget-new-category" placeholder="קטגוריה נוספת..."/>'+
-    '<button type="button" class="btn btn-outline btn-sm" onclick="addBudgetCustomCategory()">'+ic('plus')+' הוסף קטגוריה</button></div>'+
-    '<div class="form-group" style="margin-top:20px"><label for="budget-notes">הערות כלליות</label>'+
+    '<div class="form-group" style="margin-top:20px"><label for="budget-notes">הערות (אופציונלי)</label>'+
     '<textarea id="budget-notes" placeholder="הערות שיופיעו בהצעה..." oninput="onBudgetDraftFieldChange(\'notes\',this.value)">'+escHtml(d.notes)+'</textarea></div>'+
     '<div class="budget-summary-box">'+
     '<div class="budget-summary-row"><span>סה"כ לפני מע"מ</span><strong id="budget-before-vat">'+fmtMoney(totals.beforeVat)+'</strong></div>'+
-    '<div class="budget-summary-row admin-only-action"><span>סיכום פריטים (לפני רווח)</span><strong id="budget-subtotal">'+fmtMoney(totals.subtotal)+'</strong></div>'+
-    '<div class="budget-summary-row admin-only-action"><span>רווח / הפרשה ('+d.marginPercent+'%)</span><strong id="budget-margin-amt">'+fmtMoney(totals.marginAmt)+'</strong></div>'+
     '<div class="budget-summary-row"><span>מע"מ (17%)</span><strong id="budget-vat">'+fmtMoney(totals.vat)+'</strong></div>'+
     '<div class="budget-summary-row total"><span>סה"כ כולל מע"מ</span><strong id="budget-grand-total">'+fmtMoney(totals.total)+'</strong></div></div></div></div>';
 }
 function renderBudgetBuilderListHtml(budgets,loadedOk){
-  var isAdminUser=isAdmin();
   var html='<div class="section-actions"><div class="section-title">'+ic('calculator')+' בניית תקציב</div>'+
-    (isAdminUser?'<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="startNewBudgetDraft()">'+ic('plus')+' תקציב חדש</button>':'')+
-    '</div>';
+    '<button type="button" class="btn btn-primary btn-sm" onclick="startNewBudgetDraft()">'+ic('plus')+' תקציב חדש</button></div>';
   if(!loadedOk){
-    html+='<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינת תקציבים. הרץ את supabase-budgets-migration.sql.</div>';
+    html+='<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינת תקציבים. הרץ את supabase-budgets-standalone-migration.sql.</div>';
   }
   if(!budgets.length){
-    html+='<div class="empty-state card"><div class="empty-icon">'+ic('calculator')+'</div><p>אין תקציבים עדיין'+(isAdminUser?' — לחץ "תקציב חדש" להתחלה':'')+'</p></div>';
+    html+='<div class="empty-state card"><div class="empty-icon">'+ic('calculator')+'</div><p>אין תקציבים עדיין — לחץ "תקציב חדש" להתחלה</p></div>';
     return html;
   }
   html+='<div class="budget-builder-list">';
@@ -3123,26 +3076,24 @@ function renderBudgetBuilderListHtml(budgets,loadedOk){
     var items=getBudgetItems(b.id);
     var t=calcBudgetTotals(items,b.marginPercent);
     html+='<div class="card budget-builder-card">'+
-      '<div><div class="budget-builder-card-title">'+escHtml(b.title)+'</div>'+
+      '<div><div class="budget-builder-card-title">'+escHtml(b.clientName||b.title)+'</div>'+
       '<div class="budget-builder-card-meta">'+
+      '<span>'+ic('map-pin')+' '+escHtml(b.projectAddress||'—')+'</span>'+
       '<span>'+ic('calendar')+' '+formatSubcontractorDate(b.budgetDate)+'</span>'+
       '<span>'+ic('banknote')+' '+fmtMoney(t.total)+' כולל מע"מ</span>'+
       '<span>'+items.length+' פריטים</span></div></div>'+
       '<div class="flex-gap">'+
-      '<button type="button" class="btn btn-primary btn-sm" onclick="openBudgetClientView(\''+b.id+'\')">'+ic('eye')+' הצג ללקוח</button>'+
-      (isAdminUser?'<button type="button" class="btn btn-outline btn-sm admin-only-action" onclick="openBudgetEdit(\''+b.id+'\')">'+ic('pencil')+' עריכה</button>'+
-      '<button type="button" class="btn btn-danger btn-sm admin-only-action" onclick="deleteBudget(\''+b.id+'\')">'+ic('trash-2')+'</button>':'')+
-      '</div></div>';
+      '<button type="button" class="btn btn-primary btn-sm" onclick="openBudgetClientView(\''+b.id+'\')">'+ic('file-text')+' ייצוא ל-PDF</button>'+
+      '<button type="button" class="btn btn-outline btn-sm" onclick="openBudgetEdit(\''+b.id+'\')">'+ic('pencil')+' עריכה</button>'+
+      '<button type="button" class="btn btn-danger btn-sm" onclick="deleteBudget(\''+b.id+'\')">'+ic('trash-2')+'</button></div></div>';
   });
   html+='</div>';
   return html;
 }
-async function initBudgetBuilderTab(){
-  var root=document.getElementById('budget-builder-tab-root');
+async function initBudgetBuilderView(){
+  var root=getBudgetBuilderRoot();
   if(!root)return;
-  if(!requireProjectAccess()){root.innerHTML='<p>אין גישה לפרויקט</p>';return;}
-  var proj=getCurrentProject();
-  if(!proj){root.innerHTML='<p>פרויקט לא נמצא</p>';return;}
+  if(!requireAdmin()){root.innerHTML='<p>אין גישה</p>';return;}
   root.innerHTML='<div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען תקציבים...</p></div>';
   refreshIcons(root);
   if(budgetBuilderMode==='edit'&&budgetBuilderDraft){
@@ -3150,22 +3101,31 @@ async function initBudgetBuilderTab(){
     refreshIcons(root);
     return;
   }
-  var loaded=await refreshBudgets(proj.id);
+  var loaded=await refreshAllStandaloneBudgets();
   if(loaded.ok){
     await Promise.all(budgetsCache.map(function(b){return refreshBudgetItems(b.id);}));
   }
   root.innerHTML=renderBudgetBuilderListHtml(budgetsCache,loaded.ok);
   refreshIcons(root);
 }
+async function renderBudgetBuilder(el){
+  if(!requireAdmin()){el.innerHTML='<p>אין גישה</p>';return;}
+  el.innerHTML='<div class="page-header"><h1>'+ic('calculator')+' בניית תקציב</h1><p>יצירת הצעות מחיר מפורטות ללקוחות</p></div><div id="budget-builder-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div>';
+  refreshIcons(el);
+  await initBudgetBuilderView();
+}
 async function saveBudgetBuilder(){
-  if(!requireAdmin()||!requireProjectAccess())return;
+  if(!requireAdmin())return;
   if(!budgetBuilderDraft){showToast('שגיאה: אין נתוני תקציב','error');return;}
-  var title=(budgetBuilderDraft.title||'').trim();
-  if(!title){showToast('שגיאה: יש להזין שם תקציב','error');return;}
-  var proj=getCurrentProject();if(!proj)return;
+  var clientName=(budgetBuilderDraft.clientName||'').trim();
+  var projectAddress=(budgetBuilderDraft.projectAddress||'').trim();
+  if(!clientName){showToast('שגיאה: יש להזין שם לקוח','error');return;}
+  if(!projectAddress){showToast('שגיאה: יש להזין כתובת פרויקט','error');return;}
   var budgetRow={
-    project_id:proj.id,
-    title:title,
+    project_id:null,
+    client_name:clientName,
+    project_address:projectAddress,
+    title:clientName,
     budget_date:budgetBuilderDraft.budgetDate||todayDateInputValue(),
     notes:budgetBuilderDraft.notes||null,
     margin_percent:Number(budgetBuilderDraft.marginPercent)||0
@@ -3192,7 +3152,7 @@ async function saveBudgetBuilder(){
         category:it.category||'אחר',
         description:(it.description||'').trim()||'—',
         quantity:Number(it.quantity)||0,
-        unit:it.unit||'יח\'',
+        unit:'יח\'',
         unit_price:Number(it.unitPrice)||0,
         sort_order:idx
       };
@@ -3200,27 +3160,27 @@ async function saveBudgetBuilder(){
     var itemRes=await supabase.from('budget_items').insert(rows);
     if(itemRes.error){showToast('שגיאה בשמירת פריטים: '+formatSupabaseErrorHint(itemRes.error.message),'error');return;}
   }
-  logActivity(wasEdit?'עריכת תקציב':'יצירת תקציב','פרויקט: '+proj.name+' · '+title);
+  logActivity(wasEdit?'עריכת תקציב':'יצירת תקציב',clientName+' · '+projectAddress);
   await persistActivityLogOnly();
   showToast('התקציב נשמר בהצלחה');
   budgetBuilderMode='list';
   budgetBuilderDraft=null;
   editingBudgetId=null;
-  await initBudgetBuilderTab();
+  await initBudgetBuilderView();
 }
 async function deleteBudget(id){
   if(!requireAdmin())return;
   var b=budgetsCache.find(function(x){return x.id===id;});
   if(!b)return;
-  if(!confirm('למחוק את התקציב "'+b.title+'"?'))return;
+  if(!confirm('למחוק את התקציב של "'+(b.clientName||b.title)+'"?'))return;
   var res=await supabase.from('budgets').delete().eq('id',id);
   if(res.error){showToast('שגיאה במחיקה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
-  logActivity('מחיקת תקציב','פרויקט: '+getCurrentProject().name+' · '+b.title);
+  logActivity('מחיקת תקציב',(b.clientName||b.title)+' · '+(b.projectAddress||''));
   await persistActivityLogOnly();
   showToast('התקציב נמחק');
-  await initBudgetBuilderTab();
+  await initBudgetBuilderView();
 }
-function renderBudgetClientBodyHtml(budget,items,proj){
+function renderBudgetClientBodyHtml(budget,items){
   var t=calcBudgetTotals(items,budget.marginPercent);
   var cats=[],seen={};
   items.forEach(function(it){
@@ -3231,24 +3191,24 @@ function renderBudgetClientBodyHtml(budget,items,proj){
     var catItems=items.filter(function(it){return it.category===cat;});
     if(!catItems.length)return;
     var catSum=catItems.reduce(function(s,it){return s+calcBudgetLineTotal(it.quantity,it.unitPrice);},0);
-    tableRows+='<tr class="cat-row"><td colspan="4">'+escHtml(cat)+'</td><td class="num">'+fmtMoney(catSum)+'</td></tr>';
+    tableRows+='<tr class="cat-row"><td colspan="3">'+escHtml(cat)+'</td><td class="num">'+fmtMoney(catSum)+'</td></tr>';
     catItems.forEach(function(it){
-      tableRows+='<tr><td>'+escHtml(it.description)+'</td><td class="num">'+it.quantity+'</td><td>'+escHtml(it.unit)+'</td>'+
+      tableRows+='<tr><td>'+escHtml(it.description)+'</td><td class="num">'+it.quantity+'</td>'+
         '<td class="num">'+fmtMoney(it.unitPrice)+'</td><td class="num">'+fmtMoney(calcBudgetLineTotal(it.quantity,it.unitPrice))+'</td></tr>';
     });
   });
   return '<div class="budget-client-header">'+
     '<div class="budget-client-logo">ארונשטיין פיקוח וניהול</div>'+
     '<div class="budget-client-logo-sub">הצעת מחיר / תקציב פרויקט</div>'+
-    '<div class="budget-client-doc-title">'+escHtml(budget.title)+'</div>'+
+    '<div class="budget-client-doc-title">הצעת מחיר</div>'+
     '<div class="budget-client-meta">'+
-    '<span><strong>פרויקט:</strong> '+escHtml(proj.name)+'</span>'+
+    '<span><strong>לקוח:</strong> '+escHtml(budget.clientName||budget.title||'—')+'</span>'+
+    '<span><strong>כתובת:</strong> '+escHtml(budget.projectAddress||'—')+'</span>'+
     '<span><strong>תאריך:</strong> '+formatSubcontractorDate(budget.budgetDate)+'</span>'+
-    (proj.address?'<span><strong>כתובת:</strong> '+escHtml(proj.address)+'</span>':'')+
     '</div></div>'+
     '<table class="budget-client-table"><thead><tr>'+
-    '<th>תיאור</th><th>כמות</th><th>יחידה</th><th>מחיר יח\'</th><th>סה"כ</th></tr></thead><tbody>'+
-    (tableRows||'<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">אין פריטים</td></tr>')+
+    '<th>תיאור</th><th>כמות</th><th>מחיר יח\'</th><th>סה"כ</th></tr></thead><tbody>'+
+    (tableRows||'<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">אין פריטים</td></tr>')+
     '</tbody></table>'+
     '<div class="budget-client-totals">'+
     '<div class="budget-summary-row"><span>סה"כ לפני מע"מ</span><strong>'+fmtMoney(t.beforeVat)+'</strong></div>'+
@@ -3257,11 +3217,10 @@ function renderBudgetClientBodyHtml(budget,items,proj){
     (budget.notes?'<div class="budget-client-notes"><strong>הערות:</strong> '+escHtml(budget.notes)+'</div>':'');
 }
 async function openBudgetClientView(budgetId){
-  if(!requireProjectAccess())return;
-  var proj=getCurrentProject();if(!proj)return;
+  if(!requireAdmin())return;
   var budget=budgetsCache.find(function(b){return b.id===budgetId;});
   if(!budget){
-    await refreshBudgets(proj.id);
+    await refreshAllStandaloneBudgets();
     budget=budgetsCache.find(function(b){return b.id===budgetId;});
   }
   if(!budget){showToast('תקציב לא נמצא','error');return;}
@@ -3273,27 +3232,28 @@ async function openBudgetClientView(budgetId){
   var body=document.getElementById('budget-client-body');
   var overlay=document.getElementById('budget-client-overlay');
   if(!body||!overlay)return;
-  body.innerHTML=renderBudgetClientBodyHtml(budget,items,proj);
+  body.innerHTML=renderBudgetClientBodyHtml(budget,items);
   overlay.classList.add('open');
   refreshIcons(overlay);
   document.body.style.overflow='hidden';
 }
 function previewBudgetDraftClientView(){
   if(!requireAdmin()||!budgetBuilderDraft)return;
-  var proj=getCurrentProject();if(!proj)return;
   var draftBudget={
-    title:budgetBuilderDraft.title||'טיוטת תקציב',
+    clientName:budgetBuilderDraft.clientName,
+    projectAddress:budgetBuilderDraft.projectAddress,
+    title:budgetBuilderDraft.clientName||'טיוטת תקציב',
     budgetDate:budgetBuilderDraft.budgetDate,
     notes:budgetBuilderDraft.notes,
     marginPercent:budgetBuilderDraft.marginPercent
   };
   var items=(budgetBuilderDraft.items||[]).map(function(it){
-    return {category:it.category,description:it.description,quantity:it.quantity,unit:it.unit,unitPrice:it.unitPrice};
+    return {category:it.category,description:it.description,quantity:it.quantity,unitPrice:it.unitPrice};
   });
   var body=document.getElementById('budget-client-body');
   var overlay=document.getElementById('budget-client-overlay');
   if(!body||!overlay)return;
-  body.innerHTML=renderBudgetClientBodyHtml(draftBudget,items,proj);
+  body.innerHTML=renderBudgetClientBodyHtml(draftBudget,items);
   overlay.classList.add('open');
   refreshIcons(overlay);
   document.body.style.overflow='hidden';
@@ -3510,6 +3470,7 @@ function renderSidebar(){
     nav.innerHTML='<div class="nav-section-title">ניהול</div>'+
       '<div class="nav-item '+(currentView==='dashboard'?'active':'')+'" onclick="showView(\'dashboard\')"><span class="nav-icon">'+ic('layout-dashboard')+'</span> דשבורד</div>'+
       '<div class="nav-item '+(currentView==='projects'?'active':'')+'" onclick="showView(\'projects\')"><span class="nav-icon">'+ic('construction')+'</span> פרויקטים</div>'+
+      '<div class="nav-item '+(currentView==='budget-builder'?'active':'')+'" onclick="showView(\'budget-builder\')"><span class="nav-icon">'+ic('calculator')+'</span> בניית תקציב</div>'+
       '<div class="nav-section-title">מערכת</div>'+
       '<div class="nav-item '+(currentView==='clients'?'active':'')+'" onclick="showView(\'clients\')"><span class="nav-icon">'+ic('users')+'</span> לקוחות</div>'+
       '<div class="nav-item '+(currentView==='subcontractors'?'active':'')+'" onclick="showView(\'subcontractors\')"><span class="nav-icon">'+ic('hard-hat')+'</span> קבלני משנה</div>'+
@@ -3522,7 +3483,7 @@ function renderSidebar(){
 }
 
 var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-builder':'בניית תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה',punch:'ליקויים','daily-log':'יומן עבודה',updates:'עדכונים',messages:'שאלות'};
-var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
+var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים','budget-builder':'בניית תקציב',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
   if(el)el.textContent=text||'ארונשטיין פיקוח וניהול';
@@ -3589,6 +3550,11 @@ function showView(view,pid){
   }
   if(view==='project'&&pid&&!clientCanAccessProject(pid))pid=currentUser.projectId;
   if(view==='project'&&pid&&pid!==currentProjectId)resetListFilters();
+  if(currentView==='budget-builder'&&view!=='budget-builder'){
+    budgetBuilderMode='list';
+    budgetBuilderDraft=null;
+    editingBudgetId=null;
+  }
   currentView=view;
   if(pid)currentProjectId=pid;
   renderSidebar();
@@ -3597,6 +3563,7 @@ function showView(view,pid){
   else if(view==='project')renderProjectDetail(el);
   else if(view==='clients')renderClients(el);
   else if(view==='subcontractors')renderSubcontractors(el);
+  else if(view==='budget-builder')renderBudgetBuilder(el);
   else if(view==='activity-log')renderActivityLog(el);
   else if(view==='settings')renderSettings(el);
   if(view!=='project')updateWhatsAppFab(false);
@@ -3864,7 +3831,7 @@ function renderProjectDetail(el){
 
   var html='<button type="button" class="back-btn admin-only-action" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>';
   html+='<div class="flex-between responsive-stack mb-24"><div><h1 class="project-detail-title">'+p.name+'</h1><p class="project-detail-address">'+projectAddressLine(p,false)+'</p></div>';
-  html+='<div class="flex-gap admin-only-action"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-outline btn-sm" onclick="openBudgetBuilderTab(true)">'+ic('calculator')+' בניית תקציב</button><button class="btn btn-accent btn-sm" onclick="openNewUpdateModal()">'+ic('bell')+' עדכון חדש</button></div>';
+  html+='<div class="flex-gap admin-only-action"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-accent btn-sm" onclick="openNewUpdateModal()">'+ic('bell')+' עדכון חדש</button></div>';
   html+='</div>';
 
   var tabDefs=getProjectTabDefs(messagesTabBadge);
@@ -4017,9 +3984,6 @@ function renderProjectDetail(el){
     }).join('')+'</div>')+
     '</div>';
 
-  // BUDGET BUILDER TAB
-  html+='<div id="tab-budget-builder" class="tab-content '+(currentTab==='budget-builder'?'active':'')+'"><div id="budget-builder-tab-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div></div>';
-
   // PUNCH LIST TAB
   html+='<div id="tab-punch" class="tab-content '+(currentTab==='punch'?'active':'')+'"><div id="punch-tab-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div></div>';
 
@@ -4066,7 +4030,6 @@ function renderProjectDetail(el){
     if(currentTab==='financial')renderFinancialCharts(p);
     if(currentTab==='punch')initPunchListTab();
     if(currentTab==='daily-log')initDailyLogTab();
-    if(currentTab==='budget-builder')initBudgetBuilderTab();
   },50);
 }
 
@@ -4182,7 +4145,6 @@ async function switchTab(t){
     }
     if(t==='punch')initPunchListTab();
     if(t==='daily-log')initDailyLogTab();
-    if(t==='budget-builder')initBudgetBuilderTab();
     var ml=document.getElementById('messages-list');
     if(ml)setTimeout(function(){ml.scrollTop=ml.scrollHeight;},50);
     return;
@@ -5024,8 +4986,8 @@ Object.assign(window,{
   openPhotoLightbox,closePhotoLightbox,
   handleBlueprintUpload,openNewPunchModal,openPunchItemView,onBlueprintImageClick,savePunchItem,markPunchFixed,onPunchFilterChange,
   openDailyLogForm,cancelDailyLogForm,saveDailyLog,onDailyLogFilterChange,
-  openBudgetBuilderTab,startNewBudgetDraft,openBudgetEdit,saveBudgetBuilder,deleteBudget,backToBudgetList,
-  addBudgetItemToCategory,addBudgetCustomCategory,removeBudgetItem,onBudgetDraftFieldChange,onBudgetItemFieldChange,
+  startNewBudgetDraft,openBudgetEdit,saveBudgetBuilder,deleteBudget,backToBudgetList,
+  addBudgetItemToCategory,removeBudgetItem,onBudgetDraftFieldChange,onBudgetItemFieldChange,
   openBudgetClientView,previewBudgetDraftClientView,closeBudgetClientView,printBudgetClientView
 });
 window.addEventListener('resize',function(){
