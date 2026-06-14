@@ -148,6 +148,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .project-name{font-size:17px;font-weight:700;color:var(--primary)}
 .project-address{font-size:12px;color:var(--text-muted);margin-top:3px}
 .status-badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.status-pending{background:#f3f4f6;color:#6b7280}
 .status-active{background:#dcfce7;color:#166534}
 .status-paused{background:#fef9c3;color:#854d0e}
 .status-done{background:#dbeafe;color:#1e40af}
@@ -250,7 +251,12 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .gallery-thumbs{display:flex;flex-wrap:wrap;gap:8px}
 .gallery-thumb{width:76px;height:76px;flex-shrink:0;border-radius:10px;overflow:hidden;cursor:pointer;border:1px solid var(--border);padding:0;background:var(--bg);transition:transform .15s,box-shadow .15s}
 .gallery-thumb:hover{transform:scale(1.04);box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.gallery-thumb-media{display:block;width:100%;height:100%;position:relative}
 .gallery-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.gallery-img-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px;background:#d1d5db;color:#6b7280;text-align:center;pointer-events:none}
+.gallery-img-placeholder-icon{display:flex;align-items:center;justify-content:center;line-height:1;opacity:.9}
+.gallery-img-placeholder-icon svg{width:22px;height:22px;display:block}
+.gallery-img-placeholder-label{font-size:10px;line-height:1.25;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
 .gallery-modal-images{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;min-height:0}
 .gallery-modal-image-item{position:relative;width:90px;height:90px;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--bg)}
 .gallery-modal-image-item img{width:100%;height:100%;object-fit:cover;display:block}
@@ -466,9 +472,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .mobile-tab-toggle svg{width:20px;height:20px;flex-shrink:0}
 .mobile-tab-toggle .mobile-tab-chevron{margin-right:auto;transition:transform .2s}
 .mobile-tab-toggle.open .mobile-tab-chevron{transform:rotate(180deg)}
-.mobile-tab-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:240}
+.mobile-tab-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:305}
 .mobile-tab-backdrop.open{display:block}
-.mobile-tab-drawer{display:none;position:fixed;top:calc(56px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));left:max(12px,env(safe-area-inset-left,0px));z-index:245;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.15);max-height:min(70vh,480px);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px}
+.mobile-tab-drawer{display:none;position:fixed;top:calc(56px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));left:max(12px,env(safe-area-inset-left,0px));z-index:310;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.15);max-height:min(70vh,480px);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px}
 .mobile-tab-drawer.open{display:block}
 .mobile-tab-item{width:100%;display:flex;align-items:center;gap:10px;padding:14px 16px;border:none;background:none;border-radius:10px;font-family:'Heebo',sans-serif;font-size:15px;font-weight:500;color:var(--text);cursor:pointer;text-align:right;min-height:48px;touch-action:manipulation}
 .mobile-tab-item:hover,.mobile-tab-item:active{background:var(--bg)}
@@ -748,6 +754,8 @@ img,svg,video,canvas{max-width:100%;height:auto}
 
 <div id="app">
   <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+  <div class="mobile-tab-backdrop" id="mobile-tab-backdrop" aria-hidden="true"></div>
+  <div class="mobile-tab-drawer" id="mobile-tab-drawer" role="menu" aria-hidden="true"></div>
   <div class="migration-overlay" id="migration-overlay" aria-live="polite">
     <div class="migration-card">
       <h3>מעביר קבצים ל-Storage</h3>
@@ -810,7 +818,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="form-group"><label>שטח הבית עצמו (מ"ר)</label><input type="number" id="proj-property" placeholder="לדוגמה: 500" min="0"/></div>
     </div>
     <div class="form-group"><label>תקציב כולל (₪)</label><input type="number" id="proj-budget" placeholder="0"/></div>
-    <div class="form-group"><label>סטטוס</label><select id="proj-status"><option value="active">בביצוע</option><option value="paused">מושהה</option><option value="done">הושלם</option></select></div>
+    <div class="form-group"><label>סטטוס</label><select id="proj-status"><option value="pending">טרם התחיל</option><option value="active">בביצוע</option><option value="paused">מושהה</option><option value="done">הושלם</option></select></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-project')">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="saveProject()">שמור פרויקט</button>
@@ -823,6 +831,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   <div class="modal">
     <div class="modal-header"><div class="modal-title">הוספת לקוח</div><button class="modal-close" onclick="closeModal('modal-user')"><i data-lucide="x"></i></button></div>
     <div class="form-group"><label>שם מלא</label><input type="text" id="new-user-name" placeholder="שם הלקוח"/></div>
+    <div class="form-group"><label for="new-user-phone">טלפון</label><input type="tel" id="new-user-phone" placeholder="050-0000000" dir="ltr" style="text-align:left"/></div>
     <div class="form-group"><label>אימייל</label><input type="email" id="new-user-email" placeholder="email@example.com"/></div>
     <div class="form-group"><label>סיסמה</label><input type="text" id="new-user-pass" placeholder="סיסמה"/></div>
     <div class="form-group"><label>פרויקט משויך</label><select id="new-user-project"></select></div>
@@ -918,6 +927,8 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="punch-detail-row"><span class="label">קבלן:</span><span id="punch-view-sub"></span></div>
       <div class="punch-detail-row"><span class="label">דחיפות:</span><span id="punch-view-urgency"></span></div>
       <div class="punch-detail-row"><span class="label">דד-ליין:</span><span id="punch-view-deadline"></span></div>
+      <div class="punch-detail-row"><span class="label">מיקום:</span><span id="punch-view-location"></span></div>
+      <div class="punch-detail-row" id="punch-view-photo-row" style="display:none"><span class="label">תמונה:</span><span id="punch-view-photo"></span></div>
       <div class="punch-detail-row"><span class="label">סטטוס:</span><span id="punch-view-status"></span></div>
     </div>
     <div id="punch-form-panel">
@@ -925,6 +936,8 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="form-group"><label>קבלן</label><select id="punch-subcontractor"><option value="">— ללא —</option></select></div>
       <div class="form-group"><label>דחיפות</label><select id="punch-urgency"><option value="נמוכה">נמוכה</option><option value="בינונית" selected>בינונית</option><option value="קריטית">קריטית</option></select></div>
       <div class="form-group"><label>דד-ליין</label><input type="date" id="punch-deadline"/></div>
+      <div class="form-group"><label for="punch-location">מיקום בבית</label><input type="text" id="punch-location" placeholder="לדוגמה: קומה 2 - חדר שינה"/></div>
+      <div class="form-group"><label for="punch-photo">תמונה מהשטח (אופציונלי)</label><input type="file" id="punch-photo" accept="image/*"/></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-punch-item')">סגור</button>
@@ -1427,11 +1440,31 @@ function getGalleryPostsSorted(posts){
     return tb-ta;
   });
 }
+function galleryBrokenImageIcon(){
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/><line x1="4" y1="4" x2="20" y2="20"/></svg>';
+}
+function handleGalleryImageError(img){
+  if(!img||img.dataset.galleryErrorHandled)return;
+  img.dataset.galleryErrorHandled='1';
+  img.style.display='none';
+  var alt=img.getAttribute('alt')||'תמונה';
+  var wrap=img.parentElement;
+  if(!wrap||wrap.querySelector('.gallery-img-placeholder'))return;
+  var ph=document.createElement('span');
+  ph.className='gallery-img-placeholder';
+  ph.setAttribute('role','img');
+  ph.setAttribute('aria-label',alt);
+  ph.innerHTML='<span class="gallery-img-placeholder-icon">'+galleryBrokenImageIcon()+'</span>'+
+    '<span class="gallery-img-placeholder-label">'+escHtml(alt)+'</span>';
+  wrap.appendChild(ph);
+}
 function renderGalleryThumbnails(post){
   return (post.images||[]).map(function(img){
+    var alt=escHtml(img.name||'תמונה');
     return '<button type="button" class="gallery-thumb" onclick="openPhotoLightbox(\''+post.id+'\',\''+img.id+'\')" aria-label="הגדל תמונה">'+
-      '<img src="'+escHtml(img.url)+'" alt="'+escHtml(img.name||'תמונה')+'" loading="lazy"/>'+
-    '</button>';
+      '<span class="gallery-thumb-media">'+
+      '<img src="'+escHtml(img.url)+'" alt="'+alt+'" loading="lazy" onerror="handleGalleryImageError(this)"/>'+
+      '</span></button>';
   }).join('');
 }
 function renderGalleryPostRow(post){
@@ -1756,7 +1789,7 @@ var budgetBuilderDraft=null,budgetPendingContactItemId=null;
 const BUDGET_BUILDER_CATEGORIES=['חפירות','שלד','חשמל','אינסטלציה','טיח','ריצוף','גמר','אחר'];
 const BUDGET_UNITS=['מ"ר','מ"ק','מ"ל','יחידה','טון','קג','שעה','ק"מ'];
 const BUDGET_DEFAULT_UNIT='יחידה';
-const SUBCONTRACTOR_SPECIALTIES=['שלד','חפירות וביסוס','חשמל','אינסטלציה סניטרית','טיח וגבס','ריצוף וחיפוי','גמר פנים','גמר חוץ','צבע וטיח דק','נגרות ואלומיניום','מיזוג אוויר','ריהוט מטבח','גגות ואיטום','פיתוח שטח וגינון','מעליות','שערים וגדרות','פרגולות וסככות','בריכות','אינטרקום וסלקום','ביטחון ומצלמות','אחר'];
+const SUBCONTRACTOR_SPECIALTIES=['שלד ובטון','טיח וריצוף','חשמל','אינסטלציה וצנרת','גבס ותקרות','איטום וחוץ','מסגרות ואלומיניום','עיצוב פנים','ניהול פרויקט','אחר'];
 const VAT_RATE=0.17;
 function resetListFilters(){
   paymentStatusFilter='';
@@ -2306,6 +2339,8 @@ function formatSupabaseErrorHint(errMsg){
   if(m.includes('save_app_data')||m.includes('42883')||m.includes('does not exist'))return 'חסרה פונקציית save_app_data — הרץ את supabase-setup.sql המעודכן ב-SQL Editor.';
   if(m.includes('project_id')&&m.includes('not-null'))return 'עמודת project_id חייבת להיות nullable — הרץ את supabase-budgets-project-id-nullable-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('budget_items')||m.includes('subcontractor_id'))return 'שגיאה בפריטי תקציב — הרץ את supabase-budget-items-subcontractor-migration.sql ב-Supabase SQL Editor.';
+  if(m.includes('profiles')&&m.includes('phone')||m.includes('column')&&m.includes('phone'))return 'חסרה עמודת phone בטבלת profiles — הרץ את supabase-profiles-phone-migration.sql ב-Supabase SQL Editor.';
+  if(m.includes('punch_items')&&(m.includes('location')||m.includes('photo_url')))return 'חסרות עמודות location / photo_url בטבלת punch_items — הרץ את supabase-punch-items-location-photo-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('fetch')||m.includes('network')||m.includes('522')||m.includes('timeout'))return 'בעיית רשת או Supabase לא זמין.';
   return errMsg||'שגיאה לא ידועה';
 }
@@ -2438,6 +2473,8 @@ function mapPunchItemRow(r){
     blueprintUrl:r.blueprint_url||null,
     pinX:r.pin_x!=null?Number(r.pin_x):null,
     pinY:r.pin_y!=null?Number(r.pin_y):null,
+    location:r.location||'',
+    photoUrl:r.photo_url||null,
     createdAt:r.created_at
   };
 }
@@ -2652,6 +2689,9 @@ function openNewPunchModal(pinX,pinY){
   document.getElementById('punch-desc').value='';
   document.getElementById('punch-urgency').value='בינונית';
   document.getElementById('punch-deadline').value='';
+  document.getElementById('punch-location').value='';
+  var photoInput=document.getElementById('punch-photo');
+  if(photoInput)photoInput.value='';
   clearFormErrors('modal-punch-item');
   populatePunchSubcontractorSelect('');
   openModal('modal-punch-item');
@@ -2672,6 +2712,16 @@ function openPunchItemView(itemId){
   document.getElementById('punch-view-sub').textContent=sub?sub.companyName:'—';
   document.getElementById('punch-view-urgency').innerHTML='<span class="'+punchUrgencyCssClass(item.urgency)+'">'+escHtml(item.urgency)+'</span>';
   document.getElementById('punch-view-deadline').textContent=formatSubcontractorDate(item.deadline);
+  document.getElementById('punch-view-location').textContent=item.location||'—';
+  var photoRow=document.getElementById('punch-view-photo-row');
+  var photoEl=document.getElementById('punch-view-photo');
+  if(item.photoUrl){
+    if(photoRow)photoRow.style.display='';
+    if(photoEl)photoEl.innerHTML='<img src="'+escHtml(item.photoUrl)+'" alt="תמונה מהשטח" style="max-width:100%;max-height:200px;border-radius:10px;margin-top:6px"/>';
+  }else{
+    if(photoRow)photoRow.style.display='none';
+    if(photoEl)photoEl.innerHTML='';
+  }
   document.getElementById('punch-view-status').innerHTML='<span class="'+punchStatusCssClass(item.status)+'">'+punchStatusLabel(item.status)+'</span>';
   document.getElementById('punch-fixed-btn').style.display=item.status==='open'?'':'none';
   openModal('modal-punch-item');
@@ -2682,22 +2732,42 @@ async function savePunchItem(){
   clearFormErrors('modal-punch-item');
   if(!validateRequired('punch-desc')){focusFirstFormError('modal-punch-item');return;}
   var proj=getCurrentProject();if(!proj)return;
+  var photoFile=document.getElementById('punch-photo')&&document.getElementById('punch-photo').files[0];
+  if(photoFile&&photoFile.size>MEDIA_MAX_BYTES){showToast('התמונה גדולה מדי (מקסימום 20MB)','error');return;}
+  var locationVal=document.getElementById('punch-location').value.trim();
   var row={
     project_id:proj.id,
     description:document.getElementById('punch-desc').value.trim(),
     subcontractor_id:document.getElementById('punch-subcontractor').value||null,
     urgency:document.getElementById('punch-urgency').value||'בינונית',
     deadline:document.getElementById('punch-deadline').value||null,
+    location:locationVal||null,
+    photo_url:null,
     status:'open',
     pin_x:punchPinDraft.x,
     pin_y:punchPinDraft.y
   };
-  var res=await supabase.from('punch_items').insert(row).select().single();
-  if(res.error){showToast('שגיאה בשמירת הליקוי: '+formatSupabaseErrorHint(res.error.message),'error');return;}
-  logActivity('ליקוי חדש','פרויקט: '+proj.name+' · '+row.description);
-  closeModal('modal-punch-item');
-  showToast('הליקוי נשמר בהצלחה');
-  await initPunchListTab();
+  var saveBtn=document.getElementById('punch-save-btn');
+  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='שומר...';}
+  try{
+    var res=await supabase.from('punch_items').insert(row).select().single();
+    if(res.error){showToast('שגיאה בשמירת הליקוי: '+formatSupabaseErrorHint(res.error.message),'error');return;}
+    if(photoFile){
+      var upload=await uploadMediaFile('punch-photos/'+proj.id+'/'+res.data.id,photoFile);
+      if(!upload.ok){
+        showToast('הליקוי נשמר אך העלאת התמונה נכשלה: '+formatSupabaseErrorHint(upload.error),'error');
+      }else{
+        var upPhoto=await supabase.from('punch_items').update({photo_url:upload.data.url}).eq('id',res.data.id);
+        if(upPhoto.error)showToast('הליקוי נשמר אך שמירת קישור התמונה נכשלה','error');
+      }
+    }
+    logActivity('ליקוי חדש','פרויקט: '+proj.name+' · '+row.description);
+    closeModal('modal-punch-item');
+    showToast('הליקוי נשמר בהצלחה');
+    await initPunchListTab();
+  }finally{
+    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='שמור';}
+  }
 }
 async function markPunchFixed(){
   if(!requireAdmin()||!requireProjectAccess()||!viewingPunchItemId)return;
@@ -3877,26 +3947,73 @@ function updateMobileTabLabel(tab){
   var el=document.getElementById('mobile-tab-current-label');
   if(el)el.textContent=TAB_LABELS[tab]||tab;
 }
+function renderMobileTabMenu(tabDefs){
+  var drawer=document.getElementById('mobile-tab-drawer');
+  if(!drawer)return;
+  drawer.innerHTML=(tabDefs||[]).map(function(td){
+    return '<button type="button" class="mobile-tab-item '+(currentTab===td[0]?'active':'')+'" data-tab="'+td[0]+'" role="menuitem">'+tabIc(td[2])+' '+td[1]+td[3]+'</button>';
+  }).join('');
+  updateMobileTabLabel(currentTab);
+  refreshIcons(drawer);
+}
+function resetMobileTabMenu(){
+  closeMobileTabMenu();
+  var drawer=document.getElementById('mobile-tab-drawer');
+  if(drawer)drawer.innerHTML='';
+}
+var mobileTabMenuBound=false;
+function initMobileTabMenuHandlers(){
+  if(mobileTabMenuBound)return;
+  mobileTabMenuBound=true;
+  var backdrop=document.getElementById('mobile-tab-backdrop');
+  if(backdrop)backdrop.addEventListener('click',closeMobileTabMenu);
+  document.addEventListener('click',function(e){
+    if(e.target.closest('#mobile-tab-toggle')){
+      e.preventDefault();
+      toggleMobileTabMenu();
+      return;
+    }
+    var item=e.target.closest('#mobile-tab-drawer .mobile-tab-item');
+    if(item){
+      var tab=item.getAttribute('data-tab');
+      if(tab){switchTab(tab);closeMobileTabMenu();}
+    }
+  });
+}
 function toggleMobileTabMenu(){
+  if(currentView!=='project')return;
   closeMobileSidebar();
   var drawer=document.getElementById('mobile-tab-drawer');
   var backdrop=document.getElementById('mobile-tab-backdrop');
   var toggle=document.getElementById('mobile-tab-toggle');
-  if(!drawer||!backdrop||!toggle)return;
+  if(!drawer||!backdrop||!drawer.children.length)return;
   var open=!drawer.classList.contains('open');
   drawer.classList.toggle('open',open);
   backdrop.classList.toggle('open',open);
-  toggle.classList.toggle('open',open);
-  toggle.setAttribute('aria-expanded',open?'true':'false');
+  if(toggle){
+    toggle.classList.toggle('open',open);
+    toggle.setAttribute('aria-expanded',open?'true':'false');
+  }
+  drawer.setAttribute('aria-hidden',open?'false':'true');
+  backdrop.setAttribute('aria-hidden',open?'false':'true');
   syncBodyScrollLock();
 }
 function closeMobileTabMenu(){
   var drawer=document.getElementById('mobile-tab-drawer');
   var backdrop=document.getElementById('mobile-tab-backdrop');
   var toggle=document.getElementById('mobile-tab-toggle');
-  if(drawer)drawer.classList.remove('open');
-  if(backdrop)backdrop.classList.remove('open');
-  if(toggle){toggle.classList.remove('open');toggle.setAttribute('aria-expanded','false');}
+  if(drawer){
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden','true');
+  }
+  if(backdrop){
+    backdrop.classList.remove('open');
+    backdrop.setAttribute('aria-hidden','true');
+  }
+  if(toggle){
+    toggle.classList.remove('open');
+    toggle.setAttribute('aria-expanded','false');
+  }
   syncBodyScrollLock();
 }
 
@@ -3927,8 +4044,12 @@ function showView(view,pid){
   else if(view==='budget-builder')renderBudgetBuilder(el);
   else if(view==='activity-log')renderActivityLog(el);
   else if(view==='settings')renderSettings(el);
-  if(view!=='project')updateWhatsAppFab(false);
-  closeMobileTabMenu();
+  if(view!=='project'){
+    updateWhatsAppFab(false);
+    resetMobileTabMenu();
+  }else{
+    closeMobileTabMenu();
+  }
   if(view==='project'){
     var proj=getCurrentProject();
     updateMobileHeaderTitle(proj?proj.name:MOBILE_VIEW_TITLES.project);
@@ -4022,10 +4143,18 @@ function projectAddressLine(p,stopProp){
   return '<span class="project-address-row">'+ic('map-pin')+' <span>'+formatProjectAddress(p)+'</span>'+projectNavBtn(p,stopProp)+'</span>';
 }
 
+function projectStatusBadgeMeta(status){
+  var map={
+    pending:['status-pending','טרם התחיל'],
+    active:['status-active','בביצוע'],
+    paused:['status-paused','מושהה'],
+    done:['status-done','הושלם']
+  };
+  return map[status]||map.pending;
+}
 function projectCardHTML(p){
   var paid=p.payments.reduce(function(s,x){return s+Number(x.amount||0);},0);
-  var sm={'active':['status-active','בביצוע'],'paused':['status-paused','מושהה'],'done':['status-done','הושלם']};
-  var sc=sm[p.status]||sm.active;
+  var sc=projectStatusBadgeMeta(p.status);
   return '<div class="project-card" onclick="showView(\'project\',\''+p.id+'\')">'+
     '<div class="project-card-header"><div><div class="project-name">'+p.name+'</div><div class="project-address">'+projectAddressLine(p,true)+'</div></div>'+
     '<span class="status-badge '+sc[0]+'">'+sc[1]+'</span></div>'+
@@ -4197,14 +4326,8 @@ function renderProjectDetail(el){
 
   var tabDefs=getProjectTabDefs(messagesTabBadge);
   html+='<div class="mobile-tab-bar">'+
-    '<button type="button" class="mobile-tab-toggle" id="mobile-tab-toggle" onclick="toggleMobileTabMenu()" aria-expanded="false" aria-label="בחר תצוגה">'+
-    '<i data-lucide="menu"></i><span id="mobile-tab-current-label">'+TAB_LABELS[currentTab]+'</span><i data-lucide="chevron-down" class="mobile-tab-chevron"></i></button></div>'+
-    '<div class="mobile-tab-backdrop" id="mobile-tab-backdrop" onclick="closeMobileTabMenu()"></div>'+
-    '<div class="mobile-tab-drawer" id="mobile-tab-drawer" role="menu">';
-  tabDefs.forEach(function(td){
-    html+='<button type="button" class="mobile-tab-item '+(currentTab===td[0]?'active':'')+'" data-tab="'+td[0]+'" role="menuitem" onclick="switchTab(\''+td[0]+'\');closeMobileTabMenu()">'+tabIc(td[2])+' '+td[1]+td[3]+'</button>';
-  });
-  html+='</div>';
+    '<button type="button" class="mobile-tab-toggle" id="mobile-tab-toggle" aria-expanded="false" aria-haspopup="menu" aria-controls="mobile-tab-drawer" aria-label="בחר תצוגה">'+
+    '<i data-lucide="menu"></i><span id="mobile-tab-current-label">'+TAB_LABELS[currentTab]+'</span><i data-lucide="chevron-down" class="mobile-tab-chevron"></i></button></div>';
   html+='<div class="tabs-scroll desktop-only-tabs"><div class="tabs" id="project-tabs">';
   tabDefs.forEach(function(td){
     html+='<button type="button" class="tab '+(currentTab===td[0]?'active':'')+'" data-tab="'+td[0]+'" onclick="switchTab(\''+td[0]+'\')">'+tabIc(td[2])+' '+td[1]+td[3]+'</button>';
@@ -4385,6 +4508,7 @@ function renderProjectDetail(el){
 
   updateWhatsAppFab(showWhatsApp);
   el.innerHTML=html;
+  renderMobileTabMenu(tabDefs);
   refreshIcons(el);
   setTimeout(function(){
     var ml=document.getElementById('messages-list');if(ml)ml.scrollTop=ml.scrollHeight;
@@ -4489,7 +4613,7 @@ async function switchTab(t){
     tabsEl.querySelectorAll('.tab').forEach(function(btn){
       btn.classList.toggle('active',btn.getAttribute('data-tab')===t);
     });
-    document.querySelectorAll('.mobile-tab-item').forEach(function(btn){
+    document.querySelectorAll('#mobile-tab-drawer .mobile-tab-item').forEach(function(btn){
       btn.classList.toggle('active',btn.getAttribute('data-tab')===t);
     });
     document.querySelectorAll('#main-content .tab-content').forEach(function(panel){
@@ -4498,7 +4622,7 @@ async function switchTab(t){
     if(t==='messages'){
       var badge=document.querySelector('#project-tabs .tab[data-tab="messages"] .tab-badge');
       if(badge)badge.classList.remove('show');
-      document.querySelectorAll('.mobile-tab-item[data-tab="messages"] .tab-badge').forEach(function(b){b.classList.remove('show');});
+      document.querySelectorAll('#mobile-tab-drawer .mobile-tab-item[data-tab="messages"] .tab-badge').forEach(function(b){b.classList.remove('show');});
     }
     if(t==='financial'){
       var p=getCurrentProject();
@@ -4813,7 +4937,7 @@ async function openEditProjectModal(id){
   document.getElementById('proj-built').value=p.builtArea||'';
   document.getElementById('proj-property').value=p.propertyArea||'';
   document.getElementById('proj-budget').value=p.budget;
-  document.getElementById('proj-status').value=p.status;
+  document.getElementById('proj-status').value=p.status||'pending';
   await refreshAppUsers();
   var linked=getProjectLinkedClient(id);
   if(linked){
@@ -4862,7 +4986,7 @@ function openAddUserModal(){
   clearFormErrors('modal-user');
   var sel=document.getElementById('new-user-project');
   sel.innerHTML=appDataCache.projects.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
-  ['new-user-name','new-user-email','new-user-pass'].forEach(function(id){document.getElementById(id).value='';});
+  ['new-user-name','new-user-phone','new-user-email','new-user-pass'].forEach(function(id){document.getElementById(id).value='';});
   openModal('modal-user');
 }
 async function saveUser(){
@@ -4874,6 +4998,7 @@ async function saveUser(){
   if(!validateRequired('new-user-project'))ok=false;
   if(!ok){focusFirstFormError('modal-user');return;}
   var name=document.getElementById('new-user-name').value.trim();
+  var phone=document.getElementById('new-user-phone').value.trim();
   var email=document.getElementById('new-user-email').value.trim();
   var pass=document.getElementById('new-user-pass').value;
   var projectId=document.getElementById('new-user-project').value;
@@ -4898,24 +5023,24 @@ async function saveUser(){
     if(!res.data||!res.data.user){alert('שגיאה ביצירת המשתמש');return;}
     var userId=res.data.user.id;
     var profileRes=await supabase.from('profiles').upsert({
-      id:userId,email:email,name:name,role:'client',project_id:projectId
+      id:userId,email:email,name:name,role:'client',project_id:projectId,phone:phone||null
     },{onConflict:'id'});
     if(profileRes.error){
-      profileRes=await supabase.from('profiles').update({email:email,name:name,role:'client',project_id:projectId}).eq('id',userId);
+      profileRes=await supabase.from('profiles').update({email:email,name:name,role:'client',project_id:projectId,phone:phone||null}).eq('id',userId);
     }
     if(profileRes.error){
       console.error(profileRes.error);
-      alert('המשתמש נוצר אך שיוך הפרויקט נכשל.\n\nהרץ ב-Supabase SQL Editor את supabase-setup.sql המעודכן (פונקציית is_admin).');
+      alert('המשתמש נוצר אך שמירת הפרופיל נכשלה.\n\n'+formatSupabaseErrorHint(profileRes.error.message));
       return;
     }
-    mergeAppUser({id:userId,email:email,name:name,role:'client',projectId:projectId});
+    mergeAppUser({id:userId,email:email,name:name,role:'client',projectId:projectId,phone:phone});
     proj.messages=proj.messages||[];
     proj.messages.push({id:'m'+Date.now(),sender:'admin',text:'ברוך הבא למערכת, '+name+'! כאן תוכל לעקוב אחר הפרויקט שלך ולפנות אלינו בכל שאלה.',date:new Date().toLocaleDateString('he-IL')});
     logActivity('יצירת לקוח',name+' ('+email+') → פרויקט: '+proj.name);
     if(!await saveData(getData()))return;
     await notifyAdminNewClient(name,email,proj.name);
     await refreshAppUsers();
-    if(!appUsers.find(function(u){return u.id===userId;}))mergeAppUser({id:userId,email:email,name:name,role:'client',projectId:projectId});
+    if(!appUsers.find(function(u){return u.id===userId;}))mergeAppUser({id:userId,email:email,name:name,role:'client',projectId:projectId,phone:phone});
     closeModal('modal-user');
     showView('clients');
     alert('הלקוח נוצר בהצלחה!\n\nאימייל: '+email+'\nסיסמה: '+pass+'\nפרויקט: '+proj.name+'\n\nשלח ללקוח את פרטי ההתחברות.\nאם ב-Supabase מופעל "Confirm email", הלקוח יצטרך לאשר את האימייל לפני הכניסה הראשונה.');
@@ -5355,7 +5480,7 @@ Object.assign(window,{
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,exportDailyLogsCsv,
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,
   openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,
-  toggleRemoveGalleryImage,removePendingGalleryFile,saveGalleryPost,deleteGalleryPost,
+  toggleRemoveGalleryImage,removePendingGalleryFile,saveGalleryPost,deleteGalleryPost,handleGalleryImageError,
   openPhotoLightbox,closePhotoLightbox,
   handleBlueprintUpload,openNewPunchModal,openPunchItemView,onBlueprintImageClick,savePunchItem,markPunchFixed,onPunchFilterChange,
   openDailyLogForm,cancelDailyLogForm,saveDailyLog,onDailyLogFilterChange,
@@ -5380,6 +5505,7 @@ document.addEventListener('keydown',function(e){
 });
 refreshIcons();
 updateLoginLockUI();
+initMobileTabMenuHandlers();
 </script>
 </body>
 </html>

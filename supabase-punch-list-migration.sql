@@ -22,6 +22,8 @@ create table if not exists public.punch_items (
   status text not null default 'open'
     check (status in ('open', 'fixed')),
   blueprint_url text,
+  location text,
+  photo_url text,
   pin_x numeric,
   pin_y numeric,
   created_at timestamptz not null default now()
