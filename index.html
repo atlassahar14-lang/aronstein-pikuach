@@ -403,6 +403,18 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .budget-client-overlay{background:#fff!important;padding:0!important}
   .budget-client-sheet{box-shadow:none!important;border-radius:0!important;max-width:none!important}
 }
+.project-report-pdf{font-family:'Heebo',sans-serif;color:var(--text);background:#fff;padding:24px;direction:rtl;text-align:right}
+.project-report-pdf h1{font-size:22px;font-weight:800;color:var(--primary);margin:0 0 8px}
+.project-report-pdf h2{font-size:15px;font-weight:700;color:var(--primary);margin:24px 0 10px;border-bottom:2px solid var(--border);padding-bottom:6px}
+.project-report-pdf .report-meta{font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:4px}
+.project-report-pdf .report-brand{font-size:12px;color:var(--text-muted);margin-bottom:16px}
+.project-report-pdf table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.project-report-pdf th,.project-report-pdf td{border:1px solid var(--border);padding:8px 10px;text-align:right;vertical-align:top}
+.project-report-pdf th{background:var(--primary);color:#fff;font-weight:600}
+.project-report-pdf .fin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
+.project-report-pdf .fin-box{border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--bg)}
+.project-report-pdf .fin-box .label{font-size:12px;color:var(--text-muted);margin-bottom:4px}
+.project-report-pdf .fin-box .value{font-size:16px;font-weight:700;color:var(--primary)}
 .activity-log-list{display:flex;flex-direction:column;gap:8px}
 .activity-log-row{display:grid;grid-template-columns:minmax(100px,130px) minmax(120px,1fr) 2fr minmax(110px,140px);gap:12px;padding:14px 18px;background:var(--card);border-radius:12px;border:1px solid var(--border);font-size:13px;align-items:center}
 .activity-log-row .log-user{font-weight:600;color:var(--primary)}
@@ -949,6 +961,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="form-group"><label>אחוז השלמה: <span id="phase-pv">0%</span></label><input type="range" id="phase-prog" min="0" max="100" value="0" oninput="document.getElementById('phase-pv').textContent=this.value+'%'" style="width:100%;margin-top:8px"/></div>
     <div class="form-group"><label>סטטוס</label><select id="phase-status"><option value="pending">טרם התחיל</option><option value="active">בביצוע</option><option value="done">הושלם</option></select></div>
     <div class="form-group"><label>קבלן אחראי</label><select id="phase-subcontractor"><option value="">— ללא —</option></select></div>
+    <div class="form-group"><label for="phase-planned-cost">עלות מתוכננת (₪)</label><input type="number" id="phase-planned-cost" placeholder="0" min="0" step="1"/></div>
     <div class="form-group"><label>הערות</label><textarea id="phase-notes" placeholder="הערות לשלב זה"></textarea></div>
     <div class="modal-footer phase-modal-footer">
       <button class="btn btn-danger admin-only-action" id="phase-delete-btn" style="display:none;width:auto" onclick="deletePhaseFromModal()"><i data-lucide="trash-2"></i> מחק שלב</button>
@@ -2147,6 +2160,26 @@ function phaseStatusLabel(s){
 }
 function phaseProgressPct(progress){
   return Math.min(100,Math.max(0,Number(progress)||0));
+}
+function getPhasePlannedCost(ph){
+  if(!ph)return 0;
+  var v=ph.planned_cost!=null?ph.planned_cost:ph.plannedCost;
+  return Number(v)||0;
+}
+function sumPhasesPlannedCost(phases){
+  return (phases||[]).reduce(function(s,ph){return s+getPhasePlannedCost(ph);},0);
+}
+function calcPhasesPlannedAnalysis(p,paid){
+  var planned=sumPhasesPlannedCost(p.phases);
+  var diff=planned-paid;
+  return {
+    planned:planned,
+    paid:paid,
+    diff:diff,
+    isOver:diff<0,
+    diffLabel:diff<0?'עודף (חריגה)':'שארית',
+    diffDisplay:(diff>=0?'+':'-')+fmtMoney(Math.abs(diff))
+  };
 }
 function parsePhaseDate(s){
   if(!s)return null;
@@ -4372,6 +4405,8 @@ function renderBudgetAnalysisTabHtml(p,ba){
   var diffCardClass=ba.isOver?'warn':'success';
   var diffValueClass=ba.isOver?'fin-diff-negative':'fin-diff-positive';
   var tableDiffClass=ba.isOver?'negative':'positive';
+  var phaseBa=calcPhasesPlannedAnalysis(p,ba.paid);
+  var phaseTableDiffClass=phaseBa.isOver?'negative':'positive';
   return '<div class="section-title mb-16">'+ic('scale')+' ניתוח כספי — תקציב מול ביצוע</div>'+
     '<div class="dash-metrics fin-analysis-metrics">'+
     dashMetricCard('','banknote',fmtMoney(ba.approved),'תקציב אושר')+
@@ -4386,9 +4421,11 @@ function renderBudgetAnalysisTabHtml(p,ba){
     '<div class="progress-label" style="margin-top:8px"><span>₪0</span><span>'+fmtMoney(ba.approved)+'</span></div>'+
     '</div>'+
     '<div class="card fin-analysis-table-wrap"><div class="card-title">'+ic('table')+' סיכום תקציב מול ביצוע</div>'+
-    '<div class="table-scroll"><table class="fin-analysis-table"><thead><tr><th>פרויקט</th><th>תקציב</th><th>בוצע</th><th>שארית / עודף</th></tr></thead><tbody>'+
+    '<div class="table-scroll"><table class="fin-analysis-table"><thead><tr><th>פרויקט</th><th>תקציב / מתוכנן</th><th>בוצע</th><th>שארית / עודף</th></tr></thead><tbody>'+
     '<tr><td class="fin-val">'+escHtml(p.name)+'</td><td class="fin-val">'+fmtMoney(ba.approved)+'</td><td class="fin-val">'+fmtMoney(ba.paid)+'</td>'+
-    '<td class="fin-val '+tableDiffClass+'">'+ba.diffDisplay+'</td></tr></tbody></table></div></div>';
+    '<td class="fin-val '+tableDiffClass+'">'+ba.diffDisplay+'</td></tr>'+
+    '<tr><td class="fin-val">לפי שלבים (עלות מתוכננת)</td><td class="fin-val">'+fmtMoney(phaseBa.planned)+'</td><td class="fin-val">'+fmtMoney(phaseBa.paid)+'</td>'+
+    '<td class="fin-val '+phaseTableDiffClass+'">'+phaseBa.diffDisplay+'</td></tr></tbody></table></div></div>';
 }
 
 function countUnreadClientMessages(proj){
@@ -4402,6 +4439,87 @@ function formatProjectAddress(p){
   var addr=p.address||'';
   if(p.houseNumber)addr+=(addr?' ':'')+p.houseNumber;
   return addr;
+}
+function buildProjectOverviewReportHtml(p,paid,budget,remaining,openPunch){
+  var addr=formatProjectAddress(p)||'—';
+  var generated=new Date().toLocaleString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  var phasesHtml=(p.phases||[]).length?(p.phases||[]).map(function(ph){
+    return '<tr><td>'+escHtml(ph.name||'—')+'</td><td>'+escHtml(phaseStatusLabel(ph.status))+'</td><td>'+phaseProgressPct(ph.progress)+'%</td><td>'+escHtml(ph.start||'—')+'</td><td>'+escHtml(ph.end||'—')+'</td></tr>';
+  }).join(''):'<tr><td colspan="5" style="text-align:center;color:#6b7280">אין שלבים</td></tr>';
+  var punchHtml=openPunch.length?openPunch.map(function(it){
+    return '<tr><td>'+escHtml(it.description||'—')+'</td><td>'+escHtml(it.location||'—')+'</td><td>'+escHtml(it.urgency||'—')+'</td></tr>';
+  }).join(''):'<tr><td colspan="3" style="text-align:center;color:#6b7280">אין ליקויים פתוחים</td></tr>';
+  return '<div class="project-report-pdf" dir="rtl">'+
+    '<div class="report-brand">ארונשטיין פיקוח וניהול · דוח פרויקט · '+escHtml(generated)+'</div>'+
+    '<h1>'+escHtml(p.name||'פרויקט')+'</h1>'+
+    '<div class="report-meta"><strong>כתובת:</strong> '+escHtml(addr)+'</div>'+
+    '<div class="report-meta"><strong>תחילת עבודה:</strong> '+escHtml(p.start||'—')+' · <strong>צפי סיום:</strong> '+escHtml(p.end||'—')+' · <strong>תקציב:</strong> '+escHtml(fmtMoney(budget))+'</div>'+
+    '<h2>שלבי הפרויקט</h2>'+
+    '<table><thead><tr><th>שם שלב</th><th>סטטוס</th><th>השלמה</th><th>התחלה</th><th>סיום</th></tr></thead><tbody>'+phasesHtml+'</tbody></table>'+
+    '<h2>סיכום כספי</h2>'+
+    '<div class="fin-grid">'+
+    '<div class="fin-box"><div class="label">תקציב</div><div class="value">'+escHtml(fmtMoney(budget))+'</div></div>'+
+    '<div class="fin-box"><div class="label">שולם</div><div class="value">'+escHtml(fmtMoney(paid))+'</div></div>'+
+    '<div class="fin-box"><div class="label">נותר</div><div class="value">'+escHtml(fmtMoney(remaining))+'</div></div>'+
+    '</div>'+
+    '<h2>ליקויים פתוחים</h2>'+
+    '<table><thead><tr><th>תיאור</th><th>מיקום</th><th>דחיפות</th></tr></thead><tbody>'+punchHtml+'</tbody></table>'+
+    '</div>';
+}
+var jsPdfLoadPromise=null;
+function loadJsPdfLib(){
+  if(!jsPdfLoadPromise){
+    jsPdfLoadPromise=Promise.all([
+      import('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/+esm'),
+      import('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm')
+    ]).then(function(mods){return {jsPDF:mods[0].jsPDF,html2canvas:mods[1].default};});
+  }
+  return jsPdfLoadPromise;
+}
+async function exportProjectOverviewPdf(){
+  if(!requireProjectAccess())return;
+  var p=getCurrentProject();
+  if(!p)return;
+  showToast('מייצר דוח PDF...');
+  var wrap=null;
+  try{
+    await refreshPunchItems(p.id);
+    var paid=sumProjectPaid(p);
+    var budget=getProjectBudget(p);
+    var remaining=budget-paid;
+    var openPunch=punchItemsCache.filter(function(it){return it.status==='open';});
+    wrap=document.createElement('div');
+    wrap.id='project-report-pdf-root';
+    wrap.style.cssText='position:fixed;left:-10000px;top:0;width:794px;background:#fff;z-index:-1';
+    wrap.innerHTML=buildProjectOverviewReportHtml(p,paid,budget,remaining,openPunch);
+    document.body.appendChild(wrap);
+    if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+    await new Promise(function(r){setTimeout(r,150);});
+    var libs=await loadJsPdfLib();
+    var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
+    await new Promise(function(resolve,reject){
+      doc.html(wrap.firstElementChild||wrap,{
+        margin:[10,10,10,10],
+        autoPaging:'text',
+        html2canvas:{scale:0.75,useCORS:true,logging:false,backgroundColor:'#ffffff'},
+        width:190,
+        windowWidth:794,
+        callback:function(pdf){
+          try{
+            var safeName=String(p.name||'project').replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,'-').slice(0,48);
+            pdf.save('דוח-'+safeName+'.pdf');
+            resolve();
+          }catch(err){reject(err);}
+        }
+      });
+    });
+    showToast('הדוח הורד בהצלחה');
+  }catch(err){
+    console.error('exportProjectOverviewPdf',err);
+    showToast('שגיאה ביצוא PDF','error');
+  }finally{
+    if(wrap&&wrap.parentNode)wrap.parentNode.removeChild(wrap);
+  }
 }
 function getProjectNavUrl(p){
   var q=formatProjectAddress(p).trim();
@@ -4596,7 +4714,7 @@ function renderProjectDetail(el){
 
   var html='<button type="button" class="back-btn admin-only-action" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>';
   html+='<div class="flex-between responsive-stack mb-24"><div><h1 class="project-detail-title">'+p.name+'</h1><p class="project-detail-address">'+projectAddressLine(p,false)+'</p></div>';
-  html+='<div class="flex-gap admin-only-action"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-accent btn-sm" onclick="openNewUpdateModal()">'+ic('bell')+' עדכון חדש</button></div>';
+  html+='<div class="flex-gap admin-only-action"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-outline btn-sm" onclick="exportProjectOverviewPdf()">'+ic('file-text')+' ייצוא דוח PDF</button><button class="btn btn-accent btn-sm" onclick="openNewUpdateModal()">'+ic('bell')+' עדכון חדש</button></div>';
   html+='</div>';
 
   var tabDefs=getProjectTabDefs(messagesTabBadge);
@@ -5471,7 +5589,7 @@ function openAddPhaseModal(){
   document.getElementById('modal-phase-title').textContent='שלב חדש';
   document.getElementById('phase-delete-btn').style.display='none';
   document.querySelector('#modal-phase .phase-modal-footer').style.justifyContent='flex-end';
-  ['phase-name','phase-start','phase-end','phase-notes'].forEach(function(id){document.getElementById(id).value='';});
+  ['phase-name','phase-start','phase-end','phase-notes','phase-planned-cost'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('phase-prog').value=0;document.getElementById('phase-pv').textContent='0%';
   document.getElementById('phase-status').value='pending';
   refreshSubcontractors().then(function(){populatePhaseSubcontractorSelect('');});
@@ -5491,6 +5609,7 @@ function openEditPhaseModal(phId){
   document.getElementById('phase-end').value=formatPhaseDateForInput(ph.end);document.getElementById('phase-prog').value=ph.progress;
   document.getElementById('phase-pv').textContent=ph.progress+'%';
   document.getElementById('phase-status').value=ph.status;document.getElementById('phase-notes').value=ph.notes||'';
+  document.getElementById('phase-planned-cost').value=ph.planned_cost!=null&&ph.planned_cost!==''?ph.planned_cost:(ph.plannedCost!=null?ph.plannedCost:'');
   var subId=ph.subcontractor_id||'';
   refreshSubcontractors().then(function(){populatePhaseSubcontractorSelect(subId);});
   openModal('modal-phase');
@@ -5519,7 +5638,10 @@ async function savePhase(){
   if(!validateRequired('phase-name')){focusFirstFormError('modal-phase');return;}
   var data=getData();var proj=getCurrentProject();if(!proj)return;
   var subId=document.getElementById('phase-subcontractor').value||null;
-  var ph={id:editingPhaseId||('ph'+Date.now()),name:document.getElementById('phase-name').value.trim(),start:document.getElementById('phase-start').value,end:document.getElementById('phase-end').value,progress:Number(document.getElementById('phase-prog').value),status:document.getElementById('phase-status').value,notes:document.getElementById('phase-notes').value,subcontractor_id:subId};
+  var plannedCostRaw=document.getElementById('phase-planned-cost').value;
+  var planned_cost=plannedCostRaw===''?null:Number(plannedCostRaw);
+  if(planned_cost!=null&&isNaN(planned_cost))planned_cost=null;
+  var ph={id:editingPhaseId||('ph'+Date.now()),name:document.getElementById('phase-name').value.trim(),start:document.getElementById('phase-start').value,end:document.getElementById('phase-end').value,progress:Number(document.getElementById('phase-prog').value),status:document.getElementById('phase-status').value,notes:document.getElementById('phase-notes').value,subcontractor_id:subId,planned_cost:planned_cost};
   var oldPh=editingPhaseId?proj.phases.find(function(x){return x.id===editingPhaseId;}):null;
   if(editingPhaseId){
     var idx=proj.phases.findIndex(function(x){return x.id===editingPhaseId;});
@@ -5760,7 +5882,7 @@ document.getElementById('gallery-post-files').addEventListener('change',onGaller
 Object.assign(window,{
   doLogin,doLogout,showForgotPassword,showLoginForm,submitForgotPassword,
   saveUser,deleteUser,changeAdminPass,sendAdminResetEmail,resetData,
-  showView,switchTab,openModal,closeModal,toggleMobileSidebar,closeMobileSidebar,toggleMobileTabMenu,closeMobileTabMenu,
+  showView,switchTab,openModal,closeModal,toggleMobileSidebar,closeMobileSidebar,toggleMobileTabMenu,closeMobileTabMenu,exportProjectOverviewPdf,
   openNewProjectModal,openEditProjectModal,saveProject,openAddUserModal,
   openAddSubcontractorModal,openEditSubcontractorModal,saveSubcontractor,deleteSubcontractor,onSubcontractorSpecialtyFilterChange,
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,onPaymentFilterChange,exportPaymentsCsv,
