@@ -6,7 +6,7 @@
 <title>ארונשטיין פיקוח וניהול</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--primary:#1B2B5E;--primary-light:#2a4078;--navy:#1B2B5E;--steel:#6B7A8D;--accent:#e8a020;--bg:#f0f4f8;--card:#fff;--text:#1a2332;--text-muted:#6b7a8d;--border:#dde3ea;--success:#22c55e;--warning:#f59e0b;--danger:#ef4444;--sidebar:240px}
+:root{--primary:#1B2B5E;--primary-light:#2a4078;--navy:#1B2B5E;--steel:#6B7A8D;--accent:#e8a020;--bg:#f0f4f8;--card:#fff;--text:#1a2332;--text-muted:#6b7a8d;--border:#dde3ea;--success:#22c55e;--warning:#f59e0b;--danger:#ef4444;--sidebar:260px}
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%;overflow-x:hidden}
 body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
@@ -92,7 +92,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .back-login-link:hover{color:var(--primary)}
 #app{display:none;min-height:100vh}
 .app-layout{display:flex;min-height:100vh;direction:rtl;width:100%}
-.sidebar{width:var(--sidebar);max-width:100vw;background:var(--primary);color:#fff;display:flex;flex-direction:column;position:fixed;top:0;inset-inline-end:0;inset-inline-start:auto;right:0;left:auto;height:100vh;height:100dvh;z-index:100;overflow-y:auto;transform:none;transition:none}
+.sidebar{width:var(--sidebar);flex:0 0 var(--sidebar);max-width:100vw;background:var(--primary);color:#fff;display:flex;flex-direction:column;position:fixed;top:0;right:0;left:auto;height:100vh;height:100dvh;z-index:100;overflow-y:auto;transform:none;transition:none}
 .sidebar-logo{padding:24px 20px;border-bottom:1px solid rgba(255,255,255,.1)}
 .sidebar-logo .logo-icon{font-size:28px}
 .sidebar-logo h2{font-size:16px;font-weight:700;margin-top:6px}
@@ -110,7 +110,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .user-role{font-size:11px;opacity:.6}
 .btn-logout{width:100%;padding:8px;background:rgba(255,255,255,.1);border:none;border-radius:8px;color:#fff;font-family:'Heebo',sans-serif;font-size:13px;cursor:pointer;transition:background .2s}
 .btn-logout:hover{background:rgba(255,255,255,.2)}
-.main-content{flex:1;min-width:0;width:100%;box-sizing:border-box;margin-inline-start:var(--sidebar);margin-inline-end:0;margin-right:0;padding:32px;min-height:100vh}
+.main-content{flex:1;min-width:0;box-sizing:border-box;margin-right:var(--sidebar);margin-left:0;width:calc(100% - var(--sidebar));padding:32px;min-height:100vh}
 .page-header{margin-bottom:28px}
 .page-header h1{font-size:26px;font-weight:800;color:var(--primary)}
 .page-header p{font-size:14px;color:var(--text-muted);margin-top:4px}
@@ -512,7 +512,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .login-panel{padding:36px 28px;flex:none}
   .login-panel-inner{max-width:100%}
   .mobile-header{display:block}
-  .sidebar{width:min(300px,88vw);inset-inline-end:0;right:0;left:auto;transform:translate3d(100%,0,0);transition:transform .3s ease;z-index:300;box-shadow:-4px 0 24px rgba(0,0,0,.2);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);height:100dvh}
+  .sidebar{width:min(300px,88vw);right:0;left:auto;transform:translate3d(100%,0,0);transition:transform .3s ease;z-index:300;box-shadow:-4px 0 24px rgba(0,0,0,.2);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);height:100dvh}
   .sidebar.open{transform:translate3d(0,0,0)}
   .sidebar-mobile-head{display:flex}
   .sidebar-close-btn{display:inline-flex}
@@ -520,7 +520,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .sidebar-nav{padding-top:8px;overflow-y:auto;-webkit-overflow-scrolling:touch}
   .desktop-only-tabs{display:none!important}
   .mobile-tab-bar{display:block}
-  .main-content{margin-inline-start:0!important;margin-right:0!important;padding:calc(68px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+  .main-content{margin-right:0!important;margin-left:0!important;width:100%!important;padding:calc(68px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
   .page-header h1{font-size:22px}
   .project-detail-title{font-size:22px}
   .flex-between.responsive-stack{flex-direction:column;align-items:stretch!important}
@@ -675,14 +675,13 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .stats-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(min-width:1024px){
-  .sidebar{display:flex!important;transform:none!important;visibility:visible;inset-inline-end:0;right:0;left:auto}
+  .sidebar{display:flex!important;width:var(--sidebar)!important;transform:none!important;visibility:visible;right:0;left:auto}
   .sidebar-mobile-head{display:none!important}
   .sidebar-close-btn{display:none!important}
   .sidebar-logo{display:block!important}
-  .main-content{margin-inline-start:var(--sidebar)!important;margin-inline-end:0!important;margin-right:0!important}
+  .main-content{margin-right:var(--sidebar)!important;margin-left:0!important;width:calc(100% - var(--sidebar))!important}
 }
 @media(min-width:1024px) and (max-width:1279px){
-  :root{--sidebar:220px}
   .main-content{padding:28px}
   .timeline-phases{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 }
