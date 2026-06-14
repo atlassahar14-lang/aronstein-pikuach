@@ -2305,6 +2305,7 @@ function formatSupabaseErrorHint(errMsg){
   if(m.includes('500')||m.includes('internal server'))return 'שגיאת שרת בשמירה — הרץ את supabase-setup.sql המעודכן (פונקציית save_app_data), או בדוק אם נתוני הפרויקט גדולים מדי.';
   if(m.includes('save_app_data')||m.includes('42883')||m.includes('does not exist'))return 'חסרה פונקציית save_app_data — הרץ את supabase-setup.sql המעודכן ב-SQL Editor.';
   if(m.includes('project_id')&&m.includes('not-null'))return 'עמודת project_id חייבת להיות nullable — הרץ את supabase-budgets-project-id-nullable-migration.sql ב-Supabase SQL Editor.';
+  if(m.includes('budget_items')||m.includes('subcontractor_id'))return 'שגיאה בפריטי תקציב — הרץ את supabase-budget-items-subcontractor-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('fetch')||m.includes('network')||m.includes('522')||m.includes('timeout'))return 'בעיית רשת או Supabase לא זמין.';
   return errMsg||'שגיאה לא ידועה';
 }
@@ -3033,15 +3034,92 @@ async function refreshAllStandaloneBudgets(){
   budgetsCache=(res.data||[]).map(mapBudgetRow);
   return {ok:true};
 }
+function buildBudgetItemDbRow(it,budgetId,idx){
+  var row={
+    budget_id:budgetId,
+    category:it.category||'אחר',
+    description:(it.description||'').trim()||'—',
+    quantity:Number(it.quantity)||0,
+    unit:normalizeBudgetUnit(it.unit),
+    unit_price:Number(it.unitPrice)||0,
+    sort_order:idx
+  };
+  if(it.contactId)row.subcontractor_id=it.contactId;
+  return row;
+}
+async function insertBudgetItemsRows(rows){
+  if(!rows.length)return {error:null,data:[]};
+  var res=await supabase.from('budget_items').insert(rows);
+  if(!res.error)return res;
+  var msg=(res.error.message||'').toLowerCase();
+  if(msg.includes('subcontractor_id')||msg.includes('unit')){
+    var fallback=rows.map(function(r){
+      var copy=Object.assign({},r);
+      if(msg.includes('subcontractor_id'))delete copy.subcontractor_id;
+      if(msg.includes('unit'))delete copy.unit;
+      return copy;
+    });
+    return supabase.from('budget_items').insert(fallback);
+  }
+  return res;
+}
+function syncBudgetItemsCacheFromDraft(budgetId){
+  if(!budgetId||!budgetBuilderDraft)return;
+  var items=(budgetBuilderDraft.items||[]).filter(function(it){
+    return (it.description||'').trim()||calcBudgetLineTotal(it.quantity,it.unitPrice)>0;
+  });
+  budgetItemsByBudget[budgetId]=items.map(function(it,idx){
+    return {
+      id:it.id,
+      budgetId:budgetId,
+      category:it.category,
+      description:it.description,
+      quantity:Number(it.quantity)||0,
+      unit:normalizeBudgetUnit(it.unit),
+      unitPrice:Number(it.unitPrice)||0,
+      total:calcBudgetLineTotal(it.quantity,it.unitPrice),
+      sortOrder:idx,
+      subcontractorId:it.contactId||''
+    };
+  });
+}
 async function refreshBudgetItems(budgetId){
-  if(!budgetId){return {ok:false};}
+  if(!budgetId)return {ok:false};
   var res=await supabase.from('budget_items').select('*').eq('budget_id',budgetId).order('sort_order',{ascending:true}).order('created_at',{ascending:true});
   if(res.error){
+    console.warn('refreshBudgetItems retry without order',res.error);
+    res=await supabase.from('budget_items').select('*').eq('budget_id',budgetId);
+  }
+  if(res.error){
     console.error('refreshBudgetItems',res.error);
-    budgetItemsByBudget[budgetId]=[];
     return {ok:false,error:res.error.message};
   }
   budgetItemsByBudget[budgetId]=(res.data||[]).map(mapBudgetItemRow);
+  return {ok:true};
+}
+async function refreshAllBudgetItemsCache(){
+  if(!budgetsCache.length){
+    budgetItemsByBudget={};
+    return {ok:true};
+  }
+  var ids=budgetsCache.map(function(b){return b.id;});
+  var res=await supabase.from('budget_items').select('*').in('budget_id',ids).order('sort_order',{ascending:true}).order('created_at',{ascending:true});
+  if(res.error){
+    console.warn('refreshAllBudgetItemsCache retry without order',res.error);
+    res=await supabase.from('budget_items').select('*').in('budget_id',ids);
+  }
+  if(res.error){
+    console.error('refreshAllBudgetItemsCache',res.error);
+    return {ok:false,error:res.error.message};
+  }
+  var grouped={};
+  ids.forEach(function(id){grouped[id]=[];});
+  (res.data||[]).forEach(function(r){
+    var row=mapBudgetItemRow(r);
+    if(!grouped[row.budgetId])grouped[row.budgetId]=[];
+    grouped[row.budgetId].push(row);
+  });
+  budgetItemsByBudget=grouped;
   return {ok:true};
 }
 function getBudgetItems(budgetId){
@@ -3063,10 +3141,18 @@ function startNewBudgetDraft(){
 }
 async function openBudgetEdit(id){
   if(!requireAdmin())return;
+  var budgetsLoaded=await refreshAllStandaloneBudgets();
+  if(!budgetsLoaded.ok){showToast('שגיאה בטעינת התקציב','error');return;}
   var b=budgetsCache.find(function(x){return x.id===id;});
-  if(!b)return;
+  if(!b){showToast('תקציב לא נמצא','error');return;}
   var loaded=await refreshBudgetItems(id);
-  if(!loaded.ok){showToast('שגיאה בטעינת פריטי התקציב','error');return;}
+  if(!loaded.ok){
+    var cached=getBudgetItems(id);
+    if(!cached.length){
+      showToast('שגיאה בטעינת פריטים: '+formatSupabaseErrorHint(loaded.error),'error');
+      return;
+    }
+  }
   editingBudgetId=id;
   budgetBuilderMode='edit';
   budgetBuilderDraft={
@@ -3305,7 +3391,10 @@ async function initBudgetBuilderView(){
   }
   var loaded=await refreshAllStandaloneBudgets();
   if(loaded.ok){
-    await Promise.all(budgetsCache.map(function(b){return refreshBudgetItems(b.id);}));
+    var itemsLoaded=await refreshAllBudgetItemsCache();
+    if(!itemsLoaded.ok){
+      loaded={ok:false,error:itemsLoaded.error};
+    }
   }
   root.innerHTML=renderBudgetBuilderListHtml(budgetsCache,loaded.ok);
   refreshIcons(root);
@@ -3330,8 +3419,7 @@ async function saveBudgetBuilder(){
     title:clientName,
     budget_date:budgetBuilderDraft.budgetDate||todayDateInputValue(),
     notes:budgetBuilderDraft.notes||null,
-    margin_percent:Number(budgetBuilderDraft.marginPercent)||0,
-    category_contacts:{}
+    margin_percent:Number(budgetBuilderDraft.marginPercent)||0
   };
   var budgetId=editingBudgetId;
   var wasEdit=!!budgetId;
@@ -3344,25 +3432,33 @@ async function saveBudgetBuilder(){
     budgetId=ins.data.id;
     editingBudgetId=budgetId;
   }
-  await supabase.from('budget_items').delete().eq('budget_id',budgetId);
   var items=(budgetBuilderDraft.items||[]).filter(function(it){
     return (it.description||'').trim()||calcBudgetLineTotal(it.quantity,it.unitPrice)>0;
   });
+  if(wasEdit){
+    var delRes=await supabase.from('budget_items').delete().eq('budget_id',budgetId);
+    if(delRes.error){showToast('שגיאה בעדכון פריטים: '+formatSupabaseErrorHint(delRes.error.message),'error');return;}
+  }
   if(items.length){
-    var rows=items.map(function(it,idx){
-      return {
-        budget_id:budgetId,
-        category:it.category||'אחר',
-        description:(it.description||'').trim()||'—',
-        quantity:Number(it.quantity)||0,
-        unit:normalizeBudgetUnit(it.unit),
-        unit_price:Number(it.unitPrice)||0,
-        subcontractor_id:it.contactId||null,
-        sort_order:idx
-      };
+    var rows=items.map(function(it,idx){return buildBudgetItemDbRow(it,budgetId,idx);});
+    var itemRes=await insertBudgetItemsRows(rows);
+    if(itemRes.error){
+      showToast('שגיאה בשמירת פריטים: '+formatSupabaseErrorHint(itemRes.error.message),'error');
+      await refreshBudgetItems(budgetId);
+      return;
+    }
+  }
+  syncBudgetItemsCacheFromDraft(budgetId);
+  var idx=budgetsCache.findIndex(function(x){return x.id===budgetId;});
+  if(idx>=0){
+    budgetsCache[idx]=Object.assign({},budgetsCache[idx],{
+      clientName:clientName,
+      projectAddress:projectAddress,
+      title:clientName,
+      budgetDate:budgetRow.budget_date,
+      notes:budgetRow.notes||'',
+      marginPercent:budgetRow.margin_percent
     });
-    var itemRes=await supabase.from('budget_items').insert(rows);
-    if(itemRes.error){showToast('שגיאה בשמירת פריטים: '+formatSupabaseErrorHint(itemRes.error.message),'error');return;}
   }
   logActivity(wasEdit?'עריכת תקציב':'יצירת תקציב',clientName+' · '+projectAddress);
   await persistActivityLogOnly();
@@ -3379,6 +3475,8 @@ async function deleteBudget(id){
   if(!confirm('למחוק את התקציב של "'+(b.clientName||b.title)+'"?'))return;
   var res=await supabase.from('budgets').delete().eq('id',id);
   if(res.error){showToast('שגיאה במחיקה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
+  delete budgetItemsByBudget[id];
+  budgetsCache=budgetsCache.filter(function(x){return x.id!==id;});
   logActivity('מחיקת תקציב',(b.clientName||b.title)+' · '+(b.projectAddress||''));
   await persistActivityLogOnly();
   showToast('התקציב נמחק');
@@ -3432,7 +3530,7 @@ async function openBudgetClientView(budgetId){
   if(!budget){showToast('תקציב לא נמצא','error');return;}
   if(!getBudgetItems(budgetId).length){
     var loaded=await refreshBudgetItems(budgetId);
-    if(!loaded.ok){showToast('שגיאה בטעינת פריטים','error');return;}
+    if(!loaded.ok){showToast('שגיאה בטעינת פריטים: '+formatSupabaseErrorHint(loaded.error),'error');return;}
   }
   var items=getBudgetItems(budgetId);
   var body=document.getElementById('budget-client-body');
