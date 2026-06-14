@@ -320,8 +320,11 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .budget-builder-card-meta{font-size:13px;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:4px}
 .budget-builder-editor .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
 .budget-category-section{margin-bottom:20px;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card)}
-.budget-category-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:var(--bg);border-bottom:1px solid var(--border)}
+.budget-category-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:var(--bg);border-bottom:1px solid var(--border);flex-wrap:wrap}
 .budget-category-title{font-size:15px;font-weight:700;color:var(--primary)}
+.budget-category-contact{display:flex;align-items:center;gap:8px;flex:1 1 240px;min-width:200px;max-width:360px}
+.budget-category-contact label{font-size:12px;font-weight:600;color:var(--text-muted);white-space:nowrap}
+.budget-category-contact select{flex:1;min-width:0;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-family:'Heebo',sans-serif;font-size:13px;background:#fff;direction:rtl}
 .budget-category-subtotal{font-size:14px;font-weight:700;color:var(--accent);white-space:nowrap}
 .budget-items-table{width:100%;border-collapse:collapse}
 .budget-items-table th{text-align:right;padding:10px 12px;font-size:12px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);background:#fff}
@@ -336,7 +339,8 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .budget-summary-row.total{font-size:18px;font-weight:800;color:var(--primary);padding-top:12px;margin-top:4px}
 .budget-summary-row.admin-only{margin-top:4px;font-size:13px;color:var(--text-muted)}
 .budget-add-category-wrap{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center}
-.budget-add-category-wrap input{flex:1;min-width:160px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px}
+.budget-add-category-wrap input{flex:1;min-width:160px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px;display:none}
+.budget-add-category-wrap.open input{display:block}
 .budget-client-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1200;display:none;overflow-y:auto;padding:24px 16px;-webkit-overflow-scrolling:touch}
 .budget-client-overlay.open{display:block}
 .budget-client-sheet{max-width:920px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.2);overflow:hidden}
@@ -2864,8 +2868,40 @@ function mapBudgetRow(r){
     budgetDate:r.budget_date,
     notes:r.notes||'',
     marginPercent:Number(r.margin_percent)||0,
+    categoryContacts:normalizeCategoryContacts(r.category_contacts),
     createdAt:r.created_at
   };
+}
+function normalizeCategoryContacts(raw){
+  if(!raw||typeof raw!=='object')return {};
+  var out={};
+  Object.keys(raw).forEach(function(k){
+    if(raw[k])out[k]=String(raw[k]);
+  });
+  return out;
+}
+function deriveBudgetExtraCategories(categoryContacts,items){
+  var seen={},extra=[];
+  BUDGET_BUILDER_CATEGORIES.forEach(function(c){seen[c]=1;});
+  function add(c){
+    c=(c||'').trim();
+    if(c&&!seen[c]){seen[c]=1;extra.push(c);}
+  }
+  (items||[]).forEach(function(it){add(it.category);});
+  Object.keys(categoryContacts||{}).forEach(add);
+  return extra;
+}
+function renderBudgetSubcontractorOptions(selectedId){
+  var html='<option value="">— ללא —</option>';
+  subcontractorsCache.forEach(function(s){
+    var label=s.companyName+(s.contactName?' · '+s.contactName:'');
+    html+='<option value="'+s.id+'"'+(selectedId===s.id?' selected':'')+'>'+escHtml(label)+'</option>';
+  });
+  return html;
+}
+function budgetCategoryContactLabel(sub){
+  if(!sub)return '';
+  return sub.companyName+(sub.contactName?' ('+sub.contactName+')':'');
 }
 function mapBudgetItemRow(r){
   return {
@@ -2893,7 +2929,20 @@ function calcBudgetTotals(items,marginPercent){
   return {subtotal:subtotal,marginAmt:marginAmt,beforeVat:beforeVat,vat:vat,total:total};
 }
 function getBudgetDraftCategories(){
-  return BUDGET_BUILDER_CATEGORIES.slice();
+  var seen={},order=[];
+  BUDGET_BUILDER_CATEGORIES.forEach(function(c){seen[c]=1;order.push(c);});
+  if(!budgetBuilderDraft)return order;
+  (budgetBuilderDraft.extraCategories||[]).forEach(function(c){
+    if(c&&!seen[c]){seen[c]=1;order.push(c);}
+  });
+  (budgetBuilderDraft.items||[]).forEach(function(it){
+    var c=(it.category||'').trim();
+    if(c&&!seen[c]){seen[c]=1;order.push(c);}
+  });
+  Object.keys(budgetBuilderDraft.categoryContacts||{}).forEach(function(c){
+    if(c&&!seen[c]){seen[c]=1;order.push(c);}
+  });
+  return order;
 }
 function createEmptyBudgetDraft(){
   return {
@@ -2902,7 +2951,9 @@ function createEmptyBudgetDraft(){
     budgetDate:todayDateInputValue(),
     notes:'',
     marginPercent:0,
-    items:[]
+    items:[],
+    extraCategories:[],
+    categoryContacts:{}
   };
 }
 function newBudgetItemId(){return 'bi'+Date.now()+Math.random().toString(36).slice(2,7);}
@@ -2959,10 +3010,12 @@ async function openBudgetEdit(id){
     budgetDate:String(b.budgetDate||'').slice(0,10)||todayDateInputValue(),
     notes:b.notes||'',
     marginPercent:b.marginPercent||0,
+    categoryContacts:normalizeCategoryContacts(b.categoryContacts),
     items:getBudgetItems(id).map(function(it){
       return {id:it.id,category:it.category,description:it.description,quantity:it.quantity,unitPrice:it.unitPrice};
     })
   };
+  budgetBuilderDraft.extraCategories=deriveBudgetExtraCategories(budgetBuilderDraft.categoryContacts,budgetBuilderDraft.items);
   initBudgetBuilderView();
 }
 function renderBudgetBuilderEditorInPlace(){
@@ -2983,6 +3036,37 @@ function removeBudgetItem(itemId){
   budgetBuilderDraft.items=budgetBuilderDraft.items.filter(function(it){return it.id!==itemId;});
   if(budgetBuilderMode==='edit')renderBudgetBuilderEditorInPlace();
   else initBudgetBuilderView();
+}
+function onBudgetAddCategoryClick(){
+  var wrap=document.getElementById('budget-add-category-wrap');
+  var input=document.getElementById('budget-new-category');
+  if(!wrap||!input)return;
+  if(!wrap.classList.contains('open')){
+    wrap.classList.add('open');
+    input.focus();
+    return;
+  }
+  addBudgetCustomCategory();
+}
+function addBudgetCustomCategory(){
+  var input=document.getElementById('budget-new-category');
+  var name=input?input.value.trim():'';
+  if(!name){showToast('שגיאה: הזן שם קטגוריה','error');return;}
+  if(!budgetBuilderDraft)budgetBuilderDraft=createEmptyBudgetDraft();
+  if(BUDGET_BUILDER_CATEGORIES.indexOf(name)===-1&&budgetBuilderDraft.extraCategories.indexOf(name)===-1){
+    budgetBuilderDraft.extraCategories.push(name);
+  }
+  if(input)input.value='';
+  var wrap=document.getElementById('budget-add-category-wrap');
+  if(wrap)wrap.classList.remove('open');
+  renderBudgetBuilderEditorInPlace();
+}
+function onBudgetCategoryContactChange(categoryEnc,value){
+  var cat=decodeURIComponent(categoryEnc);
+  if(!budgetBuilderDraft)return;
+  if(!budgetBuilderDraft.categoryContacts)budgetBuilderDraft.categoryContacts={};
+  if(value)budgetBuilderDraft.categoryContacts[cat]=value;
+  else delete budgetBuilderDraft.categoryContacts[cat];
 }
 function onBudgetDraftFieldChange(field,value){
   if(!budgetBuilderDraft)return;
@@ -3030,12 +3114,16 @@ function renderBudgetBuilderEditorHtml(){
   var d=budgetBuilderDraft||createEmptyBudgetDraft();
   var cats=getBudgetDraftCategories();
   var totals=calcBudgetTotals(d.items,d.marginPercent);
-  var catSections=cats.map(function(cat){
+  var catSections=cats.map(function(cat,catIdx){
     var rows=(d.items||[]).filter(function(it){return it.category===cat;});
     var catSum=rows.reduce(function(s,it){return s+calcBudgetLineTotal(it.quantity,it.unitPrice);},0);
+    var contactId=(d.categoryContacts&&d.categoryContacts[cat])||'';
     return '<div class="budget-category-section">'+
       '<div class="budget-category-head">'+
       '<span class="budget-category-title">'+escHtml(cat)+'</span>'+
+      '<div class="budget-category-contact"><label for="budget-cat-contact-'+catIdx+'">איש קשר</label>'+
+      '<select id="budget-cat-contact-'+catIdx+'" onchange="onBudgetCategoryContactChange(\''+encodeURIComponent(cat)+'\',this.value)">'+
+      renderBudgetSubcontractorOptions(contactId)+'</select></div>'+
       '<span class="budget-category-subtotal" data-budget-cat-subtotal="'+escHtml(cat)+'">'+fmtMoney(catSum)+'</span></div>'+
       (rows.length?'<div class="budget-items-scroll"><table class="budget-items-table"><thead><tr>'+
       '<th>תיאור</th><th>כמות</th><th>מחיר יח\'</th><th>סה"כ</th><th></th></tr></thead><tbody>'+
@@ -3054,6 +3142,9 @@ function renderBudgetBuilderEditorHtml(){
     '<div class="form-group"><label for="budget-project-address">כתובת פרויקט</label><input type="text" id="budget-project-address" value="'+escHtml(d.projectAddress)+'" placeholder="כתובת הפרויקט" oninput="onBudgetDraftFieldChange(\'projectAddress\',this.value)"/></div></div>'+
     '<div class="form-group" style="max-width:280px"><label for="budget-date">תאריך</label><input type="date" id="budget-date" value="'+escHtml(d.budgetDate)+'" onchange="onBudgetDraftFieldChange(\'budgetDate\',this.value)"/></div>'+
     catSections+
+    '<div class="budget-add-category-wrap" id="budget-add-category-wrap">'+
+    '<input type="text" id="budget-new-category" placeholder="שם קטגוריה חדשה..." onkeydown="if(event.key===\'Enter\')addBudgetCustomCategory()"/>'+
+    '<button type="button" class="btn btn-outline btn-sm" onclick="onBudgetAddCategoryClick()">'+ic('plus')+' הוסף קטגוריה</button></div>'+
     '<div class="form-group" style="margin-top:20px"><label for="budget-notes">הערות (אופציונלי)</label>'+
     '<textarea id="budget-notes" placeholder="הערות שיופיעו בהצעה..." oninput="onBudgetDraftFieldChange(\'notes\',this.value)">'+escHtml(d.notes)+'</textarea></div>'+
     '<div class="budget-summary-box">'+
@@ -3094,6 +3185,7 @@ async function initBudgetBuilderView(){
   var root=getBudgetBuilderRoot();
   if(!root)return;
   if(!requireAdmin()){root.innerHTML='<p>אין גישה</p>';return;}
+  await refreshSubcontractors();
   root.innerHTML='<div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען תקציבים...</p></div>';
   refreshIcons(root);
   if(budgetBuilderMode==='edit'&&budgetBuilderDraft){
@@ -3128,7 +3220,8 @@ async function saveBudgetBuilder(){
     title:clientName,
     budget_date:budgetBuilderDraft.budgetDate||todayDateInputValue(),
     notes:budgetBuilderDraft.notes||null,
-    margin_percent:Number(budgetBuilderDraft.marginPercent)||0
+    margin_percent:Number(budgetBuilderDraft.marginPercent)||0,
+    category_contacts:budgetBuilderDraft.categoryContacts||{}
   };
   var budgetId=editingBudgetId;
   var wasEdit=!!budgetId;
@@ -3191,7 +3284,10 @@ function renderBudgetClientBodyHtml(budget,items){
     var catItems=items.filter(function(it){return it.category===cat;});
     if(!catItems.length)return;
     var catSum=catItems.reduce(function(s,it){return s+calcBudgetLineTotal(it.quantity,it.unitPrice);},0);
-    tableRows+='<tr class="cat-row"><td colspan="3">'+escHtml(cat)+'</td><td class="num">'+fmtMoney(catSum)+'</td></tr>';
+    var subId=budget.categoryContacts&&budget.categoryContacts[cat];
+    var sub=subId?getSubcontractorById(subId):null;
+    var catHead=escHtml(cat)+(sub?' · '+escHtml(budgetCategoryContactLabel(sub)):'');
+    tableRows+='<tr class="cat-row"><td colspan="3">'+catHead+'</td><td class="num">'+fmtMoney(catSum)+'</td></tr>';
     catItems.forEach(function(it){
       tableRows+='<tr><td>'+escHtml(it.description)+'</td><td class="num">'+it.quantity+'</td>'+
         '<td class="num">'+fmtMoney(it.unitPrice)+'</td><td class="num">'+fmtMoney(calcBudgetLineTotal(it.quantity,it.unitPrice))+'</td></tr>';
@@ -3218,6 +3314,7 @@ function renderBudgetClientBodyHtml(budget,items){
 }
 async function openBudgetClientView(budgetId){
   if(!requireAdmin())return;
+  await refreshSubcontractors();
   var budget=budgetsCache.find(function(b){return b.id===budgetId;});
   if(!budget){
     await refreshAllStandaloneBudgets();
@@ -3239,13 +3336,15 @@ async function openBudgetClientView(budgetId){
 }
 function previewBudgetDraftClientView(){
   if(!requireAdmin()||!budgetBuilderDraft)return;
+  refreshSubcontractors().then(function(){
   var draftBudget={
     clientName:budgetBuilderDraft.clientName,
     projectAddress:budgetBuilderDraft.projectAddress,
     title:budgetBuilderDraft.clientName||'טיוטת תקציב',
     budgetDate:budgetBuilderDraft.budgetDate,
     notes:budgetBuilderDraft.notes,
-    marginPercent:budgetBuilderDraft.marginPercent
+    marginPercent:budgetBuilderDraft.marginPercent,
+    categoryContacts:budgetBuilderDraft.categoryContacts||{}
   };
   var items=(budgetBuilderDraft.items||[]).map(function(it){
     return {category:it.category,description:it.description,quantity:it.quantity,unitPrice:it.unitPrice};
@@ -3257,6 +3356,7 @@ function previewBudgetDraftClientView(){
   overlay.classList.add('open');
   refreshIcons(overlay);
   document.body.style.overflow='hidden';
+  });
 }
 function closeBudgetClientView(ev){
   if(ev&&ev.target&&ev.target.id!=='budget-client-overlay')return;
@@ -4988,6 +5088,7 @@ Object.assign(window,{
   openDailyLogForm,cancelDailyLogForm,saveDailyLog,onDailyLogFilterChange,
   startNewBudgetDraft,openBudgetEdit,saveBudgetBuilder,deleteBudget,backToBudgetList,
   addBudgetItemToCategory,removeBudgetItem,onBudgetDraftFieldChange,onBudgetItemFieldChange,
+  onBudgetAddCategoryClick,addBudgetCustomCategory,onBudgetCategoryContactChange,
   openBudgetClientView,previewBudgetDraftClientView,closeBudgetClientView,printBudgetClientView
 });
 window.addEventListener('resize',function(){
