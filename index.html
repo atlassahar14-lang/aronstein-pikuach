@@ -3168,6 +3168,59 @@ async function openBudgetEdit(id){
   budgetBuilderDraft.extraCategories=deriveBudgetExtraCategories(budgetBuilderDraft.items);
   initBudgetBuilderView();
 }
+async function duplicateBudget(id){
+  if(!requireAdmin())return;
+  var b=budgetsCache.find(function(x){return x.id===id;});
+  if(!b){
+    var budgetsLoaded=await refreshAllStandaloneBudgets();
+    if(!budgetsLoaded.ok){showToast('שגיאה בטעינת התקציב','error');return;}
+    b=budgetsCache.find(function(x){return x.id===id;});
+  }
+  if(!b){showToast('תקציב לא נמצא','error');return;}
+  var loaded=await refreshBudgetItems(id);
+  if(!loaded.ok){
+    showToast('שגיאה בטעינת פריטים: '+formatSupabaseErrorHint(loaded.error),'error');
+    return;
+  }
+  var sourceItems=getBudgetItems(id);
+  var sourceName=(b.clientName||b.title||'תקציב').trim();
+  var clientName='העתק של '+sourceName;
+  var budgetRow={
+    project_id:null,
+    client_name:clientName,
+    project_address:b.projectAddress||'',
+    title:clientName,
+    budget_date:String(b.budgetDate||'').slice(0,10)||todayDateInputValue(),
+    notes:b.notes||null,
+    margin_percent:Number(b.marginPercent)||0
+  };
+  var ins=await supabase.from('budgets').insert(budgetRow).select().single();
+  if(ins.error){showToast('שגיאה בשכפול: '+formatSupabaseErrorHint(ins.error.message),'error');return;}
+  var newId=ins.data.id;
+  if(sourceItems.length){
+    var rows=sourceItems.map(function(it,idx){
+      var draft={
+        category:it.category,
+        description:it.description,
+        quantity:it.quantity,
+        unit:normalizeBudgetUnit(it.unit),
+        unitPrice:it.unitPrice,
+        contactId:it.subcontractorId||''
+      };
+      return buildBudgetItemDbRow(draft,newId,idx);
+    });
+    var itemRes=await insertBudgetItemsRows(rows);
+    if(itemRes.error){
+      await supabase.from('budgets').delete().eq('id',newId);
+      showToast('שגיאה בשכפול פריטים: '+formatSupabaseErrorHint(itemRes.error.message),'error');
+      return;
+    }
+  }
+  logActivity('שכפול תקציב',clientName+' · '+(b.projectAddress||''));
+  await persistActivityLogOnly();
+  showToast('התקציב שוכפל — ניתן לערוך ולשמור');
+  await openBudgetEdit(newId);
+}
 function renderBudgetBuilderEditorInPlace(){
   var root=getBudgetBuilderRoot();
   if(!root||!budgetBuilderDraft)return;
@@ -3372,6 +3425,7 @@ function renderBudgetBuilderListHtml(budgets,loadedOk){
       '<div class="flex-gap">'+
       '<button type="button" class="btn btn-primary btn-sm" onclick="openBudgetClientView(\''+b.id+'\')">'+ic('file-text')+' ייצוא ל-PDF</button>'+
       '<button type="button" class="btn btn-outline btn-sm" onclick="openBudgetEdit(\''+b.id+'\')">'+ic('pencil')+' עריכה</button>'+
+      '<button type="button" class="btn btn-outline btn-sm" onclick="duplicateBudget(\''+b.id+'\')">'+ic('copy')+' שכפל תקציב</button>'+
       '<button type="button" class="btn btn-danger btn-sm" onclick="deleteBudget(\''+b.id+'\')">'+ic('trash-2')+'</button></div></div>';
   });
   html+='</div>';
@@ -5305,7 +5359,7 @@ Object.assign(window,{
   openPhotoLightbox,closePhotoLightbox,
   handleBlueprintUpload,openNewPunchModal,openPunchItemView,onBlueprintImageClick,savePunchItem,markPunchFixed,onPunchFilterChange,
   openDailyLogForm,cancelDailyLogForm,saveDailyLog,onDailyLogFilterChange,
-  startNewBudgetDraft,openBudgetEdit,saveBudgetBuilder,deleteBudget,backToBudgetList,
+  startNewBudgetDraft,openBudgetEdit,duplicateBudget,saveBudgetBuilder,deleteBudget,backToBudgetList,
   addBudgetItemToCategory,removeBudgetItem,onBudgetDraftFieldChange,onBudgetItemFieldChange,
   onBudgetAddCategoryClick,addBudgetCustomCategory,onBudgetItemContactChange,
   openBudgetQuickSubcontractorModal,closeBudgetQuickSubcontractorModal,saveBudgetQuickSubcontractor,
