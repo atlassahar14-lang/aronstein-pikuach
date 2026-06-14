@@ -872,6 +872,20 @@ img,svg,video,canvas{max-width:100%;height:auto}
   </div>
 </div>
 
+<!-- Modal: Quick subcontractor from Budget Builder -->
+<div class="modal-overlay" id="modal-budget-subcontractor">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><div class="modal-title">הוסף איש קשר חדש</div><button class="modal-close" onclick="closeBudgetQuickSubcontractorModal()"><i data-lucide="x"></i></button></div>
+    <div class="form-group"><label for="budget-sub-company">שם חברה *</label><input type="text" id="budget-sub-company" placeholder="שם החברה"/></div>
+    <div class="form-group"><label for="budget-sub-contact">שם איש קשר</label><input type="text" id="budget-sub-contact" placeholder="שם איש קשר"/></div>
+    <div class="form-group"><label for="budget-sub-phone">טלפון</label><input type="tel" id="budget-sub-phone" placeholder="050-0000000" dir="ltr" style="text-align:left"/></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeBudgetQuickSubcontractorModal()">ביטול</button>
+      <button class="btn btn-primary" style="width:auto" onclick="saveBudgetQuickSubcontractor()">שמור</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Phase -->
 <div class="modal-overlay" id="modal-phase">
   <div class="modal">
@@ -1711,7 +1725,7 @@ function bindModalValidationClear(modalId){
   modal.addEventListener('input',clearGroup);
   modal.addEventListener('change',clearGroup);
 }
-['modal-project','modal-user','modal-payment','modal-phase','modal-subcontractor','modal-update','modal-gallery-post','modal-punch-item'].forEach(bindModalValidationClear);
+['modal-project','modal-user','modal-payment','modal-phase','modal-subcontractor','modal-budget-subcontractor','modal-update','modal-gallery-post','modal-punch-item'].forEach(bindModalValidationClear);
 
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
 var editingGalleryPostId=null;
@@ -1722,7 +1736,7 @@ var subcontractorSpecialtyFilter='',showDailyLogForm=false;
 var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='';
 var toastTimer=null;
 var budgetsCache=[],budgetItemsByBudget={},budgetBuilderMode='list',editingBudgetId=null;
-var budgetBuilderDraft=null;
+var budgetBuilderDraft=null,budgetPendingContactCategory=null;
 const BUDGET_BUILDER_CATEGORIES=['חפירות','שלד','חשמל','אינסטלציה','טיח','ריצוף','גמר','אחר'];
 const VAT_RATE=0.17;
 function resetListFilters(){
@@ -1743,6 +1757,7 @@ function resetAppSessionState(){
   budgetBuilderMode='list';
   editingBudgetId=null;
   budgetBuilderDraft=null;
+  budgetPendingContactCategory=null;
   resetListFilters();
   document.querySelectorAll('.modal-overlay.open,.budget-client-overlay.open').forEach(function(o){o.classList.remove('open');});
   modalOpenCount=0;
@@ -2897,6 +2912,7 @@ function renderBudgetSubcontractorOptions(selectedId){
     var label=s.companyName+(s.contactName?' · '+s.contactName:'');
     html+='<option value="'+s.id+'"'+(selectedId===s.id?' selected':'')+'>'+escHtml(label)+'</option>';
   });
+  html+='<option value="__new__"'+(selectedId==='__new__'?' selected':'')+'>+ הוסף איש קשר חדש...</option>';
   return html;
 }
 function budgetCategoryContactLabel(sub){
@@ -3061,12 +3077,60 @@ function addBudgetCustomCategory(){
   if(wrap)wrap.classList.remove('open');
   renderBudgetBuilderEditorInPlace();
 }
-function onBudgetCategoryContactChange(categoryEnc,value){
+function onBudgetCategoryContactChange(categoryEnc,selectEl){
   var cat=decodeURIComponent(categoryEnc);
-  if(!budgetBuilderDraft)return;
+  if(!budgetBuilderDraft||!selectEl)return;
+  var value=selectEl.value;
+  if(value==='__new__'){
+    budgetPendingContactCategory=cat;
+    selectEl.value=(budgetBuilderDraft.categoryContacts&&budgetBuilderDraft.categoryContacts[cat])||'';
+    openBudgetQuickSubcontractorModal();
+    return;
+  }
   if(!budgetBuilderDraft.categoryContacts)budgetBuilderDraft.categoryContacts={};
   if(value)budgetBuilderDraft.categoryContacts[cat]=value;
   else delete budgetBuilderDraft.categoryContacts[cat];
+}
+function openBudgetQuickSubcontractorModal(){
+  if(!requireAdmin())return;
+  clearFormErrors('modal-budget-subcontractor');
+  document.getElementById('budget-sub-company').value='';
+  document.getElementById('budget-sub-contact').value='';
+  document.getElementById('budget-sub-phone').value='';
+  openModal('modal-budget-subcontractor');
+  setTimeout(function(){document.getElementById('budget-sub-company').focus();},50);
+}
+function closeBudgetQuickSubcontractorModal(){
+  budgetPendingContactCategory=null;
+  closeModal('modal-budget-subcontractor');
+}
+async function saveBudgetQuickSubcontractor(){
+  if(!requireAdmin())return;
+  clearFormErrors('modal-budget-subcontractor');
+  if(!validateRequired('budget-sub-company')){focusFirstFormError('modal-budget-subcontractor');return;}
+  var row={
+    company_name:document.getElementById('budget-sub-company').value.trim(),
+    contact_name:document.getElementById('budget-sub-contact').value.trim()||null,
+    phone:document.getElementById('budget-sub-phone').value.trim()||null,
+    email:null,
+    specialty:null,
+    insurance_expiry:null,
+    safety_cert_expiry:null
+  };
+  var res=await supabase.from('subcontractors').insert(row).select().single();
+  if(res.error){showToast('שגיאה בשמירת איש הקשר: '+formatSupabaseErrorHint(res.error.message),'error');return;}
+  logActivity('הוספת קבלן משנה','מבניית תקציב · '+row.company_name);
+  await refreshSubcontractors();
+  await persistActivityLogOnly();
+  var cat=budgetPendingContactCategory;
+  if(cat&&budgetBuilderDraft){
+    if(!budgetBuilderDraft.categoryContacts)budgetBuilderDraft.categoryContacts={};
+    budgetBuilderDraft.categoryContacts[cat]=res.data.id;
+  }
+  budgetPendingContactCategory=null;
+  closeModal('modal-budget-subcontractor');
+  showToast('איש הקשר נוסף ונבחר בהצלחה');
+  if(budgetBuilderMode==='edit')renderBudgetBuilderEditorInPlace();
 }
 function onBudgetDraftFieldChange(field,value){
   if(!budgetBuilderDraft)return;
@@ -3122,7 +3186,7 @@ function renderBudgetBuilderEditorHtml(){
       '<div class="budget-category-head">'+
       '<span class="budget-category-title">'+escHtml(cat)+'</span>'+
       '<div class="budget-category-contact"><label for="budget-cat-contact-'+catIdx+'">איש קשר</label>'+
-      '<select id="budget-cat-contact-'+catIdx+'" onchange="onBudgetCategoryContactChange(\''+encodeURIComponent(cat)+'\',this.value)">'+
+      '<select id="budget-cat-contact-'+catIdx+'" onchange="onBudgetCategoryContactChange(\''+encodeURIComponent(cat)+'\',this)">'+
       renderBudgetSubcontractorOptions(contactId)+'</select></div>'+
       '<span class="budget-category-subtotal" data-budget-cat-subtotal="'+escHtml(cat)+'">'+fmtMoney(catSum)+'</span></div>'+
       (rows.length?'<div class="budget-items-scroll"><table class="budget-items-table"><thead><tr>'+
@@ -3654,6 +3718,7 @@ function showView(view,pid){
     budgetBuilderMode='list';
     budgetBuilderDraft=null;
     editingBudgetId=null;
+    budgetPendingContactCategory=null;
   }
   currentView=view;
   if(pid)currentProjectId=pid;
@@ -5089,6 +5154,7 @@ Object.assign(window,{
   startNewBudgetDraft,openBudgetEdit,saveBudgetBuilder,deleteBudget,backToBudgetList,
   addBudgetItemToCategory,removeBudgetItem,onBudgetDraftFieldChange,onBudgetItemFieldChange,
   onBudgetAddCategoryClick,addBudgetCustomCategory,onBudgetCategoryContactChange,
+  openBudgetQuickSubcontractorModal,closeBudgetQuickSubcontractorModal,saveBudgetQuickSubcontractor,
   openBudgetClientView,previewBudgetDraftClientView,closeBudgetClientView,printBudgetClientView
 });
 window.addEventListener('resize',function(){
