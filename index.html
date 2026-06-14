@@ -110,7 +110,27 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .user-role{font-size:11px;opacity:.6}
 .btn-logout{width:100%;padding:8px;background:rgba(255,255,255,.1);border:none;border-radius:8px;color:#fff;font-family:'Heebo',sans-serif;font-size:13px;cursor:pointer;transition:background .2s}
 .btn-logout:hover{background:rgba(255,255,255,.2)}
-.main-content{flex:1;min-width:0;box-sizing:border-box;margin-right:var(--sidebar);margin-left:0;width:calc(100% - var(--sidebar));padding:32px;min-height:100vh}
+.main-content{flex:1;min-width:0;box-sizing:border-box;padding:32px;min-height:100vh}
+.main-shell{flex:1;min-width:0;margin-right:var(--sidebar);margin-left:0;width:calc(100% - var(--sidebar));display:flex;flex-direction:column;min-height:100vh}
+.app-topbar{position:sticky;top:0;z-index:200;background:var(--card);border-bottom:1px solid var(--border);padding:14px 32px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.global-search{position:relative;max-width:520px;width:100%}
+.global-search-field{display:flex;align-items:center;gap:10px;background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:0 14px;transition:border-color .2s,box-shadow .2s}
+.global-search-field:focus-within{border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(42,64,120,.12)}
+.global-search-icon{display:inline-flex;color:var(--text-muted);flex-shrink:0}
+.global-search-icon svg{width:18px;height:18px}
+.global-search-field input{flex:1;min-width:0;border:none;background:transparent;padding:11px 0;font-family:'Heebo',sans-serif;font-size:14px;color:var(--text);direction:rtl}
+.global-search-field input:focus{outline:none}
+.global-search-field input::placeholder{color:var(--text-muted)}
+.global-search-results{position:absolute;top:calc(100% + 8px);right:0;left:0;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.12);max-height:min(360px,50vh);overflow-y:auto;-webkit-overflow-scrolling:touch;z-index:220}
+.global-search-results:not(.open){display:none}
+.global-search-empty{padding:18px 16px;font-size:13px;color:var(--text-muted);text-align:center}
+.global-search-item{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:12px 16px;border:none;background:none;font-family:'Heebo',sans-serif;text-align:right;cursor:pointer;transition:background .15s;touch-action:manipulation}
+.global-search-item:hover,.global-search-item:focus,.global-search-item.active{background:var(--bg);outline:none}
+.global-search-item-name{font-size:14px;font-weight:600;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.global-search-type{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.global-search-type.project{background:#dbeafe;color:#1e40af}
+.global-search-type.client{background:#dcfce7;color:#166534}
+.global-search-type.subcontractor{background:#fef9c3;color:#854d0e}
 .page-header{margin-bottom:28px}
 .page-header h1{font-size:26px;font-weight:800;color:var(--primary)}
 .page-header p{font-size:14px;color:var(--text-muted);margin-top:4px}
@@ -531,6 +551,12 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .desktop-only-tabs{display:none!important}
   .mobile-tab-bar{display:block}
   .main-content{margin-right:0!important;margin-left:0!important;width:100%!important;padding:calc(68px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+  .main-shell{margin-right:0!important;margin-left:0!important;width:100%!important}
+  .app-topbar{position:fixed;top:calc(56px + env(safe-area-inset-top,0px));left:0;right:0;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));z-index:245}
+  .global-search{max-width:none}
+  .global-search-field input{font-size:16px;padding:12px 0}
+  #app.has-topbar-mobile .main-shell.has-topbar .main-content{padding-top:calc(120px + env(safe-area-inset-top,0px))}
+  #app.has-topbar-mobile .mobile-tab-drawer{top:calc(104px + env(safe-area-inset-top,0px))}
   .page-header h1{font-size:22px}
   .project-detail-title{font-size:22px}
   .flex-between.responsive-stack{flex-direction:column;align-items:stretch!important}
@@ -791,7 +817,18 @@ img,svg,video,canvas{max-width:100%;height:auto}
         <button type="button" class="btn-logout" id="logout-btn"><i data-lucide="log-out"></i> יציאה</button>
       </div>
     </aside>
-    <main class="main-content" id="main-content"></main>
+    <div class="main-shell">
+      <header class="app-topbar admin-only-action" id="app-topbar">
+        <div class="global-search" id="global-search">
+          <div class="global-search-field">
+            <span class="global-search-icon" aria-hidden="true"><i data-lucide="search"></i></span>
+            <input type="search" id="global-search-input" placeholder="חיפוש פרויקט, לקוח, קבלן..." autocomplete="off" aria-label="חיפוש גלובלי" aria-expanded="false" aria-controls="global-search-results" onfocus="openGlobalSearch()" oninput="onGlobalSearchInput()" onkeydown="onGlobalSearchKeydown(event)"/>
+          </div>
+          <div class="global-search-results" id="global-search-results" role="listbox" aria-label="תוצאות חיפוש"></div>
+        </div>
+      </header>
+      <main class="main-content" id="main-content"></main>
+    </div>
   </div>
 </div>
 
@@ -850,7 +887,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="form-group"><label>סכום (₪)</label><input type="number" id="pay-amount" placeholder="0"/></div>
     <div class="form-group"><label>תאריך</label><input type="date" id="pay-date"/></div>
     <div class="form-group"><label>נמען</label><input type="text" id="pay-to" placeholder="שם הקבלן / ספק"/></div>
-    <div class="form-group"><label>קטגוריה</label><select id="pay-category"><option>שלד</option><option>חפירות</option><option>טיח</option><option>חשמל</option><option>אינסטלציה</option><option>ריצוף</option><option>גמר</option><option>אחר</option></select></div>
+    <div class="form-group"><label>קטגוריה</label><select id="pay-category"><option>שלד</option><option>חפירות</option><option>טיח</option><option>חשמל</option><option>אינסטלציה</option><option>ריצוף</option><option>גמר</option><option>צנרת ואינסטלציה</option><option>בידוד</option><option>פיקוח הנדסי</option><option>חוץ וגינון</option><option>אחר</option></select></div>
     <div class="form-group"><label>קבלה/חשבונית</label><label class="upload-label"><i data-lucide="paperclip"></i> בחר קובץ<input type="file" id="pay-receipt" accept="image/*,application/pdf" capture="environment"/></label><div id="pay-receipt-preview" class="file-preview"></div><div id="pay-receipt-existing" class="file-preview-existing"></div><div id="pay-receipt-upload-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span id="pay-receipt-upload-text">מעלה קבלה...</span></div><div id="pay-receipt-upload-error" class="upload-error"></div></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-payment')">ביטול</button>
@@ -1782,7 +1819,7 @@ var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[
 var appDataCache={projects:[],activityLog:[]},appUsers=[],subcontractorsCache=[],punchItemsCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false;
 var viewingPunchItemId=null,punchPinDraft={x:null,y:null},punchBlueprintSignedUrl=null;
 var subcontractorSpecialtyFilter='',showDailyLogForm=false;
-var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='';
+var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='',activityLogTypeFilter='';
 var toastTimer=null;
 var budgetsCache=[],budgetItemsByBudget={},budgetBuilderMode='list',editingBudgetId=null;
 var budgetBuilderDraft=null,budgetPendingContactItemId=null;
@@ -2237,6 +2274,19 @@ function normalizeActivityLog(raw){
   if(Array.isArray(raw))return raw;
   if(raw&&typeof raw==='object')return Object.values(raw);
   return [];
+}
+function getActivityLogActionType(action){
+  var a=String(action||'').trim();
+  if(!a)return '';
+  if(a.indexOf('שכפול')>=0)return 'duplicate';
+  if(a.indexOf('מחיק')>=0||a==='איפוס מלא')return 'delete';
+  if(/^(יצירת|הוספת|העלאת|פרסום)/.test(a)||/ חדש$|^ליקוי חדש$|^יומן עבודה חדש$|^פוסט גלריה חדש$/.test(a))return 'create';
+  if(/^(עריכת|שינוי|עדכון)/.test(a)||a.indexOf('סומן כתוקן')>=0)return 'edit';
+  return '';
+}
+function filterActivityLogEntries(logs){
+  if(!activityLogTypeFilter)return logs||[];
+  return (logs||[]).filter(function(l){return getActivityLogActionType(l.action)===activityLogTypeFilter;});
 }
 function sanitizeJsonForDb(value){
   try{return JSON.parse(JSON.stringify(value==null?null:value));}
@@ -3763,6 +3813,7 @@ async function startApp(user){
 
 function showLoginScreen(){
   resetAppSessionState();
+  closeGlobalSearch();
   currentUser=null;
   updateWhatsAppFab(false);
   document.getElementById('login-screen').style.display='flex';
@@ -3893,8 +3944,14 @@ function renderSidebar(){
   document.getElementById('user-role-sb').textContent=currentUser.role==='admin'?'מנהל מערכת':'לקוח';
   var appLayout=document.querySelector('.app-layout');
   if(appLayout)appLayout.classList.toggle('client-mode',!isAdmin());
+  var shell=document.querySelector('.main-shell');
+  if(shell)shell.classList.toggle('has-topbar',isAdmin());
+  var appEl=document.getElementById('app');
+  if(appEl)appEl.classList.toggle('has-topbar-mobile',isAdmin());
   var mobileLogout=document.getElementById('mobile-logout-btn');
   if(mobileLogout)refreshIcons(mobileLogout);
+  var topbar=document.getElementById('app-topbar');
+  if(topbar)refreshIcons(topbar);
   var nav=document.getElementById('sidebar-nav');
   if(currentUser.role==='admin'){
     nav.innerHTML='<div class="nav-section-title">ניהול</div>'+
@@ -4015,6 +4072,147 @@ function closeMobileTabMenu(){
     toggle.setAttribute('aria-expanded','false');
   }
   syncBodyScrollLock();
+}
+
+var globalSearchActiveIndex=-1;
+var globalSearchLastResults=[];
+var globalSearchBound=false;
+function normalizeGlobalSearchQuery(q){
+  return String(q||'').trim().toLowerCase();
+}
+function globalSearchMatches(query,text){
+  if(!query)return false;
+  return String(text||'').toLowerCase().indexOf(query)>=0;
+}
+function collectGlobalSearchResults(query){
+  var q=normalizeGlobalSearchQuery(query);
+  if(!q||!isAdmin())return [];
+  var out=[],limit=20;
+  (appDataCache.projects||[]).forEach(function(p){
+    if(out.length>=limit)return;
+    if(globalSearchMatches(q,p.name))out.push({type:'project',id:p.id,name:p.name,typeLabel:'פרויקט'});
+  });
+  appUsers.forEach(function(u){
+    if(out.length>=limit)return;
+    if(u.role==='admin')return;
+    if(globalSearchMatches(q,u.name))out.push({type:'client',id:u.id,name:u.name,typeLabel:'לקוח'});
+  });
+  subcontractorsCache.forEach(function(s){
+    if(out.length>=limit)return;
+    if(globalSearchMatches(q,s.companyName))out.push({type:'subcontractor',id:s.id,name:s.companyName,typeLabel:'קבלן'});
+  });
+  return out;
+}
+function renderGlobalSearchResults(results){
+  var box=document.getElementById('global-search-results');
+  var input=document.getElementById('global-search-input');
+  if(!box)return;
+  globalSearchLastResults=results||[];
+  globalSearchActiveIndex=-1;
+  if(!globalSearchLastResults.length){
+    var q=normalizeGlobalSearchQuery(input?input.value:'');
+    box.innerHTML=q?'<div class="global-search-empty">לא נמצאו תוצאות</div>':'';
+    box.classList.toggle('open',!!q);
+    if(input)input.setAttribute('aria-expanded',q?'true':'false');
+    return;
+  }
+  box.innerHTML=globalSearchLastResults.map(function(item,idx){
+    return '<button type="button" class="global-search-item" role="option" data-idx="'+idx+'" onclick="navigateGlobalSearchResult('+idx+')">'+
+      '<span class="global-search-item-name">'+escHtml(item.name)+'</span>'+
+      '<span class="global-search-type '+item.type+'">'+escHtml(item.typeLabel)+'</span></button>';
+  }).join('');
+  box.classList.add('open');
+  if(input)input.setAttribute('aria-expanded','true');
+  refreshIcons(box);
+}
+function openGlobalSearch(){
+  var input=document.getElementById('global-search-input');
+  if(!input)return;
+  var q=normalizeGlobalSearchQuery(input.value);
+  if(!q){
+    var box=document.getElementById('global-search-results');
+    if(box){
+      box.innerHTML='<div class="global-search-empty">הקלד לחיפוש פרויקט, לקוח או קבלן</div>';
+      box.classList.add('open');
+      input.setAttribute('aria-expanded','true');
+    }
+    return;
+  }
+  onGlobalSearchInput();
+}
+function closeGlobalSearch(){
+  var box=document.getElementById('global-search-results');
+  var input=document.getElementById('global-search-input');
+  if(box){box.classList.remove('open');box.innerHTML='';}
+  if(input){input.setAttribute('aria-expanded','false');}
+  globalSearchActiveIndex=-1;
+  globalSearchLastResults=[];
+}
+function onGlobalSearchInput(){
+  var input=document.getElementById('global-search-input');
+  if(!input)return;
+  renderGlobalSearchResults(collectGlobalSearchResults(input.value));
+}
+function highlightGlobalSearchItem(idx){
+  globalSearchActiveIndex=idx;
+  var box=document.getElementById('global-search-results');
+  if(!box)return;
+  var items=box.querySelectorAll('.global-search-item');
+  items.forEach(function(el,i){el.classList.toggle('active',i===idx);});
+  if(items[idx])items[idx].scrollIntoView({block:'nearest'});
+}
+function navigateGlobalSearchResult(idx){
+  var item=globalSearchLastResults[idx];
+  if(!item)return;
+  closeGlobalSearch();
+  var input=document.getElementById('global-search-input');
+  if(input)input.value='';
+  closeMobileSidebar();
+  closeMobileTabMenu();
+  if(item.type==='project')showView('project',item.id);
+  else if(item.type==='client'){
+    var u=appUsers.find(function(x){return x.id===item.id;});
+    if(u&&u.projectId)showView('project',u.projectId);
+    else showView('clients');
+  }else if(item.type==='subcontractor'){
+    showView('subcontractors');
+    setTimeout(function(){openEditSubcontractorModal(item.id);},80);
+  }
+}
+function onGlobalSearchKeydown(e){
+  var box=document.getElementById('global-search-results');
+  if(!box||!box.classList.contains('open'))return;
+  var count=globalSearchLastResults.length;
+  if(e.key==='ArrowDown'){
+    if(!count)return;
+    e.preventDefault();
+    highlightGlobalSearchItem(globalSearchActiveIndex<count-1?globalSearchActiveIndex+1:0);
+  }else if(e.key==='ArrowUp'){
+    if(!count)return;
+    e.preventDefault();
+    highlightGlobalSearchItem(globalSearchActiveIndex>0?globalSearchActiveIndex-1:count-1);
+  }else if(e.key==='Enter'){
+    if(globalSearchActiveIndex>=0){
+      e.preventDefault();
+      navigateGlobalSearchResult(globalSearchActiveIndex);
+    }else if(count===1){
+      e.preventDefault();
+      navigateGlobalSearchResult(0);
+    }
+  }else if(e.key==='Escape'){
+    e.preventDefault();
+    closeGlobalSearch();
+    if(e.target&&e.target.blur)e.target.blur();
+  }
+}
+function initGlobalSearchHandlers(){
+  if(globalSearchBound)return;
+  globalSearchBound=true;
+  document.addEventListener('click',function(e){
+    var wrap=document.getElementById('global-search');
+    if(!wrap||wrap.contains(e.target))return;
+    closeGlobalSearch();
+  });
 }
 
 function showView(view,pid){
@@ -4518,8 +4716,8 @@ function renderProjectDetail(el){
   },50);
 }
 
-var FIN_CATEGORIES=['שלד','חפירות','טיח','חשמל','אינסטלציה','ריצוף','גמר','אחר'];
-var FIN_CHART_COLORS=['#1B2B5E','#2a4078','#e8a020','#22c55e','#f59e0b','#ef4444','#6b7a8d','#8b5cf6'];
+var FIN_CATEGORIES=['שלד','חפירות','טיח','חשמל','אינסטלציה','ריצוף','גמר','צנרת ואינסטלציה','בידוד','פיקוח הנדסי','חוץ וגינון','אחר'];
+var FIN_CHART_COLORS=['#1B2B5E','#2a4078','#e8a020','#22c55e','#f59e0b','#ef4444','#6b7a8d','#0ea5e9','#a855f7','#64748b','#84cc16','#8b5cf6'];
 var finCharts={pie:null,bar:null};
 
 function getCategoryFinancials(p){
@@ -4814,16 +5012,38 @@ async function deleteSubcontractor(id){
   if(currentView==='subcontractors')renderSubcontractors(document.getElementById('main-content'));
 }
 
+function renderActivityLogFilterBarHtml(){
+  return '<div class="list-filter-bar" style="margin-bottom:0;border-bottom:1px solid var(--border);border-radius:12px 12px 0 0">'+
+    '<label for="activity-log-type-filter">סוג פעולה:</label>'+
+    '<select id="activity-log-type-filter" onchange="onActivityLogFilterChange()">'+
+    '<option value=""'+(activityLogTypeFilter===''?' selected':'')+'>הכל</option>'+
+    '<option value="create"'+(activityLogTypeFilter==='create'?' selected':'')+'>יצירה</option>'+
+    '<option value="edit"'+(activityLogTypeFilter==='edit'?' selected':'')+'>עריכה</option>'+
+    '<option value="delete"'+(activityLogTypeFilter==='delete'?' selected':'')+'>מחיקה</option>'+
+    '<option value="duplicate"'+(activityLogTypeFilter==='duplicate'?' selected':'')+'>שכפול</option>'+
+    '</select></div>';
+}
+function onActivityLogFilterChange(){
+  var el=document.getElementById('activity-log-type-filter');
+  activityLogTypeFilter=el?el.value:'';
+  if(currentView==='activity-log')renderActivityLog(document.getElementById('main-content'));
+}
 function renderActivityLog(el){
   if(!isAdmin()){renderClientNoProject(el);return;}
   var logs=appDataCache.activityLog||[];
-  el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('scroll-text')+' לוג פעולות</h1><p>היסטוריית פעולות מנהל במערכת ('+logs.length+' רשומות)</p></div></div>'+
+  var filtered=filterActivityLogEntries(logs);
+  var countLabel=activityLogTypeFilter&&logs.length?('מציג '+filtered.length+' מתוך '+logs.length+' רשומות'):('('+logs.length+' רשומות)');
+  el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('scroll-text')+' לוג פעולות</h1><p>היסטוריית פעולות מנהל במערכת '+countLabel+'</p></div></div>'+
     (logs.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('scroll-text')+'</div><p>אין פעולות מתועדות עדיין</p></div>':
-    '<div class="card"><div class="activity-log-header"><span>משתמש</span><span>פעולה</span><span>פרטים</span><span>תאריך</span></div>'+
-    '<div class="activity-log-list">'+
-    logs.map(function(l){
+    '<div class="card" style="padding:0;overflow:hidden">'+
+    renderActivityLogFilterBarHtml()+
+    (filtered.length===0?'<div class="empty-state" style="padding:32px 18px"><div class="empty-icon">'+ic('scroll-text')+'</div><p>אין פעולות בסינון הנוכחי</p></div>':
+    '<div style="padding:0 0 12px"><div class="activity-log-header"><span>משתמש</span><span>פעולה</span><span>פרטים</span><span>תאריך</span></div>'+
+    '<div class="activity-log-list" style="padding:0 12px 12px">'+
+    filtered.map(function(l){
       return '<div class="activity-log-row"><span class="log-user">'+escHtml(l.userName)+'</span><span class="log-action">'+escHtml(l.action)+'</span><span class="log-details">'+escHtml(l.details||'—')+'</span><span class="log-date">'+escHtml(l.date)+'</span></div>';
-    }).join('')+'</div></div>');
+    }).join('')+'</div></div>')+
+    '</div>');
   refreshIcons(el);
 }
 
@@ -5483,12 +5703,13 @@ Object.assign(window,{
   toggleRemoveGalleryImage,removePendingGalleryFile,saveGalleryPost,deleteGalleryPost,handleGalleryImageError,
   openPhotoLightbox,closePhotoLightbox,
   handleBlueprintUpload,openNewPunchModal,openPunchItemView,onBlueprintImageClick,savePunchItem,markPunchFixed,onPunchFilterChange,
-  openDailyLogForm,cancelDailyLogForm,saveDailyLog,onDailyLogFilterChange,
+  openDailyLogForm,cancelDailyLogForm,saveDailyLog,onDailyLogFilterChange,onActivityLogFilterChange,
   startNewBudgetDraft,openBudgetEdit,duplicateBudget,saveBudgetBuilder,deleteBudget,backToBudgetList,
   addBudgetItemToCategory,removeBudgetItem,onBudgetDraftFieldChange,onBudgetItemFieldChange,
   onBudgetAddCategoryClick,addBudgetCustomCategory,onBudgetItemContactChange,
   openBudgetQuickSubcontractorModal,closeBudgetQuickSubcontractorModal,saveBudgetQuickSubcontractor,
-  openBudgetClientView,previewBudgetDraftClientView,closeBudgetClientView,printBudgetClientView
+  openBudgetClientView,previewBudgetDraftClientView,closeBudgetClientView,printBudgetClientView,
+  openGlobalSearch,onGlobalSearchInput,onGlobalSearchKeydown,navigateGlobalSearchResult
 });
 window.addEventListener('resize',function(){
   if(window.innerWidth>=1024)closeMobileSidebar();
@@ -5499,6 +5720,7 @@ document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
     closeMobileSidebar();
     closeMobileTabMenu();
+    closeGlobalSearch();
     closePhotoLightbox();
     closeBudgetClientView();
   }
@@ -5506,6 +5728,7 @@ document.addEventListener('keydown',function(e){
 refreshIcons();
 updateLoginLockUI();
 initMobileTabMenuHandlers();
+initGlobalSearchHandlers();
 </script>
 </body>
 </html>
