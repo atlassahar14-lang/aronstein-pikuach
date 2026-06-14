@@ -106,6 +106,7 @@ function normalizeGallery(proj) {
       return {
         id: `gpost_${p.id}`,
         text: p.caption || '',
+        stage: 'כללי',
         createdAt: ts,
         updatedAt: ts,
         images: [{ id: p.id, name: p.name || '', url: p.url, path: p.path || null, type: p.type || '', uploadedAt: ts }],

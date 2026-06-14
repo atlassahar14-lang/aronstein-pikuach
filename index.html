@@ -1464,6 +1464,9 @@ function normalizeProjectGallery(proj){
       };
     });
   }
+  (proj.galleryPosts||[]).forEach(function(post){
+    if(!post.stage)post.stage=GALLERY_DEFAULT_STAGE;
+  });
   cleanupLegacyPhotos(proj);
 }
 function normalizeGalleryPostStage(post){
@@ -1898,6 +1901,7 @@ const BUDGET_UNITS=['מ"ר','מ"ק','מ"ל','יחידה','טון','קג','שעה
 const BUDGET_DEFAULT_UNIT='יחידה';
 const SUBCONTRACTOR_SPECIALTIES=['שלד ובטון','טיח וריצוף','חשמל','אינסטלציה וצנרת','גבס ותקרות','איטום וחוץ','מסגרות ואלומיניום','עיצוב פנים','ניהול פרויקט','אחר'];
 const GALLERY_STAGES=['כללי','חפירות ויסודות','שלד ובטון','טיח וריצוף','חשמל ואינסטלציה','גמר וסיום'];
+// שלב גלריה: app_data.projects[].galleryPosts[].stage (JSON — אין טבלה נפרדת)
 const GALLERY_DEFAULT_STAGE='כללי';
 const VAT_RATE=0.17;
 function resetListFilters(){
