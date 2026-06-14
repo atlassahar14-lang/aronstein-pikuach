@@ -9,7 +9,9 @@
 
 create table if not exists public.budgets (
   id uuid primary key default gen_random_uuid(),
-  project_id text not null,
+  project_id text,
+  client_name text,
+  project_address text,
   title text not null,
   budget_date date not null default current_date,
   notes text,
@@ -17,7 +19,11 @@ create table if not exists public.budgets (
   created_at timestamptz not null default now()
 );
 
-create index if not exists budgets_project_id_idx on public.budgets (project_id, created_at desc);
+create index if not exists budgets_project_id_idx on public.budgets (project_id, created_at desc)
+  where project_id is not null;
+
+create index if not exists budgets_standalone_idx on public.budgets (created_at desc)
+  where project_id is null;
 
 create table if not exists public.budget_items (
   id uuid primary key default gen_random_uuid(),
@@ -50,7 +56,10 @@ create policy "budgets_select_auth"
 on public.budgets for select to authenticated
 using (
   public.is_admin()
-  or project_id = (select project_id from public.profiles where id = auth.uid())
+  or (
+    project_id is not null
+    and project_id = (select project_id from public.profiles where id = auth.uid())
+  )
 );
 
 create policy "budgets_insert_admin"
@@ -79,7 +88,10 @@ using (
     where b.id = budget_id
     and (
       public.is_admin()
-      or b.project_id = (select project_id from public.profiles where id = auth.uid())
+      or (
+        b.project_id is not null
+        and b.project_id = (select project_id from public.profiles where id = auth.uid())
+      )
     )
   )
 );

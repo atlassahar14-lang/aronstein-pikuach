@@ -2304,7 +2304,7 @@ function formatSupabaseErrorHint(errMsg){
   if(m.includes('payload')||m.includes('too large')||m.includes('413'))return 'נתוני הפרויקט גדולים מדי (למשל תמונות Base64 ישנות).';
   if(m.includes('500')||m.includes('internal server'))return 'שגיאת שרת בשמירה — הרץ את supabase-setup.sql המעודכן (פונקציית save_app_data), או בדוק אם נתוני הפרויקט גדולים מדי.';
   if(m.includes('save_app_data')||m.includes('42883')||m.includes('does not exist'))return 'חסרה פונקציית save_app_data — הרץ את supabase-setup.sql המעודכן ב-SQL Editor.';
-  if(m.includes('permission')||m.includes('42501')||m.includes('rls'))return 'בעיית הרשאות RLS — הרץ שוב את supabase-setup.sql.';
+  if(m.includes('project_id')&&m.includes('not-null'))return 'עמודת project_id חייבת להיות nullable — הרץ את supabase-budgets-project-id-nullable-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('fetch')||m.includes('network')||m.includes('522')||m.includes('timeout'))return 'בעיית רשת או Supabase לא זמין.';
   return errMsg||'שגיאה לא ידועה';
 }
@@ -3266,7 +3266,7 @@ function renderBudgetBuilderListHtml(budgets,loadedOk){
   var html='<div class="section-actions"><div class="section-title">'+ic('calculator')+' בניית תקציב</div>'+
     '<button type="button" class="btn btn-primary btn-sm" onclick="startNewBudgetDraft()">'+ic('plus')+' תקציב חדש</button></div>';
   if(!loadedOk){
-    html+='<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינת תקציבים. הרץ את supabase-budgets-standalone-migration.sql.</div>';
+    html+='<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינת תקציבים. הרץ את supabase-budgets-project-id-nullable-migration.sql ב-Supabase.</div>';
   }
   if(!budgets.length){
     html+='<div class="empty-state card"><div class="empty-icon">'+ic('calculator')+'</div><p>אין תקציבים עדיין — לחץ "תקציב חדש" להתחלה</p></div>';
