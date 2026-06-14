@@ -360,7 +360,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .budget-client-totals{margin-top:24px;max-width:360px;margin-right:0;margin-left:auto}
 @media(max-width:1023px){
   .budget-builder-editor .form-row{grid-template-columns:1fr}
-  .budget-items-table{min-width:760px}
+  .budget-items-table{min-width:920px}
   .budget-items-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .budget-client-body{padding:20px 16px}
 }
@@ -1752,7 +1752,7 @@ var subcontractorSpecialtyFilter='',showDailyLogForm=false;
 var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='';
 var toastTimer=null;
 var budgetsCache=[],budgetItemsByBudget={},budgetBuilderMode='list',editingBudgetId=null;
-var budgetBuilderDraft=null,budgetPendingContactCategory=null;
+var budgetBuilderDraft=null,budgetPendingContactItemId=null;
 const BUDGET_BUILDER_CATEGORIES=['חפירות','שלד','חשמל','אינסטלציה','טיח','ריצוף','גמר','אחר'];
 const BUDGET_UNITS=['מ"ר','מ"ק','מ"ל','יחידה','טון','קג','שעה','ק"מ'];
 const BUDGET_DEFAULT_UNIT='יחידה';
@@ -1776,7 +1776,7 @@ function resetAppSessionState(){
   budgetBuilderMode='list';
   editingBudgetId=null;
   budgetBuilderDraft=null;
-  budgetPendingContactCategory=null;
+  budgetPendingContactItemId=null;
   resetListFilters();
   document.querySelectorAll('.modal-overlay.open,.budget-client-overlay.open').forEach(function(o){o.classList.remove('open');});
   modalOpenCount=0;
@@ -2914,16 +2914,38 @@ function normalizeCategoryContacts(raw){
   });
   return out;
 }
-function deriveBudgetExtraCategories(categoryContacts,items){
+function deriveBudgetExtraCategories(items){
   var seen={},extra=[];
   BUDGET_BUILDER_CATEGORIES.forEach(function(c){seen[c]=1;});
-  function add(c){
-    c=(c||'').trim();
+  (items||[]).forEach(function(it){
+    var c=(it.category||'').trim();
     if(c&&!seen[c]){seen[c]=1;extra.push(c);}
-  }
-  (items||[]).forEach(function(it){add(it.category);});
-  Object.keys(categoryContacts||{}).forEach(add);
+  });
   return extra;
+}
+function mapDraftBudgetItem(it,categoryContacts){
+  var contactId=it.subcontractorId||'';
+  if(!contactId&&categoryContacts&&categoryContacts[it.category]){
+    contactId=categoryContacts[it.category];
+  }
+  return {
+    id:it.id,
+    category:it.category,
+    description:it.description,
+    quantity:it.quantity,
+    unit:normalizeBudgetUnit(it.unit),
+    unitPrice:it.unitPrice,
+    contactId:contactId||''
+  };
+}
+function getBudgetItemContactId(it){
+  return it.subcontractorId||it.contactId||'';
+}
+function budgetItemContactLabel(it){
+  var subId=getBudgetItemContactId(it);
+  if(!subId)return '—';
+  var sub=getSubcontractorById(subId);
+  return sub?budgetCategoryContactLabel(sub):'—';
 }
 function renderBudgetSubcontractorOptions(selectedId){
   var html='<option value="">— ללא —</option>';
@@ -2959,7 +2981,8 @@ function mapBudgetItemRow(r){
     unit:normalizeBudgetUnit(r.unit),
     unitPrice:Number(r.unit_price)||0,
     total:Number(r.total)||0,
-    sortOrder:Number(r.sort_order)||0
+    sortOrder:Number(r.sort_order)||0,
+    subcontractorId:r.subcontractor_id||''
   };
 }
 function calcBudgetLineTotal(qty,price){
@@ -2985,9 +3008,6 @@ function getBudgetDraftCategories(){
     var c=(it.category||'').trim();
     if(c&&!seen[c]){seen[c]=1;order.push(c);}
   });
-  Object.keys(budgetBuilderDraft.categoryContacts||{}).forEach(function(c){
-    if(c&&!seen[c]){seen[c]=1;order.push(c);}
-  });
   return order;
 }
 function createEmptyBudgetDraft(){
@@ -2998,8 +3018,7 @@ function createEmptyBudgetDraft(){
     notes:'',
     marginPercent:0,
     items:[],
-    extraCategories:[],
-    categoryContacts:{}
+    extraCategories:[]
   };
 }
 function newBudgetItemId(){return 'bi'+Date.now()+Math.random().toString(36).slice(2,7);}
@@ -3056,12 +3075,11 @@ async function openBudgetEdit(id){
     budgetDate:String(b.budgetDate||'').slice(0,10)||todayDateInputValue(),
     notes:b.notes||'',
     marginPercent:b.marginPercent||0,
-    categoryContacts:normalizeCategoryContacts(b.categoryContacts),
     items:getBudgetItems(id).map(function(it){
-      return {id:it.id,category:it.category,description:it.description,quantity:it.quantity,unit:normalizeBudgetUnit(it.unit),unitPrice:it.unitPrice};
+      return mapDraftBudgetItem(it,normalizeCategoryContacts(b.categoryContacts));
     })
   };
-  budgetBuilderDraft.extraCategories=deriveBudgetExtraCategories(budgetBuilderDraft.categoryContacts,budgetBuilderDraft.items);
+  budgetBuilderDraft.extraCategories=deriveBudgetExtraCategories(budgetBuilderDraft.items);
   initBudgetBuilderView();
 }
 function renderBudgetBuilderEditorInPlace(){
@@ -3073,7 +3091,7 @@ function renderBudgetBuilderEditorInPlace(){
 function addBudgetItemToCategory(categoryEnc){
   var category=typeof categoryEnc==='string'?decodeURIComponent(categoryEnc):categoryEnc;
   if(!budgetBuilderDraft)budgetBuilderDraft=createEmptyBudgetDraft();
-  budgetBuilderDraft.items.push({id:newBudgetItemId(),category:category,description:'',quantity:1,unit:BUDGET_DEFAULT_UNIT,unitPrice:0});
+  budgetBuilderDraft.items.push({id:newBudgetItemId(),category:category,description:'',contactId:'',quantity:1,unit:BUDGET_DEFAULT_UNIT,unitPrice:0});
   if(budgetBuilderMode==='edit')renderBudgetBuilderEditorInPlace();
   else initBudgetBuilderView();
 }
@@ -3107,19 +3125,18 @@ function addBudgetCustomCategory(){
   if(wrap)wrap.classList.remove('open');
   renderBudgetBuilderEditorInPlace();
 }
-function onBudgetCategoryContactChange(categoryEnc,selectEl){
-  var cat=decodeURIComponent(categoryEnc);
+function onBudgetItemContactChange(itemId,selectEl){
   if(!budgetBuilderDraft||!selectEl)return;
+  var it=budgetBuilderDraft.items.find(function(x){return x.id===itemId;});
+  if(!it)return;
   var value=selectEl.value;
   if(value==='__new__'){
-    budgetPendingContactCategory=cat;
-    selectEl.value=(budgetBuilderDraft.categoryContacts&&budgetBuilderDraft.categoryContacts[cat])||'';
+    budgetPendingContactItemId=itemId;
+    selectEl.value=it.contactId||'';
     openBudgetQuickSubcontractorModal();
     return;
   }
-  if(!budgetBuilderDraft.categoryContacts)budgetBuilderDraft.categoryContacts={};
-  if(value)budgetBuilderDraft.categoryContacts[cat]=value;
-  else delete budgetBuilderDraft.categoryContacts[cat];
+  it.contactId=value||'';
 }
 function openBudgetQuickSubcontractorModal(){
   if(!requireAdmin())return;
@@ -3131,7 +3148,7 @@ function openBudgetQuickSubcontractorModal(){
   setTimeout(function(){document.getElementById('budget-sub-company').focus();},50);
 }
 function closeBudgetQuickSubcontractorModal(){
-  budgetPendingContactCategory=null;
+  budgetPendingContactItemId=null;
   closeModal('modal-budget-subcontractor');
 }
 async function saveBudgetQuickSubcontractor(){
@@ -3152,12 +3169,12 @@ async function saveBudgetQuickSubcontractor(){
   logActivity('הוספת קבלן משנה','מבניית תקציב · '+row.company_name);
   await refreshSubcontractors();
   await persistActivityLogOnly();
-  var cat=budgetPendingContactCategory;
-  if(cat&&budgetBuilderDraft){
-    if(!budgetBuilderDraft.categoryContacts)budgetBuilderDraft.categoryContacts={};
-    budgetBuilderDraft.categoryContacts[cat]=res.data.id;
+  var itemId=budgetPendingContactItemId;
+  if(itemId&&budgetBuilderDraft){
+    var it=budgetBuilderDraft.items.find(function(x){return x.id===itemId;});
+    if(it)it.contactId=res.data.id;
   }
-  budgetPendingContactCategory=null;
+  budgetPendingContactItemId=null;
   closeModal('modal-budget-subcontractor');
   showToast('איש הקשר נוסף ונבחר בהצלחה');
   if(budgetBuilderMode==='edit')renderBudgetBuilderEditorInPlace();
@@ -3172,6 +3189,7 @@ function onBudgetItemFieldChange(itemId,field,value){
   var it=budgetBuilderDraft.items.find(function(x){return x.id===itemId;});
   if(!it)return;
   if(field==='quantity'||field==='unitPrice')it[field]=Number(value)||0;
+  else if(field==='contactId')it.contactId=value||'';
   else it[field]=value;
   var el=document.querySelector('[data-budget-item-total="'+itemId+'"]');
   if(el)el.textContent=fmtMoney(calcBudgetLineTotal(it.quantity,it.unitPrice));
@@ -3199,6 +3217,7 @@ function updateBudgetSummaryDisplay(){
 function renderBudgetItemEditorRow(it){
   return '<tr>'+
     '<td><input type="text" value="'+escHtml(it.description)+'" placeholder="תיאור פריט" oninput="onBudgetItemFieldChange(\''+it.id+'\',\'description\',this.value)"/></td>'+
+    '<td style="width:200px;min-width:180px"><select onchange="onBudgetItemContactChange(\''+it.id+'\',this)">'+renderBudgetSubcontractorOptions(it.contactId||'')+'</select></td>'+
     '<td style="width:88px"><input type="number" min="0" step="0.01" value="'+it.quantity+'" oninput="onBudgetItemFieldChange(\''+it.id+'\',\'quantity\',this.value)"/></td>'+
     '<td style="width:96px"><select onchange="onBudgetItemFieldChange(\''+it.id+'\',\'unit\',this.value)">'+renderBudgetUnitOptions(it.unit)+'</select></td>'+
     '<td style="width:120px"><input type="number" min="0" step="0.01" value="'+it.unitPrice+'" oninput="onBudgetItemFieldChange(\''+it.id+'\',\'unitPrice\',this.value)"/></td>'+
@@ -3209,19 +3228,15 @@ function renderBudgetBuilderEditorHtml(){
   var d=budgetBuilderDraft||createEmptyBudgetDraft();
   var cats=getBudgetDraftCategories();
   var totals=calcBudgetTotals(d.items,d.marginPercent);
-  var catSections=cats.map(function(cat,catIdx){
+  var catSections=cats.map(function(cat){
     var rows=(d.items||[]).filter(function(it){return it.category===cat;});
     var catSum=rows.reduce(function(s,it){return s+calcBudgetLineTotal(it.quantity,it.unitPrice);},0);
-    var contactId=(d.categoryContacts&&d.categoryContacts[cat])||'';
     return '<div class="budget-category-section">'+
       '<div class="budget-category-head">'+
       '<span class="budget-category-title">'+escHtml(cat)+'</span>'+
-      '<div class="budget-category-contact"><label for="budget-cat-contact-'+catIdx+'">איש קשר</label>'+
-      '<select id="budget-cat-contact-'+catIdx+'" onchange="onBudgetCategoryContactChange(\''+encodeURIComponent(cat)+'\',this)">'+
-      renderBudgetSubcontractorOptions(contactId)+'</select></div>'+
       '<span class="budget-category-subtotal" data-budget-cat-subtotal="'+escHtml(cat)+'">'+fmtMoney(catSum)+'</span></div>'+
       (rows.length?'<div class="budget-items-scroll"><table class="budget-items-table"><thead><tr>'+
-      '<th>תיאור</th><th>כמות</th><th>יחידה</th><th>מחיר ליחידה</th><th>סה"כ</th><th></th></tr></thead><tbody>'+
+      '<th>תיאור</th><th>איש קשר</th><th>כמות</th><th>יחידה</th><th>מחיר ליחידה</th><th>סה"כ</th><th></th></tr></thead><tbody>'+
       rows.map(renderBudgetItemEditorRow).join('')+'</tbody></table></div>':'')+
       '<div style="padding:12px 16px;border-top:1px solid var(--border)">'+
       '<button type="button" class="btn btn-outline btn-sm" onclick="addBudgetItemToCategory(\''+encodeURIComponent(cat)+'\')">'+ic('plus')+' הוסף פריט</button></div></div>';
@@ -3316,7 +3331,7 @@ async function saveBudgetBuilder(){
     budget_date:budgetBuilderDraft.budgetDate||todayDateInputValue(),
     notes:budgetBuilderDraft.notes||null,
     margin_percent:Number(budgetBuilderDraft.marginPercent)||0,
-    category_contacts:budgetBuilderDraft.categoryContacts||{}
+    category_contacts:{}
   };
   var budgetId=editingBudgetId;
   var wasEdit=!!budgetId;
@@ -3342,6 +3357,7 @@ async function saveBudgetBuilder(){
         quantity:Number(it.quantity)||0,
         unit:normalizeBudgetUnit(it.unit),
         unit_price:Number(it.unitPrice)||0,
+        subcontractor_id:it.contactId||null,
         sort_order:idx
       };
     });
@@ -3379,12 +3395,9 @@ function renderBudgetClientBodyHtml(budget,items){
     var catItems=items.filter(function(it){return it.category===cat;});
     if(!catItems.length)return;
     var catSum=catItems.reduce(function(s,it){return s+calcBudgetLineTotal(it.quantity,it.unitPrice);},0);
-    var subId=budget.categoryContacts&&budget.categoryContacts[cat];
-    var sub=subId?getSubcontractorById(subId):null;
-    var catHead=escHtml(cat)+(sub?' · '+escHtml(budgetCategoryContactLabel(sub)):'');
-    tableRows+='<tr class="cat-row"><td colspan="4">'+catHead+'</td><td class="num">'+fmtMoney(catSum)+'</td></tr>';
+    tableRows+='<tr class="cat-row"><td colspan="5">'+escHtml(cat)+'</td><td class="num">'+fmtMoney(catSum)+'</td></tr>';
     catItems.forEach(function(it){
-      tableRows+='<tr><td>'+escHtml(it.description)+'</td><td class="num">'+it.quantity+'</td>'+
+      tableRows+='<tr><td>'+escHtml(it.description)+'</td><td>'+escHtml(budgetItemContactLabel(it))+'</td><td class="num">'+it.quantity+'</td>'+
         '<td>'+escHtml(normalizeBudgetUnit(it.unit))+'</td>'+
         '<td class="num">'+fmtMoney(it.unitPrice)+'</td><td class="num">'+fmtMoney(calcBudgetLineTotal(it.quantity,it.unitPrice))+'</td></tr>';
     });
@@ -3399,8 +3412,8 @@ function renderBudgetClientBodyHtml(budget,items){
     '<span><strong>תאריך:</strong> '+formatSubcontractorDate(budget.budgetDate)+'</span>'+
     '</div></div>'+
     '<table class="budget-client-table"><thead><tr>'+
-    '<th>תיאור</th><th>כמות</th><th>יחידה</th><th>מחיר ליחידה</th><th>סה"כ</th></tr></thead><tbody>'+
-    (tableRows||'<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">אין פריטים</td></tr>')+
+    '<th>תיאור</th><th>איש קשר</th><th>כמות</th><th>יחידה</th><th>מחיר ליחידה</th><th>סה"כ</th></tr></thead><tbody>'+
+    (tableRows||'<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">אין פריטים</td></tr>')+
     '</tbody></table>'+
     '<div class="budget-client-totals">'+
     '<div class="budget-summary-row"><span>סה"כ לפני מע"מ</span><strong>'+fmtMoney(t.beforeVat)+'</strong></div>'+
@@ -3439,11 +3452,10 @@ function previewBudgetDraftClientView(){
     title:budgetBuilderDraft.clientName||'טיוטת תקציב',
     budgetDate:budgetBuilderDraft.budgetDate,
     notes:budgetBuilderDraft.notes,
-    marginPercent:budgetBuilderDraft.marginPercent,
-    categoryContacts:budgetBuilderDraft.categoryContacts||{}
+    marginPercent:budgetBuilderDraft.marginPercent
   };
   var items=(budgetBuilderDraft.items||[]).map(function(it){
-    return {category:it.category,description:it.description,quantity:it.quantity,unit:normalizeBudgetUnit(it.unit),unitPrice:it.unitPrice};
+    return {category:it.category,description:it.description,contactId:it.contactId||'',quantity:it.quantity,unit:normalizeBudgetUnit(it.unit),unitPrice:it.unitPrice};
   });
   var body=document.getElementById('budget-client-body');
   var overlay=document.getElementById('budget-client-overlay');
@@ -3750,7 +3762,7 @@ function showView(view,pid){
     budgetBuilderMode='list';
     budgetBuilderDraft=null;
     editingBudgetId=null;
-    budgetPendingContactCategory=null;
+    budgetPendingContactItemId=null;
   }
   currentView=view;
   if(pid)currentProjectId=pid;
@@ -5197,7 +5209,7 @@ Object.assign(window,{
   openDailyLogForm,cancelDailyLogForm,saveDailyLog,onDailyLogFilterChange,
   startNewBudgetDraft,openBudgetEdit,saveBudgetBuilder,deleteBudget,backToBudgetList,
   addBudgetItemToCategory,removeBudgetItem,onBudgetDraftFieldChange,onBudgetItemFieldChange,
-  onBudgetAddCategoryClick,addBudgetCustomCategory,onBudgetCategoryContactChange,
+  onBudgetAddCategoryClick,addBudgetCustomCategory,onBudgetItemContactChange,
   openBudgetQuickSubcontractorModal,closeBudgetQuickSubcontractorModal,saveBudgetQuickSubcontractor,
   openBudgetClientView,previewBudgetDraftClientView,closeBudgetClientView,printBudgetClientView
 });
