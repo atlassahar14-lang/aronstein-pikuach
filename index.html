@@ -288,6 +288,11 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .gallery-lightbox-close{position:absolute;top:16px;left:16px;background:rgba(255,255,255,.15);border:none;color:#fff;width:44px;height:44px;border-radius:50%;cursor:pointer;font-size:24px;display:flex;align-items:center;justify-content:center;transition:background .15s}
 .gallery-lightbox-close:hover{background:rgba(255,255,255,.28)}
 .gallery-lightbox-caption{color:#fff;font-size:15px;text-align:center;margin-top:16px;max-width:720px;line-height:1.5;padding:0 16px;white-space:pre-wrap}
+.gallery-stage-filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.gallery-stage-filter-btn{padding:8px 14px;border:2px solid var(--border);border-radius:20px;background:var(--card);font-family:'Heebo',sans-serif;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;transition:all .15s;touch-action:manipulation}
+.gallery-stage-filter-btn:hover{border-color:var(--primary-light);color:var(--primary)}
+.gallery-stage-filter-btn.active{background:var(--primary);border-color:var(--primary);color:#fff}
+.gallery-post-stage-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#dbeafe;color:#1e40af;white-space:nowrap}
 .messages-list{display:flex;flex-direction:column;gap:12px;max-height:450px;overflow-y:auto;margin-bottom:20px;padding:4px}
 .message-bubble{padding:12px 16px;border-radius:14px;max-width:80%;font-size:14px;line-height:1.5}
 .message-bubble.admin{background:var(--primary);color:#fff;align-self:flex-start;border-radius:4px 14px 14px 14px}
@@ -1003,6 +1008,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   <div class="modal">
     <div class="modal-header"><div class="modal-title" id="gallery-post-modal-title">פוסט חדש בגלריה</div><button class="modal-close" onclick="closeGalleryPostModal()"><i data-lucide="x"></i></button></div>
     <div class="form-group"><label>טקסט</label><textarea id="gallery-post-text" placeholder="תיאור / כיתוב לפוסט..."></textarea></div>
+    <div class="form-group"><label for="gallery-post-stage">שלב</label><select id="gallery-post-stage"></select></div>
     <div class="form-group">
       <label>תמונות (ניתן לבחור מספר)</label>
       <label class="upload-label"><i data-lucide="camera"></i> בחר תמונות<input type="file" id="gallery-post-files" accept="image/*" multiple/></label>
@@ -1444,6 +1450,7 @@ function normalizeProjectGallery(proj){
       return {
         id:'gpost_'+p.id,
         text:p.caption||'',
+        stage:GALLERY_DEFAULT_STAGE,
         createdAt:ts,
         updatedAt:ts,
         images:[{
@@ -1458,6 +1465,61 @@ function normalizeProjectGallery(proj){
     });
   }
   cleanupLegacyPhotos(proj);
+}
+function normalizeGalleryPostStage(post){
+  if(!post)return GALLERY_DEFAULT_STAGE;
+  var stage=String(post.stage||'').trim();
+  if(GALLERY_STAGES.indexOf(stage)>=0)return stage;
+  return GALLERY_DEFAULT_STAGE;
+}
+function populateGalleryStageSelect(selectedValue){
+  var sel=document.getElementById('gallery-post-stage');
+  if(!sel)return;
+  var selected=normalizeGalleryPostStage({stage:selectedValue});
+  sel.innerHTML=GALLERY_STAGES.map(function(s){
+    return '<option value="'+escHtml(s)+'"'+(s===selected?' selected':'')+'>'+escHtml(s)+'</option>';
+  }).join('');
+}
+function filterGalleryPostsByStage(posts){
+  if(!galleryStageFilter)return posts||[];
+  return (posts||[]).filter(function(post){return normalizeGalleryPostStage(post)===galleryStageFilter;});
+}
+function renderGalleryStageFilterBarHtml(){
+  var html='<div class="gallery-stage-filters" role="toolbar" aria-label="סינון לפי שלב">';
+  html+='<button type="button" class="gallery-stage-filter-btn'+(!galleryStageFilter?' active':'')+'" data-stage="" onclick="setGalleryStageFilter(this.dataset.stage)">הכל</button>';
+  GALLERY_STAGES.forEach(function(stage){
+    html+='<button type="button" class="gallery-stage-filter-btn'+(galleryStageFilter===stage?' active':'')+'" data-stage="'+escHtml(stage)+'" onclick="setGalleryStageFilter(this.dataset.stage)">'+escHtml(stage)+'</button>';
+  });
+  return html+'</div>';
+}
+function setGalleryStageFilter(stage){
+  galleryStageFilter=stage||'';
+  refreshGalleryTab();
+}
+function refreshGalleryTab(){
+  var root=document.getElementById('tab-gallery');
+  if(!root)return;
+  var p=getCurrentProject();
+  if(!p)return;
+  root.innerHTML=renderGalleryTabInnerHtml(p);
+  refreshIcons(root);
+}
+function renderGalleryTabInnerHtml(p){
+  var allPosts=getGalleryPostsSorted(getProjectGalleryPosts(p));
+  var galleryPosts=filterGalleryPostsByStage(allPosts);
+  var html='<div class="section-actions"><div class="section-title">'+ic('camera')+' גלריית תמונות מהשטח</div>'+
+    '<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openNewGalleryPostModal()">'+ic('plus')+' פוסט חדש</button></div>';
+  if(allPosts.length===0){
+    html+='<div class="empty-state card"><div class="empty-icon">'+ic('camera')+'</div><p>אין תמונות עדיין<span class="admin-only-action"> — צור את הפוסט הראשון</span></p></div>';
+  }else{
+    html+=renderGalleryStageFilterBarHtml();
+    if(galleryPosts.length===0){
+      html+='<div class="empty-state card"><div class="empty-icon">'+ic('camera')+'</div><p>אין פוסטים בשלב זה</p></div>';
+    }else{
+      html+='<div class="gallery-list">'+galleryPosts.map(function(post){return renderGalleryPostRow(post);}).join('')+'</div>';
+    }
+  }
+  return html;
 }
 function getProjectGalleryPosts(proj){
   normalizeProjectGallery(proj);
@@ -1507,10 +1569,11 @@ function renderGalleryThumbnails(post){
 function renderGalleryPostRow(post){
   var dateStr=formatGalleryPostDateTime(post);
   var thumbs=renderGalleryThumbnails(post);
+  var stage=normalizeGalleryPostStage(post);
   var actions='<button type="button" class="btn btn-outline btn-sm admin-only-action" onclick="openEditGalleryPostModal(\''+post.id+'\')">'+ic('pencil')+' עריכה</button>';
-  return '<div class="gallery-post">'+
+  return '<div class="gallery-post" data-stage="'+escHtml(stage)+'">'+
     '<div class="gallery-post-header">'+
-      '<div class="gallery-row-date">'+ic('clock')+' '+dateStr+'</div>'+
+      '<div class="gallery-row-date">'+ic('clock')+' '+dateStr+' <span class="gallery-post-stage-badge">'+escHtml(stage)+'</span></div>'+
       actions+
     '</div>'+
     (post.text?'<p class="gallery-caption-text">'+escHtml(post.text)+'</p>':'')+
@@ -1531,6 +1594,7 @@ function resetGalleryEditState(){
   if(filesEl)filesEl.value='';
   if(imagesEl)imagesEl.innerHTML='';
   if(delBtn)delBtn.style.display='none';
+  populateGalleryStageSelect(GALLERY_DEFAULT_STAGE);
 }
 function closeGalleryPostModal(){
   closeModal('modal-gallery-post');
@@ -1540,6 +1604,7 @@ function openNewGalleryPostModal(){
   if(!requireAdmin())return;
   resetGalleryEditState();
   document.getElementById('gallery-post-modal-title').textContent='פוסט חדש בגלריה';
+  populateGalleryStageSelect(GALLERY_DEFAULT_STAGE);
   openModal('modal-gallery-post');
   refreshIcons(document.getElementById('modal-gallery-post'));
 }
@@ -1551,6 +1616,7 @@ function openEditGalleryPostModal(postId){
   resetGalleryEditState();
   editingGalleryPostId=postId;
   document.getElementById('gallery-post-text').value=post.text||'';
+  populateGalleryStageSelect(post.stage);
   document.getElementById('gallery-post-modal-title').textContent='עריכת פוסט בגלריה';
   document.getElementById('gallery-post-delete-btn').style.display='';
   renderGalleryModalImages();
@@ -1626,6 +1692,8 @@ async function uploadGalleryImageFiles(projId,postId,files){
 async function saveGalleryPost(){
   if(!requireAdmin()||!requireProjectAccess())return;
   var text=document.getElementById('gallery-post-text').value.trim();
+  var stageEl=document.getElementById('gallery-post-stage');
+  var stage=stageEl?normalizeGalleryPostStage({stage:stageEl.value}):GALLERY_DEFAULT_STAGE;
   var btn=document.getElementById('gallery-post-save-btn');
   var proj=getCurrentProject();if(!proj)return;
   var existingCount=0;
@@ -1652,6 +1720,7 @@ async function saveGalleryPost(){
       var post=posts.find(function(p){return p.id===editingGalleryPostId;});
       if(!post)return;
       post.text=text;
+      post.stage=stage;
       post.updatedAt=now;
       post.images=post.images.filter(function(img){return galleryEditRemovedIds.indexOf(img.id)<0;}).concat(uploadRes.images);
       logActivity('עריכת פוסט גלריה','פרויקט: '+proj.name+(text?' · '+text:''));
@@ -1659,6 +1728,7 @@ async function saveGalleryPost(){
       posts.push({
         id:postId,
         text:text,
+        stage:stage,
         createdAt:now,
         updatedAt:now,
         images:uploadRes.images
@@ -1819,7 +1889,7 @@ var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[
 var appDataCache={projects:[],activityLog:[]},appUsers=[],subcontractorsCache=[],punchItemsCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false;
 var viewingPunchItemId=null,punchPinDraft={x:null,y:null},punchBlueprintSignedUrl=null;
 var subcontractorSpecialtyFilter='',showDailyLogForm=false;
-var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='',activityLogTypeFilter='';
+var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='',activityLogTypeFilter='',galleryStageFilter='';
 var toastTimer=null;
 var budgetsCache=[],budgetItemsByBudget={},budgetBuilderMode='list',editingBudgetId=null;
 var budgetBuilderDraft=null,budgetPendingContactItemId=null;
@@ -1827,6 +1897,8 @@ const BUDGET_BUILDER_CATEGORIES=['חפירות','שלד','חשמל','אינסט�
 const BUDGET_UNITS=['מ"ר','מ"ק','מ"ל','יחידה','טון','קג','שעה','ק"מ'];
 const BUDGET_DEFAULT_UNIT='יחידה';
 const SUBCONTRACTOR_SPECIALTIES=['שלד ובטון','טיח וריצוף','חשמל','אינסטלציה וצנרת','גבס ותקרות','איטום וחוץ','מסגרות ואלומיניום','עיצוב פנים','ניהול פרויקט','אחר'];
+const GALLERY_STAGES=['כללי','חפירות ויסודות','שלד ובטון','טיח וריצוף','חשמל ואינסטלציה','גמר וסיום'];
+const GALLERY_DEFAULT_STAGE='כללי';
 const VAT_RATE=0.17;
 function resetListFilters(){
   paymentStatusFilter='';
@@ -1834,6 +1906,7 @@ function resetListFilters(){
   dailyLogWeatherFilter='';
   punchStatusFilter='';
   punchUrgencyFilter='';
+  galleryStageFilter='';
 }
 function resetAppSessionState(){
   appDataCache={projects:[],activityLog:[]};
@@ -4655,16 +4728,7 @@ function renderProjectDetail(el){
     }).join('')+'</div></div>';
 
   // GALLERY TAB
-  var galleryPosts=getGalleryPostsSorted(getProjectGalleryPosts(p));
-  html+='<div id="tab-gallery" class="tab-content '+(currentTab==='gallery'?'active':'')+'">'+
-    '<div class="section-actions"><div class="section-title">'+ic('camera')+' גלריית תמונות מהשטח</div>'+
-    '<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openNewGalleryPostModal()">'+ic('plus')+' פוסט חדש</button>'+
-    '</div>'+
-    (galleryPosts.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('camera')+'</div><p>אין תמונות עדיין<span class="admin-only-action"> — צור את הפוסט הראשון</span></p></div>':
-    '<div class="gallery-list">'+galleryPosts.map(function(post){
-      return renderGalleryPostRow(post);
-    }).join('')+'</div>')+
-    '</div>';
+  html+='<div id="tab-gallery" class="tab-content '+(currentTab==='gallery'?'active':'')+'">'+renderGalleryTabInnerHtml(p)+'</div>';
 
   // PUNCH LIST TAB
   html+='<div id="tab-punch" class="tab-content '+(currentTab==='punch'?'active':'')+'"><div id="punch-tab-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div></div>';
@@ -5699,7 +5763,7 @@ Object.assign(window,{
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,exportDailyLogsCsv,
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,
-  openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,
+  openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,setGalleryStageFilter,
   toggleRemoveGalleryImage,removePendingGalleryFile,saveGalleryPost,deleteGalleryPost,handleGalleryImageError,
   openPhotoLightbox,closePhotoLightbox,
   handleBlueprintUpload,openNewPunchModal,openPunchItemView,onBlueprintImageClick,savePunchItem,markPunchFixed,onPunchFilterChange,
