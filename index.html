@@ -2858,9 +2858,6 @@ async function saveDailyLog(){
   await initDailyLogTab();
 }
 
-  await initDailyLogTab();
-}
-
 function mapBudgetRow(r){
   return {
     id:r.id,
@@ -2992,16 +2989,24 @@ async function openBudgetEdit(id){
   };
   initBudgetBuilderTab();
 }
+function renderBudgetBuilderEditorInPlace(){
+  var root=document.getElementById('budget-builder-tab-root');
+  if(!root||!budgetBuilderDraft)return;
+  root.innerHTML=renderBudgetBuilderEditorHtml();
+  refreshIcons(root);
+}
 function addBudgetItemToCategory(categoryEnc){
   var category=typeof categoryEnc==='string'?decodeURIComponent(categoryEnc):categoryEnc;
   if(!budgetBuilderDraft)budgetBuilderDraft=createEmptyBudgetDraft();
   budgetBuilderDraft.items.push({id:newBudgetItemId(),category:category,description:'',quantity:1,unit:'יח\'',unitPrice:0});
-  initBudgetBuilderTab();
+  if(budgetBuilderMode==='edit')renderBudgetBuilderEditorInPlace();
+  else initBudgetBuilderTab();
 }
 function removeBudgetItem(itemId){
   if(!budgetBuilderDraft)return;
   budgetBuilderDraft.items=budgetBuilderDraft.items.filter(function(it){return it.id!==itemId;});
-  initBudgetBuilderTab();
+  if(budgetBuilderMode==='edit')renderBudgetBuilderEditorInPlace();
+  else initBudgetBuilderTab();
 }
 function addBudgetCustomCategory(){
   var input=document.getElementById('budget-new-category');
