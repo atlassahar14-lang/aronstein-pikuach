@@ -1857,6 +1857,16 @@ function validatePositiveNumber(fieldId,message){
   if(!String(el.value).trim()||isNaN(n)||n<=0)return setFieldError(fieldId,message||'יש להזין סכום חיובי');
   return true;
 }
+function validateDateNotBefore(endFieldId,startFieldId,message){
+  var startEl=document.getElementById(startFieldId);
+  var endEl=document.getElementById(endFieldId);
+  if(!startEl||!endEl)return true;
+  var start=startEl.value;
+  var end=endEl.value;
+  if(!start||!end)return true;
+  if(end<start)return setFieldError(endFieldId,message);
+  return true;
+}
 function focusFirstFormError(modalId){
   var modal=document.getElementById(modalId);
   if(!modal)return;
@@ -5383,7 +5393,12 @@ async function openEditProjectModal(id){
 async function saveProject(){
   if(!requireAdmin())return;
   clearFormErrors('modal-project');
-  if(!validateRequired('proj-name')){focusFirstFormError('modal-project');return;}
+  var ok=true;
+  if(!validateRequired('proj-name'))ok=false;
+  if(!validateRequired('proj-client-name'))ok=false;
+  if(!validateRequired('proj-start'))ok=false;
+  if(!validateDateNotBefore('proj-end','proj-start','תאריך סיום לא יכול להיות לפני תאריך ההתחלה'))ok=false;
+  if(!ok){focusFirstFormError('modal-project');return;}
   var clientName=document.getElementById('proj-client-name').value.trim();
   var clientPhone=document.getElementById('proj-client-phone').value.trim();
   var data=getData();
