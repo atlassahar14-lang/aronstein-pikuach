@@ -336,6 +336,16 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .punch-detail-row{display:flex;gap:8px;font-size:14px;margin-bottom:8px;line-height:1.5}
 .punch-detail-row .label{color:var(--text-muted);min-width:72px}
 .subcontractors-filter-bar,.list-filter-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;margin-bottom:12px}
+.specialty-settings-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.specialty-settings-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;font-size:14px}
+.specialty-settings-name{font-weight:600;color:var(--primary);flex:1}
+.specialty-settings-in-use{color:var(--text-muted);display:flex;align-items:center}
+.specialty-settings-in-use svg{width:16px;height:16px}
+.specialty-settings-remove{width:28px;height:28px;border:none;border-radius:8px;background:#fff;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;transition:background .2s,color .2s}
+.specialty-settings-remove:hover{background:#fef2f2;color:var(--danger)}
+.specialty-settings-remove svg{width:16px;height:16px}
+.specialty-settings-add{display:flex;gap:10px;flex-wrap:wrap}
+.specialty-settings-add input{flex:1;min-width:160px}
 .subcontractors-filter-bar label,.list-filter-bar label{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap}
 .subcontractors-filter-bar select,.list-filter-bar select{min-width:160px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px;background:#fff;direction:rtl}
 .list-filter-bar .list-filter-actions{margin-right:auto;display:flex;gap:8px;flex-wrap:wrap}
@@ -951,7 +961,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="form-group"><label>טלפון</label><input type="tel" id="sub-phone" placeholder="050-0000000"/></div>
       <div class="form-group"><label>אימייל</label><input type="email" id="sub-email" placeholder="email@example.com"/></div>
     </div>
-    <div class="form-group"><label for="sub-specialty">תחום התמחות</label><select id="sub-specialty"><option value="">—</option><option value="שלד ובטון">שלד ובטון</option><option value="טיח וריצוף">טיח וריצוף</option><option value="חשמל">חשמל</option><option value="אינסטלציה וצנרת">אינסטלציה וצנרת</option><option value="גבס ותקרות">גבס ותקרות</option><option value="איטום וחוץ">איטום וחוץ</option><option value="מסגרות ואלומיניום">מסגרות ואלומיניום</option><option value="עיצוב פנים">עיצוב פנים</option><option value="ניהול פרויקט">ניהול פרויקט</option><option value="אחר">אחר</option></select></div>
+    <div class="form-group"><label for="sub-specialty">תחום התמחות</label><select id="sub-specialty"><option value="">—</option></select></div>
     <div class="grid-2">
       <div class="form-group"><label>תוקף ביטוח</label><input type="date" id="sub-insurance"/></div>
       <div class="form-group"><label>תוקף אישור בטיחות</label><input type="date" id="sub-safety"/></div>
@@ -2111,7 +2121,7 @@ function bindModalValidationClear(modalId){
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
 var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
-var appDataCache={projects:[],activityLog:[]},appUsers=[],subcontractorsCache=[],punchItemsCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
+var appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()},appUsers=[],subcontractorsCache=[],punchItemsCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
 const OFFLINE_PUNCH_STORAGE_KEY='offline_punch_items';
 var offlinePunchSyncInProgress=false;
 var subcontractorSpecialtyFilter='',showDailyLogForm=false;
@@ -2123,7 +2133,7 @@ const BUDGET_BUILDER_CATEGORIES=['חפירות','שלד','חשמל','אינסט�
 const BUDGET_DONUT_COLORS=['#1B2B5E','#2a4078','#e8a020','#22c55e','#3b82f6','#8b5cf6','#ef4444','#14b8a6','#f97316','#6366f1','#0ea5e9','#a855f7'];
 const BUDGET_UNITS=['מ"ר','מ"ק','מ"ל','יחידה','טון','קג','שעה','ק"מ'];
 const BUDGET_DEFAULT_UNIT='יחידה';
-const SUBCONTRACTOR_SPECIALTIES=['שלד ובטון','טיח וריצוף','חשמל','אינסטלציה וצנרת','גבס ותקרות','איטום וחוץ','מסגרות ואלומיניום','עיצוב פנים','ניהול פרויקט','אחר'];
+const DEFAULT_SUBCONTRACTOR_SPECIALTIES=['שלד ובטון','טיח וריצוף','חשמל','אינסטלציה וצנרת','גבס ותקרות','איטום וחוץ','מסגרות ואלומיניום','עיצוב פנים','ניהול פרויקט','אחר'];
 const GALLERY_STAGES=['כללי','חפירות ויסודות','שלד ובטון','טיח וריצוף','חשמל ואינסטלציה','גמר וסיום'];
 // שלב גלריה: app_data.projects[].galleryPosts[].stage (JSON — אין טבלה נפרדת)
 const GALLERY_DEFAULT_STAGE='כללי';
@@ -2137,7 +2147,7 @@ function resetListFilters(){
   galleryStageFilter='';
 }
 function resetAppSessionState(){
-  appDataCache={projects:[],activityLog:[]};
+  appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()};
   appUsers=[];
   subcontractorsCache=[];
   punchItemsCache=[];
@@ -2613,6 +2623,25 @@ function sanitizeJsonForDb(value){
   try{return JSON.parse(JSON.stringify(value==null?null:value));}
   catch(e){console.error('sanitizeJsonForDb',e);return null;}
 }
+function normalizeSpecialtiesList(raw){
+  if(!Array.isArray(raw)||!raw.length)return DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice();
+  var out=[],seen={};
+  raw.forEach(function(item){
+    var s=String(item||'').trim();
+    if(!s||seen[s])return;
+    seen[s]=true;
+    out.push(s);
+  });
+  return out.length?out:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice();
+}
+function getSpecialtiesList(){
+  return normalizeSpecialtiesList(appDataCache.specialties);
+}
+function isSpecialtyInUse(specialty){
+  var sp=String(specialty||'').trim();
+  if(!sp)return false;
+  return subcontractorsCache.some(function(s){return (s.specialty||'').trim()===sp;});
+}
 function prepareAppDataRow(){
   var projects=sanitizeJsonForDb(appDataCache.projects||[]);
   var activityLog=sanitizeJsonForDb(normalizeActivityLog(appDataCache.activityLog));
@@ -2621,12 +2650,13 @@ function prepareAppDataRow(){
   return {
     projects:projects,
     activity_log:activityLog,
+    specialties:sanitizeJsonForDb(getSpecialtiesList()),
     updated_at:new Date().toISOString()
   };
 }
 function estimatePayloadBytes(row){
   try{
-    return new Blob([JSON.stringify(row.projects||[]),JSON.stringify(row.activity_log||[])]).size;
+    return new Blob([JSON.stringify(row.projects||[]),JSON.stringify(row.activity_log||[]),JSON.stringify(row.specialties||[])]).size;
   }catch(e){return 0;}
 }
 async function persistAppData(opts){
@@ -2646,6 +2676,7 @@ async function persistAppData(opts){
   var upd=await supabase.from('app_data').update({
     projects:row.projects,
     activity_log:row.activity_log,
+    specialties:row.specialties,
     updated_at:row.updated_at
   }).eq('id','main');
   if(!upd.error)return {ok:true,bytes:bytes};
@@ -2654,6 +2685,7 @@ async function persistAppData(opts){
     id:'main',
     projects:row.projects,
     activity_log:row.activity_log,
+    specialties:row.specialties,
     updated_at:row.updated_at
   });
   if(!ins.error)return {ok:true,bytes:bytes};
@@ -2674,18 +2706,40 @@ async function persistActivityLogOnly(){
   }
   return {ok:true};
 }
+async function persistSpecialtiesOnly(){
+  if(!isAdmin())return {ok:true};
+  var specialties=sanitizeJsonForDb(getSpecialtiesList());
+  if(!Array.isArray(specialties))specialties=DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice();
+  appDataCache.specialties=specialties;
+  var res=await supabase.from('app_data').update({
+    specialties:specialties,
+    updated_at:new Date().toISOString()
+  }).eq('id','main');
+  if(res.error){
+    console.error('persistSpecialtiesOnly',res.error);
+    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
+    return {ok:false,error:res.error.message};
+  }
+  return {ok:true};
+}
 
 async function refreshAppData(){
-  var res=await supabase.from('app_data').select('projects,activity_log').eq('id','main').maybeSingle();
+  var res=await supabase.from('app_data').select('projects,activity_log,specialties').eq('id','main').maybeSingle();
   if(res.error){
     console.error('refreshAppData',res.error);
     if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
-    if(!appDataCache.projects.length)appDataCache={projects:[],activityLog:[]};
+    if(!appDataCache.projects.length)appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()};
     return {ok:false,error:res.error.message||String(res.error)};
   }
   if(res.data&&Array.isArray(res.data.projects)){
-    appDataCache={projects:res.data.projects,activityLog:normalizeActivityLog(res.data.activity_log)};
+    var needsSpecialtySeed=!res.data.specialties||!Array.isArray(res.data.specialties)||!res.data.specialties.length;
+    appDataCache={
+      projects:res.data.projects,
+      activityLog:normalizeActivityLog(res.data.activity_log),
+      specialties:needsSpecialtySeed?DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice():normalizeSpecialtiesList(res.data.specialties)
+    };
     appDataCache.projects.forEach(normalizeProjectGallery);
+    if(needsSpecialtySeed&&isAdmin())await persistSpecialtiesOnly();
     return {ok:true};
   }
   if(res.data&&res.data.projects!=null&&!Array.isArray(res.data.projects)){
@@ -2693,10 +2747,16 @@ async function refreshAppData(){
     return {ok:false,error:'שדה projects ב-app_data אינו מערך JSON תקין'};
   }
   if(res.data){
-    appDataCache={projects:[],activityLog:normalizeActivityLog(res.data.activity_log)};
+    var needsSeed=!res.data.specialties||!Array.isArray(res.data.specialties)||!res.data.specialties.length;
+    appDataCache={
+      projects:[],
+      activityLog:normalizeActivityLog(res.data.activity_log),
+      specialties:needsSeed?DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice():normalizeSpecialtiesList(res.data.specialties)
+    };
+    if(needsSeed&&isAdmin())await persistSpecialtiesOnly();
     return {ok:true};
   }
-  appDataCache={projects:getDefaultProjects(),activityLog:[]};
+  appDataCache={projects:getDefaultProjects(),activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()};
   var seed=await persistAppData();
   if(!seed.ok){
     console.error('refreshAppData seed',seed.error);
@@ -2716,6 +2776,7 @@ function formatSupabaseErrorHint(errMsg){
   if(m.includes('budget_items')||m.includes('subcontractor_id'))return 'שגיאה בפריטי תקציב — הרץ את supabase-budget-items-subcontractor-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('profiles')&&m.includes('phone')||m.includes('column')&&m.includes('phone'))return 'חסרה עמודת phone בטבלת profiles — הרץ את supabase-profiles-phone-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('punch_items')&&(m.includes('location')||m.includes('photo_url')))return 'חסרות עמודות location / photo_url בטבלת punch_items — הרץ את supabase-punch-items-location-photo-migration.sql ב-Supabase SQL Editor.';
+  if(m.includes('specialties'))return 'חסרה עמודת specialties בטבלת app_data — הרץ את supabase-specialties-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('fetch')||m.includes('network')||m.includes('522')||m.includes('timeout'))return 'בעיית רשת או Supabase לא זמין.';
   return errMsg||'שגיאה לא ידועה';
 }
@@ -5550,38 +5611,20 @@ function compareSubcontractorCompanyName(a,b){
   return (a.companyName||'').localeCompare(b.companyName||'','he',{sensitivity:'base'});
 }
 function getSubcontractorSpecialtyOptions(){
-  var seen={},extras=[];
-  SUBCONTRACTOR_SPECIALTIES.forEach(function(sp){seen[sp]=true;});
-  subcontractorsCache.forEach(function(s){
-    var sp=(s.specialty||'').trim();
-    if(sp&&!seen[sp]){seen[sp]=true;extras.push(sp);}
-  });
-  extras.sort(function(a,b){return a.localeCompare(b,'he');});
-  return SUBCONTRACTOR_SPECIALTIES.concat(extras);
+  return getSpecialtiesList().slice();
 }
 function populateSubcontractorSpecialtySelect(selectedValue){
   var sel=document.getElementById('sub-specialty');
   if(!sel)return;
   var selected=selectedValue==null?'':String(selectedValue);
   var opts=getSubcontractorSpecialtyOptions();
-  var existing={};
-  Array.prototype.forEach.call(sel.options,function(o){existing[o.value||o.textContent]=true;});
-  opts.forEach(function(opt){
-    if(existing[opt])return;
-    var o=document.createElement('option');
-    o.value=opt;
-    o.textContent=opt;
-    sel.appendChild(o);
-    existing[opt]=true;
-  });
-  sel.value=selected;
-  if(selected&&sel.value!==selected){
-    var extra=document.createElement('option');
-    extra.value=selected;
-    extra.textContent=selected;
-    extra.selected=true;
-    sel.appendChild(extra);
+  sel.innerHTML='<option value="">—</option>'+opts.map(function(opt){
+    return '<option value="'+escHtml(opt)+'">'+escHtml(opt)+'</option>';
+  }).join('');
+  if(selected&&!opts.some(function(opt){return opt===selected;})){
+    sel.innerHTML+='<option value="'+escHtml(selected)+'">'+escHtml(selected)+'</option>';
   }
+  sel.value=selected;
 }
 function getSubcontractorsForDisplay(){
   var subs=subcontractorsCache.slice();
@@ -5751,6 +5794,75 @@ function renderActivityLog(el){
   refreshIcons(el);
 }
 
+function renderSpecialtiesSettingsCardHtml(){
+  var list=getSpecialtiesList();
+  var items=list.map(function(sp){
+    var inUse=isSpecialtyInUse(sp);
+    return '<div class="specialty-settings-item">'+
+      '<span class="specialty-settings-name">'+escHtml(sp)+'</span>'+
+      (inUse?'<span class="specialty-settings-in-use" title="בשימוש על ידי קבלן">'+ic('lock')+'</span>':
+        '<button type="button" class="specialty-settings-remove" onclick="removeSpecialtySetting(\''+encodeURIComponent(sp)+'\')" title="מחק תחום">'+ic('x')+'</button>')+
+      '</div>';
+  }).join('');
+  return '<div class="card" style="max-width:480px;margin-top:20px" id="settings-specialties-card">'+
+    '<div class="card-title">'+ic('hard-hat')+' תחומי התמחות</div>'+
+    '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">ניהול רשימת תחומי ההתמחות לקבלני משנה</p>'+
+    '<div class="specialty-settings-list" id="settings-specialties-list">'+(items||'<p style="font-size:13px;color:var(--text-muted);margin:0">אין תחומים</p>')+'</div>'+
+    '<div class="specialty-settings-add">'+
+    '<input type="text" id="settings-new-specialty" placeholder="שם תחום חדש..." onkeydown="if(event.key===\'Enter\')addSpecialtySetting()"/>'+
+    '<button type="button" class="btn btn-primary btn-sm" onclick="addSpecialtySetting()">'+ic('plus')+' הוסף תחום</button></div></div>';
+}
+function refreshSpecialtiesSettingsUi(){
+  var card=document.getElementById('settings-specialties-card');
+  if(!card)return;
+  card.outerHTML=renderSpecialtiesSettingsCardHtml();
+  refreshIcons(document.getElementById('settings-specialties-card'));
+}
+async function addSpecialtySetting(){
+  if(!requireAdmin())return;
+  var input=document.getElementById('settings-new-specialty');
+  if(!input)return;
+  var name=(input.value||'').trim();
+  if(!name){showToast('יש להזין שם תחום','error');return;}
+  var list=getSpecialtiesList();
+  if(list.some(function(s){return s===name;})){showToast('תחום זה כבר קיים','error');return;}
+  var prev=list.slice();
+  appDataCache.specialties=list.concat([name]);
+  var res=await persistSpecialtiesOnly();
+  if(!res.ok){
+    appDataCache.specialties=prev;
+    showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(res.error),'error');
+    return;
+  }
+  logActivity('הוספת תחום התמחות',name);
+  await persistActivityLogOnly();
+  input.value='';
+  refreshSpecialtiesSettingsUi();
+  showToast('התחום נוסף');
+}
+async function removeSpecialtySetting(encodedName){
+  if(!requireAdmin())return;
+  var name=decodeURIComponent(encodedName||'').trim();
+  if(!name)return;
+  if(isSpecialtyInUse(name)){showToast('לא ניתן למחוק — תחום בשימוש על ידי קבלן','error');return;}
+  var list=getSpecialtiesList();
+  if(!list.some(function(s){return s===name;}))return;
+  var prev=list.slice();
+  appDataCache.specialties=list.filter(function(s){return s!==name;});
+  if(subcontractorSpecialtyFilter===name)subcontractorSpecialtyFilter='';
+  var res=await persistSpecialtiesOnly();
+  if(!res.ok){
+    appDataCache.specialties=prev;
+    showToast('שגיאה במחיקה: '+formatSupabaseErrorHint(res.error),'error');
+    return;
+  }
+  logActivity('מחיקת תחום התמחות',name);
+  await persistActivityLogOnly();
+  refreshSpecialtiesSettingsUi();
+  if(currentView==='subcontractors')renderSubcontractors(document.getElementById('main-content'));
+  showToast('התחום נמחק');
+}
+
 function renderSettings(el){
   if(!isAdmin()){renderClientNoProject(el);return;}
   var logCount=(appDataCache.activityLog||[]).length;
@@ -5759,7 +5871,8 @@ function renderSettings(el){
     '<div class="card-title">'+ic('scroll-text')+' לוג פעולות</div>'+
     '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">'+logCount+' פעולות מתועדות במערכת</p>'+
     '<button class="btn btn-outline" style="width:100%;justify-content:center" onclick="showView(\'activity-log\')">'+ic('scroll-text')+' צפה בלוג המלא</button></div>'+
-    '<div class="card" style="max-width:480px">'+
+    renderSpecialtiesSettingsCardHtml()+
+    '<div class="card" style="max-width:480px;margin-top:20px">'+
     '<div class="card-title">'+ic('lock')+' שינוי סיסמה</div>'+
     '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">הסיסמה מנוהלת ב-Supabase Authentication</p>'+
     '<div class="form-group"><label>סיסמה חדשה</label><input type="password" id="new-admin-pass" placeholder="סיסמה חדשה"/></div>'+
@@ -5771,6 +5884,8 @@ function renderSettings(el){
     '<div class="card-title">'+ic('trash-2')+' איפוס נתונים</div>'+
     '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">מחיקת כל הנתונים מ-Supabase — פעולה בלתי הפיכה!</p>'+
     '<button class="btn btn-danger admin-only-action" onclick="if(confirm(\'בטוח? כל הנתונים יימחקו!\'))resetData()">איפוס מלא</button></div>';
+  refreshSubcontractors().then(function(){refreshSpecialtiesSettingsUi();});
+  refreshIcons(el);
 }
 
 function resetModalPosition(modal){
@@ -6454,7 +6569,7 @@ async function sendAdminResetEmail(){
 async function resetData(){
   if(!requireAdmin())return;
   logActivity('איפוס מלא','כל הנתונים אופסו לברירת מחדל');
-  appDataCache={projects:getDefaultProjects(),activityLog:appDataCache.activityLog||[]};
+  appDataCache={projects:getDefaultProjects(),activityLog:appDataCache.activityLog||[],specialties:getSpecialtiesList()};
   var res=await persistAppData();
   if(!res.ok){alert('שגיאה באיפוס הנתונים:\n'+formatSupabaseErrorHint(res.error));return;}
   location.reload();
@@ -6479,6 +6594,7 @@ Object.assign(window,{
   showView,switchTab,openModal,closeModal,toggleMobileSidebar,closeMobileSidebar,toggleMobileTabMenu,closeMobileTabMenu,exportProjectOverviewPdf,
   openNewProjectModal,openEditProjectModal,saveProject,confirmDeleteProject,closeDeleteProjectModal,executeDeleteProject,openAddUserModal,
   openAddSubcontractorModal,openEditSubcontractorModal,saveSubcontractor,deleteSubcontractor,onSubcontractorSpecialtyFilterChange,
+  addSpecialtySetting,removeSpecialtySetting,
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,onPaymentFilterChange,exportPaymentsCsv,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,exportDailyLogsCsv,
