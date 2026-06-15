@@ -329,6 +329,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .punch-urgency-low{color:#ca8a04;font-weight:600}
 .punch-status-open{color:var(--warning);font-weight:600}
 .punch-status-fixed{color:var(--success);font-weight:600}
+.offline-punch-pending-badge{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;margin-bottom:14px;background:#fef3c7;border:1px solid #fbbf24;border-radius:20px;font-size:12px;font-weight:600;color:#92400e}
 .punch-detail-row{display:flex;gap:8px;font-size:14px;margin-bottom:8px;line-height:1.5}
 .punch-detail-row .label{color:var(--text-muted);min-width:72px}
 .subcontractors-filter-bar,.list-filter-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;margin-bottom:12px}
@@ -1922,7 +1923,8 @@ var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='o
 var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
 var appDataCache={projects:[],activityLog:[]},appUsers=[],subcontractorsCache=[],punchItemsCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false;
-var viewingPunchItemId=null,punchPinDraft={x:null,y:null},punchBlueprintSignedUrl=null;
+const OFFLINE_PUNCH_STORAGE_KEY='offline_punch_items';
+var offlinePunchSyncInProgress=false;
 var subcontractorSpecialtyFilter='',showDailyLogForm=false;
 var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='',activityLogTypeFilter='',galleryStageFilter='';
 var toastTimer=null;
@@ -2722,6 +2724,125 @@ function punchStatusLabel(status){
 function punchStatusCssClass(status){
   return status==='fixed'?'punch-status-fixed':'punch-status-open';
 }
+function getOfflinePunchItems(){
+  try{
+    var raw=localStorage.getItem(OFFLINE_PUNCH_STORAGE_KEY);
+    var arr=raw?JSON.parse(raw):[];
+    return Array.isArray(arr)?arr:[];
+  }catch(e){return [];}
+}
+function setOfflinePunchItems(items){
+  localStorage.setItem(OFFLINE_PUNCH_STORAGE_KEY,JSON.stringify(items||[]));
+}
+function countOfflinePunchItems(projectId){
+  return getOfflinePunchItems().filter(function(it){return !projectId||it.project_id===projectId;}).length;
+}
+function renderOfflinePunchPendingBadge(projectId){
+  var n=countOfflinePunchItems(projectId);
+  if(!n)return '';
+  return '<div class="offline-punch-pending-badge" id="offline-punch-pending-badge">'+n+' ליקויים ממתינים להעלאה</div>';
+}
+function readFileAsDataUrl(file){
+  return new Promise(function(resolve,reject){
+    var reader=new FileReader();
+    reader.onload=function(){resolve(reader.result);};
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+function isLikelyNetworkError(err){
+  if(!navigator.onLine)return true;
+  var msg=(err&&err.message||String(err||'')).toLowerCase();
+  return msg.includes('failed to fetch')||msg.includes('networkerror')||msg.includes('load failed')||msg.includes('network request failed');
+}
+async function buildPunchItemOfflineEntry(proj,row,photoFile){
+  var entry={
+    offlineId:'offline_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),
+    savedAt:new Date().toISOString(),
+    project_id:proj.id,
+    projectName:proj.name,
+    description:row.description,
+    subcontractor_id:row.subcontractor_id,
+    urgency:row.urgency,
+    deadline:row.deadline,
+    location:row.location,
+    status:row.status,
+    pin_x:row.pin_x,
+    pin_y:row.pin_y,
+    photoDataUrl:null,
+    photoFileName:null
+  };
+  if(photoFile){
+    entry.photoDataUrl=await readFileAsDataUrl(photoFile);
+    entry.photoFileName=photoFile.name;
+  }
+  return entry;
+}
+async function queueOfflinePunchItem(entry){
+  var items=getOfflinePunchItems();
+  items.push(entry);
+  setOfflinePunchItems(items);
+}
+async function syncOfflinePunchItems(){
+  if(offlinePunchSyncInProgress||!navigator.onLine||!currentUser)return;
+  var pending=getOfflinePunchItems();
+  if(!pending.length)return;
+  offlinePunchSyncInProgress=true;
+  var remaining=[];
+  var synced=0;
+  try{
+    for(var i=0;i<pending.length;i++){
+      var entry=pending[i];
+      var row={
+        project_id:entry.project_id,
+        description:entry.description,
+        subcontractor_id:entry.subcontractor_id||null,
+        urgency:entry.urgency||'בינונית',
+        deadline:entry.deadline||null,
+        location:entry.location||null,
+        photo_url:null,
+        status:entry.status||'open',
+        pin_x:entry.pin_x!=null?entry.pin_x:null,
+        pin_y:entry.pin_y!=null?entry.pin_y:null
+      };
+      var res=await supabase.from('punch_items').insert(row).select().single();
+      if(res.error){
+        if(await checkSupabaseSessionError(res.error))return;
+        remaining.push(entry);
+        continue;
+      }
+      if(entry.photoDataUrl){
+        try{
+          var blob=dataUrlToBlob(entry.photoDataUrl);
+          var fname=entry.photoFileName||('punch-photo.'+extFromDataUrl(entry.photoDataUrl,'jpg'));
+          var file=new File([blob],fname,{type:blob.type||'image/jpeg'});
+          var upload=await uploadMediaFile('punch-photos/'+entry.project_id+'/'+res.data.id,file);
+          if(upload.ok){
+            await supabase.from('punch_items').update({photo_url:upload.data.url}).eq('id',res.data.id);
+          }
+        }catch(photoErr){
+          console.warn('syncOfflinePunchItems photo',photoErr);
+        }
+      }
+      if(isAdmin())logActivity('ליקוי חדש','פרויקט: '+(entry.projectName||entry.project_id)+' · '+entry.description+' (הועלה מהמכשיר)');
+      synced++;
+    }
+    setOfflinePunchItems(remaining);
+    if(synced>0){
+      showToast(synced===1?'ליקוי אחד הועלה מהמכשיר':synced+' ליקויים הועלו מהמכשיר');
+      if(currentTab==='punch'&&currentProjectId)await initPunchListTab();
+    }
+  }catch(e){
+    console.error('syncOfflinePunchItems',e);
+  }finally{
+    offlinePunchSyncInProgress=false;
+  }
+}
+function initOfflinePunchOnlineSync(){
+  if(window.__offlinePunchOnlineBound)return;
+  window.__offlinePunchOnlineBound=true;
+  window.addEventListener('online',function(){syncOfflinePunchItems();});
+}
 function populatePunchSubcontractorSelect(selectedId){
   var sel=document.getElementById('punch-subcontractor');
   if(!sel)return;
@@ -2786,7 +2907,8 @@ async function initPunchListTab(){
   var loaded=await refreshPunchItems(proj.id);
   var blueprintPath=proj.blueprint_path||proj.blueprintPath||null;
   punchBlueprintSignedUrl=blueprintPath?await getBlueprintSignedUrl(blueprintPath):null;
-  var html='<div class="section-actions"><div class="section-title">'+ic('map-pin')+' ליקויים</div></div>';
+  var html=renderOfflinePunchPendingBadge(proj.id);
+  html+='<div class="section-actions"><div class="section-title">'+ic('map-pin')+' ליקויים</div></div>';
   if(!blueprintPath||!punchBlueprintSignedUrl){
     html+='<div class="card blueprint-section"><p style="font-size:14px;color:var(--text-muted);margin-bottom:16px">'+
       (isAdminUser?'העלה תוכנית (תמונה או PDF) כדי לנעוץ ליקויים על המפה.':'טרם הועלתה תוכנית לפרויקט זה.')+'</p>'+
@@ -2963,8 +3085,27 @@ async function savePunchItem(){
   var saveBtn=document.getElementById('punch-save-btn');
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='שומר...';}
   try{
+    if(!navigator.onLine){
+      var offlineEntry=await buildPunchItemOfflineEntry(proj,row,photoFile);
+      await queueOfflinePunchItem(offlineEntry);
+      closeModal('modal-punch-item');
+      showToast('אין חיבור — הליקוי נשמר במכשיר ויועלה אוטומטית כשהחיבור יחזור','error',6000);
+      await initPunchListTab();
+      return;
+    }
     var res=await supabase.from('punch_items').insert(row).select().single();
-    if(res.error){showToast('שגיאה בשמירת הליקוי: '+formatSupabaseErrorHint(res.error.message),'error');return;}
+    if(res.error){
+      if(isLikelyNetworkError(res.error)){
+        var offlineEntryNet=await buildPunchItemOfflineEntry(proj,row,photoFile);
+        await queueOfflinePunchItem(offlineEntryNet);
+        closeModal('modal-punch-item');
+        showToast('אין חיבור — הליקוי נשמר במכשיר ויועלה אוטומטית כשהחיבור יחזור','error',6000);
+        await initPunchListTab();
+        return;
+      }
+      showToast('שגיאה בשמירת הליקוי: '+formatSupabaseErrorHint(res.error.message),'error');
+      return;
+    }
     if(photoFile){
       var upload=await uploadMediaFile('punch-photos/'+proj.id+'/'+res.data.id,photoFile);
       if(!upload.ok){
@@ -3978,6 +4119,7 @@ async function startApp(user){
   if(isAdmin()){showView('dashboard');}
   else if(!user.projectId){renderClientNoProject(document.getElementById('main-content'));}
   else{currentProjectId=user.projectId;currentTab=normalizeClientTab('overview');showView('project',user.projectId);}
+  if(navigator.onLine)syncOfflinePunchItems();
 }
 
 function showLoginScreen(){
@@ -6010,6 +6152,8 @@ refreshIcons();
 updateLoginLockUI();
 initMobileTabMenuHandlers();
 initGlobalSearchHandlers();
+initOfflinePunchOnlineSync();
+if(navigator.onLine)syncOfflinePunchItems();
 </script>
 </body>
 </html>
