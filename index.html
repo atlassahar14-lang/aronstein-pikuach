@@ -488,6 +488,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 @keyframes upload-spin{to{transform:rotate(360deg)}}
 .upload-error{font-size:13px;color:var(--danger);margin-top:8px;display:none}
 .upload-error.show{display:block}
+.upload-hint{font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.4}
 .migration-overlay{display:none;position:fixed;inset:0;background:rgba(27,43,94,.55);z-index:400;align-items:center;justify-content:center;padding:24px}
 .migration-overlay.show{display:flex}
 .migration-card{background:#fff;border-radius:14px;padding:24px 28px;max-width:420px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.2);text-align:center}
@@ -915,7 +916,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="form-group"><label>תאריך</label><input type="date" id="pay-date"/></div>
     <div class="form-group"><label>נמען</label><input type="text" id="pay-to" placeholder="שם הקבלן / ספק"/></div>
     <div class="form-group"><label>קטגוריה</label><select id="pay-category"><option>שלד</option><option>חפירות</option><option>טיח</option><option>חשמל</option><option>אינסטלציה</option><option>ריצוף</option><option>גמר</option><option>צנרת ואינסטלציה</option><option>בידוד</option><option>פיקוח הנדסי</option><option>חוץ וגינון</option><option>אחר</option></select></div>
-    <div class="form-group"><label>קבלה/חשבונית</label><label class="upload-label"><i data-lucide="paperclip"></i> בחר קובץ<input type="file" id="pay-receipt" accept="image/*,application/pdf" capture="environment"/></label><div id="pay-receipt-preview" class="file-preview"></div><div id="pay-receipt-existing" class="file-preview-existing"></div><div id="pay-receipt-upload-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span id="pay-receipt-upload-text">מעלה קבלה...</span></div><div id="pay-receipt-upload-error" class="upload-error"></div></div>
+    <div class="form-group"><label>קבלה/חשבונית</label><label class="upload-label"><i data-lucide="paperclip"></i> בחר קובץ<input type="file" id="pay-receipt" accept=".jpg,.jpeg,.png,.webp,.heic,.pdf,image/jpeg,image/png,image/webp,image/heic,application/pdf" capture="environment"/></label><p class="upload-hint">JPG, PNG, PDF עד 10MB</p><div id="pay-receipt-preview" class="file-preview"></div><div id="pay-receipt-existing" class="file-preview-existing"></div><div id="pay-receipt-upload-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span id="pay-receipt-upload-text">מעלה קבלה...</span></div><div id="pay-receipt-upload-error" class="upload-error"></div></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-payment')">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="savePayment()">שמור תשלום</button>
@@ -1002,7 +1003,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="form-group"><label>דחיפות</label><select id="punch-urgency"><option value="נמוכה">נמוכה</option><option value="בינונית" selected>בינונית</option><option value="קריטית">קריטית</option></select></div>
       <div class="form-group"><label>דד-ליין</label><input type="date" id="punch-deadline"/></div>
       <div class="form-group"><label for="punch-location">מיקום בבית</label><input type="text" id="punch-location" placeholder="לדוגמה: קומה 2 - חדר שינה"/></div>
-      <div class="form-group"><label for="punch-photo">תמונה מהשטח (אופציונלי)</label><input type="file" id="punch-photo" accept="image/*"/></div>
+      <div class="form-group"><label for="punch-photo">תמונה מהשטח (אופציונלי)</label><input type="file" id="punch-photo" accept=".jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic"/><p class="upload-hint">JPG, PNG, PDF עד 10MB</p></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-punch-item')">סגור</button>
@@ -1018,7 +1019,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="modal-header"><div class="modal-title">עדכון חדש ללקוח</div><button class="modal-close" onclick="closeModal('modal-update')"><i data-lucide="x"></i></button></div>
     <div class="form-group"><label>כותרת</label><input type="text" id="upd-title" placeholder="לדוגמה: סיום שלב השלד"/></div>
     <div class="form-group"><label>תוכן</label><textarea id="upd-body" placeholder="פרטי העדכון..."></textarea></div>
-    <div class="form-group"><label>תמונה / וידאו / PDF מהשטח (אופציונלי)</label><label class="upload-label"><i data-lucide="camera"></i> בחר קובץ<input type="file" id="upd-media" accept="image/*,video/*,application/pdf"/></label><div id="upd-media-preview" class="file-preview"></div></div>
+    <div class="form-group"><label>תמונה / וידאו / PDF מהשטח (אופציונלי)</label><label class="upload-label"><i data-lucide="camera"></i> בחר קובץ<input type="file" id="upd-media" accept=".jpg,.jpeg,.png,.webp,.heic,.pdf,.mp4,.mov,image/jpeg,image/png,image/webp,image/heic,application/pdf,video/mp4,video/quicktime"/></label><p class="upload-hint">JPG, PNG, PDF עד 10MB</p><div id="upd-media-preview" class="file-preview"></div><div id="upd-media-upload-error" class="upload-error"></div></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-update')">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="saveUpdate()">שלח עדכון</button>
@@ -1034,7 +1035,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="form-group"><label for="gallery-post-stage">שלב</label><select id="gallery-post-stage"></select></div>
     <div class="form-group">
       <label>תמונות (ניתן לבחור מספר)</label>
-      <label class="upload-label"><i data-lucide="camera"></i> בחר תמונות<input type="file" id="gallery-post-files" accept="image/*" multiple/></label>
+      <label class="upload-label"><i data-lucide="camera"></i> בחר תמונות<input type="file" id="gallery-post-files" accept=".jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic" multiple/></label>
+      <p class="upload-hint">JPG, PNG, PDF עד 10MB</p>
+      <div id="gallery-post-files-error" class="upload-error"></div>
       <div id="gallery-post-images" class="gallery-modal-images"></div>
     </div>
     <div class="modal-footer phase-modal-footer">
@@ -1084,7 +1087,15 @@ const PROJECT_BLUEPRINTS_BUCKET='project-blueprints';
 const RECEIPT_COMPRESS_BYTES=1024*1024;
 const RECEIPT_MAX_EDGE=1600;
 const RECEIPT_JPEG_QUALITY=0.7;
-const MEDIA_MAX_BYTES=20*1024*1024;
+const MEDIA_MAX_BYTES=10*1024*1024;
+const UPLOAD_MAX_BYTES=MEDIA_MAX_BYTES;
+const UPLOAD_HINT_TEXT='JPG, PNG, PDF עד 10MB';
+const UPLOAD_IMAGE_EXTS=['jpg','jpeg','png','webp','heic'];
+const UPLOAD_DOC_EXTS=['pdf'];
+const UPLOAD_VIDEO_EXTS=['mp4','mov'];
+const UPLOAD_ACCEPT_IMAGES='.jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic';
+const UPLOAD_ACCEPT_RECEIPT=UPLOAD_ACCEPT_IMAGES+',.pdf,application/pdf';
+const UPLOAD_ACCEPT_UPDATE=UPLOAD_ACCEPT_RECEIPT+',.mp4,.mov,video/mp4,video/quicktime';
 var loginLockTimer=null;
 var filePreviewUrls={};
 
@@ -1151,6 +1162,98 @@ function refreshIcons(root){if(window.lucide)lucide.createIcons(root?{root:root}
 function sanitizeFileName(name){
   return String(name||'file').replace(/[^\w.\-()\u0590-\u05FF\s]/g,'_').replace(/\s+/g,'_').slice(0,120);
 }
+function getUploadFileExtension(file){
+  var name=(file&&file.name||'').trim();
+  var dot=name.lastIndexOf('.');
+  if(dot>=0)return name.slice(dot+1).toLowerCase();
+  return '';
+}
+function mimeToUploadExtension(file){
+  var type=(file.type||'').toLowerCase();
+  if(type==='image/jpeg')return 'jpg';
+  if(type==='image/png')return 'png';
+  if(type==='image/webp')return 'webp';
+  if(type==='image/heic'||type==='image/heif')return 'heic';
+  if(type==='application/pdf')return 'pdf';
+  if(type==='video/mp4')return 'mp4';
+  if(type==='video/quicktime')return 'mov';
+  return '';
+}
+function resolveUploadFileExtension(file){
+  var ext=getUploadFileExtension(file);
+  if(ext)return ext;
+  return mimeToUploadExtension(file);
+}
+function validateUploadFile(file,opts){
+  opts=opts||{};
+  if(!file)return {ok:false,message:'לא נבחר קובץ'};
+  if(file.size>UPLOAD_MAX_BYTES)return {ok:false,message:'הקובץ גדול מדי — גודל מקסימלי 10MB'};
+  var allowPdf=opts.allowPdf!==false&&opts.imagesOnly!==true;
+  var allowVideo=!!opts.allowVideo;
+  var allowed=UPLOAD_IMAGE_EXTS.slice();
+  if(allowPdf)allowed=allowed.concat(UPLOAD_DOC_EXTS);
+  if(allowVideo)allowed=allowed.concat(UPLOAD_VIDEO_EXTS);
+  var ext=resolveUploadFileExtension(file);
+  if(!ext||allowed.indexOf(ext)<0){
+    if(allowVideo)return {ok:false,message:'סוג קובץ לא נתמך — מותר: JPG, PNG, WEBP, HEIC, PDF, MP4, MOV'};
+    if(allowPdf)return {ok:false,message:'סוג קובץ לא נתמך — מותר: JPG, PNG, WEBP, HEIC, PDF'};
+    return {ok:false,message:'סוג קובץ לא נתמך — מותר: JPG, PNG, WEBP, HEIC'};
+  }
+  return {ok:true};
+}
+function clearUploadInputError(inputId,opts){
+  opts=opts||{};
+  if(opts.errorElId){
+    var errEl=document.getElementById(opts.errorElId);
+    if(errEl)errEl.classList.remove('show');
+  }
+  var input=document.getElementById(inputId);
+  if(!input)return;
+  var group=input.closest('.form-group');
+  if(!group)return;
+  group.classList.remove('has-error');
+  var fieldErr=group.querySelector('.upload-field-error');
+  if(fieldErr)fieldErr.remove();
+}
+function setUploadInputError(inputId,message,opts){
+  opts=opts||{};
+  var input=document.getElementById(inputId);
+  if(input)input.value='';
+  if(opts.errorElId){
+    var errEl=document.getElementById(opts.errorElId);
+    if(errEl){errEl.textContent=message;errEl.classList.add('show');}
+  }
+  if(input){
+    var group=input.closest('.form-group');
+    if(group){
+      group.classList.add('has-error');
+      var fieldErr=group.querySelector('.upload-field-error');
+      if(!fieldErr){
+        fieldErr=document.createElement('span');
+        fieldErr.className='field-error upload-field-error';
+        group.appendChild(fieldErr);
+      }
+      fieldErr.textContent=message;
+    }
+  }
+  return false;
+}
+function validateUploadInputFile(inputId,opts){
+  opts=opts||{};
+  var input=document.getElementById(inputId);
+  var file=input&&input.files&&input.files[0];
+  if(!file){
+    clearUploadInputError(inputId,opts);
+    return {ok:true,empty:true};
+  }
+  var check=validateUploadFile(file,opts);
+  if(!check.ok){
+    setUploadInputError(inputId,check.message,opts);
+    return check;
+  }
+  clearUploadInputError(inputId,opts);
+  return check;
+}
 function isPdfType(type,name){
   return type==='application/pdf'||(name&&/\.pdf$/i.test(name));
 }
@@ -1170,7 +1273,8 @@ function renderFilePreviewContent(file,objectUrl){
   if(isPdfType(file.type,file.name))return '<div class="file-preview-pdf">'+ic('file-text')+' <span>'+escHtml(file.name)+'</span></div>';
   return '<div class="file-preview-pdf">'+ic('paperclip')+' <span>'+escHtml(file.name)+'</span></div>';
 }
-function showFilePreview(inputId,previewId){
+function showFilePreview(inputId,previewId,opts){
+  opts=opts||{};
   var input=document.getElementById(inputId);
   var preview=document.getElementById(previewId);
   if(!input||!preview)return;
@@ -1178,11 +1282,8 @@ function showFilePreview(inputId,previewId){
   preview.innerHTML='';
   var file=input.files&&input.files[0];
   if(!file)return;
-  if(file.size>MEDIA_MAX_BYTES){
-    alert('הקובץ גדול מדי (מקסימום 20MB)');
-    input.value='';
-    return;
-  }
+  var check=validateUploadInputFile(inputId,opts);
+  if(!check.ok||check.empty)return;
   var objectUrl=URL.createObjectURL(file);
   filePreviewUrls[inputId]=objectUrl;
   preview.innerHTML=renderFilePreviewContent(file,objectUrl)+
@@ -1395,6 +1496,7 @@ function paymentReceiptFileExt(file){
   if(file.type==='image/jpeg')return 'jpg';
   if(file.type==='image/png')return 'png';
   if(file.type==='image/webp')return 'webp';
+  if(file.type==='image/heic'||file.type==='image/heif')return 'heic';
   return 'jpg';
 }
 async function compressImage(file){
@@ -1629,6 +1731,7 @@ function closeGalleryPostModal(){
 function openNewGalleryPostModal(){
   if(!requireAdmin())return;
   resetGalleryEditState();
+  clearUploadInputError('gallery-post-files',{errorElId:'gallery-post-files-error'});
   document.getElementById('gallery-post-modal-title').textContent='פוסט חדש בגלריה';
   populateGalleryStageSelect(GALLERY_DEFAULT_STAGE);
   openModal('modal-gallery-post');
@@ -1640,6 +1743,7 @@ function openEditGalleryPostModal(postId){
   var post=getProjectGalleryPosts(proj).find(function(p){return p.id===postId;});
   if(!post)return;
   resetGalleryEditState();
+  clearUploadInputError('gallery-post-files',{errorElId:'gallery-post-files-error'});
   editingGalleryPostId=postId;
   document.getElementById('gallery-post-text').value=post.text||'';
   populateGalleryStageSelect(post.stage);
@@ -1677,12 +1781,18 @@ function renderGalleryModalImages(){
 function onGalleryPostFilesSelected(event){
   var files=Array.from(event.target.files||[]);
   event.target.value='';
+  var rejected=false;
   files.forEach(function(file){
-    if(!file.type.startsWith('image/'))return;
-    if(file.size>MEDIA_MAX_BYTES){alert('הקובץ '+file.name+' גדול מדי (מקסימום 20MB)');return;}
+    var check=validateUploadFile(file,{allowPdf:false});
+    if(!check.ok){
+      setUploadInputError('gallery-post-files',check.message,{errorElId:'gallery-post-files-error'});
+      rejected=true;
+      return;
+    }
     galleryEditPendingFiles.push(file);
     galleryEditPreviewUrls.push(URL.createObjectURL(file));
   });
+  if(!rejected)clearUploadInputError('gallery-post-files',{errorElId:'gallery-post-files-error'});
   renderGalleryModalImages();
 }
 function toggleRemoveGalleryImage(imageId){
@@ -1730,6 +1840,13 @@ async function saveGalleryPost(){
   if(existingCount+galleryEditPendingFiles.length===0){
     alert('יש להוסיף לפחות תמונה אחת לפוסט');
     return;
+  }
+  for(var gi=0;gi<galleryEditPendingFiles.length;gi++){
+    var gCheck=validateUploadFile(galleryEditPendingFiles[gi],{allowPdf:false});
+    if(!gCheck.ok){
+      setUploadInputError('gallery-post-files',gCheck.message,{errorElId:'gallery-post-files-error'});
+      return;
+    }
   }
   btn.disabled=true;btn.textContent='שומר...';
   try{
@@ -1815,6 +1932,7 @@ function openNewUpdateModal(){
   document.getElementById('upd-title').value='';
   document.getElementById('upd-body').value='';
   clearFilePreview('upd-media','upd-media-preview');
+  clearUploadInputError('upd-media',{errorElId:'upd-media-upload-error'});
   openModal('modal-update');
   refreshIcons(document.getElementById('modal-update'));
 }
@@ -3027,6 +3145,7 @@ function openNewPunchModal(pinX,pinY){
   document.getElementById('punch-location').value='';
   var photoInput=document.getElementById('punch-photo');
   if(photoInput)photoInput.value='';
+  clearUploadInputError('punch-photo',{});
   clearFormErrors('modal-punch-item');
   populatePunchSubcontractorSelect('');
   openModal('modal-punch-item');
@@ -3068,7 +3187,10 @@ async function savePunchItem(){
   if(!validateRequired('punch-desc')){focusFirstFormError('modal-punch-item');return;}
   var proj=getCurrentProject();if(!proj)return;
   var photoFile=document.getElementById('punch-photo')&&document.getElementById('punch-photo').files[0];
-  if(photoFile&&photoFile.size>MEDIA_MAX_BYTES){showToast('התמונה גדולה מדי (מקסימום 20MB)','error');return;}
+  if(photoFile){
+    var photoCheck=validateUploadFile(photoFile,{allowPdf:false});
+    if(!photoCheck.ok){setUploadInputError('punch-photo',photoCheck.message,{});focusFirstFormError('modal-punch-item');return;}
+  }
   var locationVal=document.getElementById('punch-location').value.trim();
   var row={
     project_id:proj.id,
@@ -5768,7 +5890,11 @@ async function savePayment(){
   setPaymentReceiptUploadUi(false);
   try{
     if(file){
-      if(file.size>MEDIA_MAX_BYTES){alert('הקובץ גדול מדי (מקסימום 20MB)');return;}
+      var fileCheck=validateUploadFile(file,{allowPdf:true});
+      if(!fileCheck.ok){
+        setPaymentReceiptUploadUi(false,null,fileCheck.message);
+        return;
+      }
       btn.disabled=true;
       if(cancelBtn)cancelBtn.disabled=true;
       if((file.type||'').startsWith('image/')&&file.size>RECEIPT_COMPRESS_BYTES)setPaymentReceiptUploadUi(true,'מכווץ תמונה...');
@@ -5920,7 +6046,11 @@ async function saveUpdate(){
   var origText=btn.textContent;
   try{
     if(file){
-      if(file.size>MEDIA_MAX_BYTES){alert('הקובץ גדול מדי (מקסימום 20MB)');return;}
+      var mediaCheck=validateUploadFile(file,{allowPdf:true,allowVideo:true});
+      if(!mediaCheck.ok){
+        setUploadInputError('upd-media',mediaCheck.message,{errorElId:'upd-media-upload-error'});
+        return;
+      }
       btn.disabled=true;btn.textContent='מעלה קובץ...';
       var upload=await uploadMediaFile('updates/'+proj.id+'/'+updId,file);
       if(!upload.ok){alert('שגיאה בהעלאת הקובץ: '+upload.error);return;}
@@ -6008,7 +6138,7 @@ function uploadDocFile(event,cat){
   if(!requireAdmin()||!requireProjectAccess())return;
   var file=event.target.files[0];if(!file)return;
   event.target.value='';
-  if(file.size>MEDIA_MAX_BYTES){alert('הקובץ גדול מדי (מקסימום 20MB)');return;}
+  if(file.size>UPLOAD_MAX_BYTES){alert('הקובץ גדול מדי (מקסימום 10MB)');return;}
   var proj=getCurrentProject();if(!proj)return;
   var docId='d'+Date.now();
   uploadMediaFile('documents/'+proj.id+'/'+docId,file).then(async function(upload){
@@ -6109,8 +6239,9 @@ document.getElementById('login-pass').addEventListener('keydown',function(e){if(
 document.getElementById('login-email').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 document.getElementById('forgot-email').addEventListener('keydown',function(e){if(e.key==='Enter')submitForgotPassword();});
 document.getElementById('logout-btn').addEventListener('click',function(e){e.preventDefault();doLogout();});
-document.getElementById('upd-media').addEventListener('change',function(){showFilePreview('upd-media','upd-media-preview');});
-document.getElementById('pay-receipt').addEventListener('change',function(){showFilePreview('pay-receipt','pay-receipt-preview');});
+document.getElementById('upd-media').addEventListener('change',function(){showFilePreview('upd-media','upd-media-preview',{errorElId:'upd-media-upload-error',allowPdf:true,allowVideo:true});});
+document.getElementById('pay-receipt').addEventListener('change',function(){showFilePreview('pay-receipt','pay-receipt-preview',{errorElId:'pay-receipt-upload-error',allowPdf:true});});
+document.getElementById('punch-photo').addEventListener('change',function(){validateUploadInputFile('punch-photo',{allowPdf:false});});
 document.getElementById('gallery-post-files').addEventListener('change',onGalleryPostFilesSelected);
 Object.assign(window,{
   doLogin,doLogout,showForgotPassword,showLoginForm,submitForgotPassword,
