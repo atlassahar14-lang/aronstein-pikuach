@@ -817,7 +817,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
             <input type="password" id="login-pass" placeholder="הכנס סיסמה" autocomplete="current-password"/>
             <button type="button" class="forgot-link" onclick="showForgotPassword()">שכחתי סיסמה?</button>
           </div>
-          <button class="btn btn-primary" id="login-btn" onclick="doLogin()">כניסה לחשבון</button>
+          <button class="btn btn-primary" id="login-btn">כניסה לחשבון</button>
           <div class="error-msg" id="login-error">פרטי ההתחברות אינם נכונים</div>
         </div>
         <div id="forgot-form" style="display:none">
@@ -4729,6 +4729,24 @@ async function doLogout(){
   voluntaryLogout=false;
 }
 
+function exposeLoginGlobals(){
+  window.doLogin=doLogin;
+  window.doLogout=doLogout;
+  window.showForgotPassword=showForgotPassword;
+  window.showLoginForm=showLoginForm;
+  window.submitForgotPassword=submitForgotPassword;
+}
+function initLoginScreenHandlers(){
+  exposeLoginGlobals();
+  var loginBtn=document.getElementById('login-btn');
+  if(loginBtn)loginBtn.addEventListener('click',function(e){e.preventDefault();doLogin();});
+  var loginPass=document.getElementById('login-pass');
+  if(loginPass)loginPass.addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+  var loginEmail=document.getElementById('login-email');
+  if(loginEmail)loginEmail.addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+}
+initLoginScreenHandlers();
+
 function renderSidebar(){
   document.getElementById('user-avatar-sb').textContent=currentUser.name.charAt(0);
   document.getElementById('user-name-sb').textContent=currentUser.name;
@@ -6696,8 +6714,6 @@ document.querySelectorAll('.modal-overlay').forEach(function(overlay){
     if(e.target===overlay)closeModal(overlay.id);
   });
 });
-document.getElementById('login-pass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
-document.getElementById('login-email').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 document.getElementById('forgot-email').addEventListener('keydown',function(e){if(e.key==='Enter')submitForgotPassword();});
 document.getElementById('logout-btn').addEventListener('click',function(e){e.preventDefault();doLogout();});
 document.getElementById('upd-media').addEventListener('change',function(){showFilePreview('upd-media','upd-media-preview',{errorElId:'upd-media-upload-error',allowPdf:true,allowVideo:true});});
