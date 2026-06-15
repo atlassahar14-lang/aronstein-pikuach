@@ -384,7 +384,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .budget-add-category-wrap{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center}
 .budget-add-category-wrap input{flex:1;min-width:160px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px;display:none}
 .budget-add-category-wrap.open input{display:block}
-.budget-client-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1200;display:none;overflow-y:auto;padding:24px 16px;-webkit-overflow-scrolling:touch}
+.budget-client-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1200;display:none;overflow-y:auto;padding:24px 16px calc(24px + env(safe-area-inset-bottom,0px)) 16px;-webkit-overflow-scrolling:touch}
 .budget-client-overlay.open{display:block}
 .budget-client-sheet{max-width:920px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.2);overflow:hidden}
 .budget-client-toolbar{display:flex;flex-wrap:wrap;gap:10px;padding:14px 18px;background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
@@ -448,9 +448,10 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .modal.dragging .modal-header{cursor:grabbing}
 .modal-title{font-size:20px;font-weight:700;color:var(--primary);pointer-events:none}
 .modal-close{background:var(--bg);border:none;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.modal-footer{display:flex;gap:10px;margin-top:24px;justify-content:flex-end}
+.modal-footer{display:flex;gap:10px;margin-top:24px;justify-content:flex-end;padding-bottom:calc(1rem + env(safe-area-inset-bottom,0px))}
 .modal-footer.phase-modal-footer{align-items:center;flex-wrap:wrap}
 .modal-footer-actions{display:flex;gap:10px}
+.form-actions-bottom{padding-bottom:calc(1rem + env(safe-area-inset-bottom,0px))}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .flex-between{display:flex;justify-content:space-between;align-items:center}
 .flex-gap{display:flex;gap:10px;align-items:center}
@@ -525,7 +526,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .mobile-tab-toggle.open .mobile-tab-chevron{transform:rotate(180deg)}
 .mobile-tab-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:305}
 .mobile-tab-backdrop.open{display:block}
-.mobile-tab-drawer{display:none;position:fixed;top:calc(56px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));left:max(12px,env(safe-area-inset-left,0px));z-index:310;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.15);max-height:min(70vh,480px);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px}
+.mobile-tab-drawer{display:none;position:fixed;top:calc(56px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));left:max(12px,env(safe-area-inset-left,0px));z-index:310;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.15);max-height:min(70vh,480px);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px))}
 .mobile-tab-drawer.open{display:block}
 .mobile-tab-item{width:100%;display:flex;align-items:center;gap:10px;padding:14px 16px;border:none;background:none;border-radius:10px;font-family:'Heebo',sans-serif;font-size:15px;font-weight:500;color:var(--text);cursor:pointer;text-align:right;min-height:48px;touch-action:manipulation}
 .mobile-tab-item:hover,.mobile-tab-item:active{background:var(--bg)}
@@ -602,7 +603,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .whatsapp-fab .wa-icon{width:24px;height:24px}
   .project-meta{flex-wrap:wrap;gap:8px}
   .grid-2{grid-template-columns:1fr}
-  .modal{padding:24px 20px;width:100%;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);border-radius:16px}
+  .modal{padding:24px 20px;width:100%;max-width:calc(100vw - 24px);max-height:none;border-radius:16px}
   .modal-header{cursor:default;touch-action:auto}
   .modal-footer{flex-direction:column-reverse;align-items:stretch}
   .modal-footer .btn{width:100%;justify-content:center}
@@ -639,7 +640,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .gantt-card-head{flex-direction:column;align-items:stretch!important}
   .gantt-card-actions{width:100%}
   .gantt-card-actions .btn{flex:1;justify-content:center}
-  .modal-overlay.open{display:flex!important;align-items:flex-start;justify-content:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+  .modal-overlay.open{display:flex!important;align-items:flex-start;justify-content:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(calc(12px + env(safe-area-inset-bottom,0px)),env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
   .modal-overlay.open .modal{position:relative;top:auto;left:auto;transform:none;margin:0 auto;flex-shrink:0;overflow:visible;max-width:calc(100vw - 24px)}
   .modal-footer .btn-primary,.modal-footer .btn-accent,.modal-footer .btn-danger{width:100%!important;max-width:100%}
   .blueprint-viewer-wrap.clickable{cursor:pointer;touch-action:manipulation}
@@ -655,7 +656,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .list-filter-bar .list-filter-actions .btn{width:100%;justify-content:center}
   .daily-log-worker-count{min-height:44px;font-size:16px;padding:10px 12px}
   .daily-log-form-card .btn{width:100%;justify-content:center}
-  .daily-log-form-card .flex-gap{flex-direction:column;width:100%}
+  .daily-log-form-card .flex-gap{flex-direction:column;width:100%;padding-bottom:calc(1rem + env(safe-area-inset-bottom,0px))}
   .blueprint-viewer-wrap img{-webkit-touch-callout:none;touch-action:manipulation}
 }
 @media(max-width:639px){
@@ -3312,7 +3313,7 @@ function renderDailyLogFormHtml(){
     '</select></div></div>'+
     '<div class="form-group"><label>פועלים לפי קבלן</label>'+renderDailyLogWorkerRows()+'</div>'+
     '<div class="form-group"><label for="daily-log-issues">תקלות / חוסרים / עיכובים</label><textarea id="daily-log-issues" placeholder="פרט תקלות, חוסרים או עיכובים (אופציונלי)..."></textarea></div>'+
-    '<div class="flex-gap" style="margin-top:8px">'+
+    '<div class="flex-gap form-actions-bottom" style="margin-top:8px">'+
     '<button type="button" class="btn btn-primary btn-sm" onclick="saveDailyLog()">'+ic('check')+' שמור יומן</button>'+
     '<button type="button" class="btn btn-outline btn-sm" onclick="cancelDailyLogForm()">ביטול</button>'+
     '</div></div>';
