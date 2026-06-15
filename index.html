@@ -1085,9 +1085,8 @@ const WHATSAPP_MSG='שלום, אני לקוח במערכת ארונשטיין פ
 const STORAGE_BUCKET='media';
 const PAYMENT_RECEIPTS_BUCKET='payment-receipts';
 const PROJECT_BLUEPRINTS_BUCKET='project-blueprints';
-const RECEIPT_COMPRESS_BYTES=1024*1024;
-const RECEIPT_MAX_EDGE=1600;
-const RECEIPT_JPEG_QUALITY=0.7;
+const COMPRESS_MAX_EDGE=1920;
+const COMPRESS_JPEG_QUALITY=0.8;
 const MEDIA_MAX_BYTES=10*1024*1024;
 const UPLOAD_MAX_BYTES=MEDIA_MAX_BYTES;
 const UPLOAD_HINT_TEXT='JPG, PNG, PDF עד 10MB';
@@ -1500,35 +1499,73 @@ function paymentReceiptFileExt(file){
   if(file.type==='image/heic'||file.type==='image/heif')return 'heic';
   return 'jpg';
 }
+function isCompressibleImageFile(file){
+  return !!(file&&file.type&&file.type.startsWith('image/')&&file.type!=='image/gif');
+}
+function formatFileSize(bytes){
+  bytes=Number(bytes)||0;
+  if(bytes<1024)return Math.round(bytes)+'B';
+  if(bytes<1024*1024)return (bytes/1024).toFixed(1)+'KB';
+  return (bytes/(1024*1024)).toFixed(1)+'MB';
+}
+function formatCompressionSizeLabel(beforeBytes,afterBytes){
+  return formatFileSize(beforeBytes)+' → '+formatFileSize(afterBytes);
+}
 async function compressImage(file){
-  if(!file||!file.type||!file.type.startsWith('image/'))return file;
-  if(file.size<=RECEIPT_COMPRESS_BYTES)return file;
-  return new Promise(function(resolve){
+  if(!isCompressibleImageFile(file))return file;
+  var originalSize=file.size||0;
+  var resized=false;
+  var blob=await new Promise(function(resolve){
     var img=new Image();
     var objectUrl=URL.createObjectURL(file);
     img.onload=function(){
       URL.revokeObjectURL(objectUrl);
-      var w=img.naturalWidth||img.width;
-      var h=img.naturalHeight||img.height;
+      var w=img.naturalWidth||img.width||1;
+      var h=img.naturalHeight||img.height||1;
       var maxEdge=Math.max(w,h);
-      if(maxEdge>RECEIPT_MAX_EDGE){
-        var scale=RECEIPT_MAX_EDGE/maxEdge;
+      if(maxEdge>COMPRESS_MAX_EDGE){
+        var scale=COMPRESS_MAX_EDGE/maxEdge;
         w=Math.max(1,Math.round(w*scale));
         h=Math.max(1,Math.round(h*scale));
+        resized=true;
       }
       var canvas=document.createElement('canvas');
       canvas.width=w;
       canvas.height=h;
-      canvas.getContext('2d').drawImage(img,0,0,w,h);
-      canvas.toBlob(function(blob){
-        if(!blob){resolve(file);return;}
-        var base=(file.name||'receipt').replace(/\.[^.]+$/,'')||'receipt';
-        resolve(new File([blob],base+'.jpg',{type:'image/jpeg',lastModified:Date.now()}));
-      },'image/jpeg',RECEIPT_JPEG_QUALITY);
+      var ctx=canvas.getContext('2d');
+      if(!ctx){resolve(null);return;}
+      ctx.drawImage(img,0,0,w,h);
+      canvas.toBlob(function(b){resolve(b);},'image/jpeg',COMPRESS_JPEG_QUALITY);
     };
-    img.onerror=function(){URL.revokeObjectURL(objectUrl);resolve(file);};
+    img.onerror=function(){URL.revokeObjectURL(objectUrl);resolve(null);};
     img.src=objectUrl;
   });
+  if(!blob)return file;
+  if(resized)return blob;
+  if(blob.size>=originalSize)return file;
+  return blob;
+}
+async function prepareImageForUpload(file){
+  if(!isCompressibleImageFile(file)){
+    return {file:file,label:'',skipped:true,originalSize:file.size||0,compressedSize:file.size||0};
+  }
+  var originalSize=file.size||0;
+  var blob=await compressImage(file);
+  var usedOriginal=blob===file;
+  var compressedSize=usedOriginal?originalSize:(blob.size||originalSize);
+  var base=(file.name||'image').replace(/\.[^.]+$/,'')||'image';
+  var outFile=usedOriginal?file:new File([blob],base+'.jpg',{type:'image/jpeg',lastModified:Date.now()});
+  return {
+    file:outFile,
+    label:formatCompressionSizeLabel(originalSize,compressedSize),
+    skipped:usedOriginal||compressedSize>=originalSize,
+    originalSize:originalSize,
+    compressedSize:compressedSize
+  };
+}
+function showCompressionToast(prepared){
+  if(!prepared||prepared.skipped||prepared.originalSize===prepared.compressedSize)return;
+  showToast('דחיסת תמונה: '+prepared.label,'success',4500);
 }
 async function uploadPaymentReceiptFile(projectId,paymentId,file){
   var ext=paymentReceiptFileExt(file);
@@ -1810,20 +1847,25 @@ function removePendingGalleryFile(idx){
 }
 async function uploadGalleryImageFiles(projId,postId,files){
   var uploaded=[];
+  var compressionLabels=[];
   for(var i=0;i<files.length;i++){
     var file=files[i];
     var imgId='img'+(Date.now()+i);
-    var upload=await uploadMediaFile('gallery/'+projId+'/'+postId+'/'+imgId,file);
+    var prepared=await prepareImageForUpload(file);
+    if(!prepared.skipped&&prepared.originalSize!==prepared.compressedSize)compressionLabels.push(prepared.label);
+    var upload=await uploadMediaFile('gallery/'+projId+'/'+postId+'/'+imgId,prepared.file);
     if(!upload.ok)return {ok:false,error:upload.error,file:file.name};
     uploaded.push({
       id:imgId,
-      name:file.name,
+      name:prepared.file.name,
       url:upload.data.url,
       path:upload.data.path,
-      type:upload.data.type,
+      type:prepared.file.type||upload.data.type,
       uploadedAt:new Date().toISOString()
     });
   }
+  if(compressionLabels.length===1)showToast('דחיסת תמונה: '+compressionLabels[0],'success',4500);
+  else if(compressionLabels.length>1)showToast('דחיסת '+compressionLabels.length+' תמונות · '+compressionLabels[0],'success',5000);
   return {ok:true,images:uploaded};
 }
 async function saveGalleryPost(){
@@ -2892,6 +2934,9 @@ async function buildPunchItemOfflineEntry(proj,row,photoFile){
     photoFileName:null
   };
   if(photoFile){
+    var photoPrepared=await prepareImageForUpload(photoFile);
+    showCompressionToast(photoPrepared);
+    photoFile=photoPrepared.file;
     entry.photoDataUrl=await readFileAsDataUrl(photoFile);
     entry.photoFileName=photoFile.name;
   }
@@ -2935,7 +2980,9 @@ async function syncOfflinePunchItems(){
           var blob=dataUrlToBlob(entry.photoDataUrl);
           var fname=entry.photoFileName||('punch-photo.'+extFromDataUrl(entry.photoDataUrl,'jpg'));
           var file=new File([blob],fname,{type:blob.type||'image/jpeg'});
-          var upload=await uploadMediaFile('punch-photos/'+entry.project_id+'/'+res.data.id,file);
+          var prepared=await prepareImageForUpload(file);
+          showCompressionToast(prepared);
+          var upload=await uploadMediaFile('punch-photos/'+entry.project_id+'/'+res.data.id,prepared.file);
           if(upload.ok){
             await supabase.from('punch_items').update({photo_url:upload.data.url}).eq('id',res.data.id);
           }
@@ -3084,7 +3131,11 @@ async function handleBlueprintUpload(ev){
   try{
     var proj=getCurrentProject();if(!proj)return;
     var uploadFile=file;
-    if(file.type&&file.type.startsWith('image/'))uploadFile=await compressImage(file);
+    if(isCompressibleImageFile(file)){
+      var prepared=await prepareImageForUpload(file);
+      showCompressionToast(prepared);
+      uploadFile=prepared.file;
+    }
     var ext=paymentReceiptFileExt(uploadFile);
     var path=proj.id+'/blueprint-'+Date.now()+'.'+ext;
     var upRes=await supabase.storage.from(PROJECT_BLUEPRINTS_BUCKET).upload(path,uploadFile,{cacheControl:'3600',upsert:false});
@@ -3191,6 +3242,9 @@ async function savePunchItem(){
   if(photoFile){
     var photoCheck=validateUploadFile(photoFile,{allowPdf:false});
     if(!photoCheck.ok){setUploadInputError('punch-photo',photoCheck.message,{});focusFirstFormError('modal-punch-item');return;}
+    var photoPrepared=await prepareImageForUpload(photoFile);
+    showCompressionToast(photoPrepared);
+    photoFile=photoPrepared.file;
   }
   var locationVal=document.getElementById('punch-location').value.trim();
   var row={
@@ -5898,9 +5952,19 @@ async function savePayment(){
       }
       btn.disabled=true;
       if(cancelBtn)cancelBtn.disabled=true;
-      if((file.type||'').startsWith('image/')&&file.size>RECEIPT_COMPRESS_BYTES)setPaymentReceiptUploadUi(true,'מכווץ תמונה...');
-      var uploadFile=await compressImage(file);
-      setPaymentReceiptUploadUi(true,'מעלה קבלה...');
+      var uploadFile=file;
+      if(isCompressibleImageFile(file)){
+        setPaymentReceiptUploadUi(true,'דוחס תמונה...');
+        var prepared=await prepareImageForUpload(file);
+        uploadFile=prepared.file;
+        if(!prepared.skipped&&prepared.originalSize!==prepared.compressedSize){
+          setPaymentReceiptUploadUi(true,'דחיסה: '+prepared.label+' — מעלה קבלה...');
+        }else{
+          setPaymentReceiptUploadUi(true,'מעלה קבלה...');
+        }
+      }else{
+        setPaymentReceiptUploadUi(true,'מעלה קבלה...');
+      }
       var upload=await uploadPaymentReceiptFile(proj.id,payId,uploadFile);
       if(!upload.ok){
         setPaymentReceiptUploadUi(false,null,'שגיאה בהעלאת הקבלה: '+formatSupabaseErrorHint(upload.error));
@@ -6053,7 +6117,13 @@ async function saveUpdate(){
         return;
       }
       btn.disabled=true;btn.textContent='מעלה קובץ...';
-      var upload=await uploadMediaFile('updates/'+proj.id+'/'+updId,file);
+      var uploadFile=file;
+      if(isCompressibleImageFile(file)){
+        var prepared=await prepareImageForUpload(file);
+        showCompressionToast(prepared);
+        uploadFile=prepared.file;
+      }
+      var upload=await uploadMediaFile('updates/'+proj.id+'/'+updId,uploadFile);
       if(!upload.ok){alert('שגיאה בהעלאת הקובץ: '+upload.error);return;}
       upd.mediaUrl=upload.data.url;
       upd.mediaName=upload.data.name;
