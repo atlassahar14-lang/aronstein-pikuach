@@ -249,7 +249,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .gantt-meta-pct{font-weight:700;color:var(--primary)}
 .gantt-empty{padding:32px 16px}
 .gantt-today-line{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--danger);opacity:.6;z-index:2;pointer-events:none}
-.fin-analysis-table{width:100%;border-collapse:collapse;margin-top:8px}
+.fin-analysis-table{width:100%;border-collapse:collapse;margin-top:8px;table-layout:fixed}
 .fin-analysis-table th,.fin-analysis-table td{padding:12px 14px;text-align:right;border-bottom:1px solid var(--border);font-size:14px}
 .fin-analysis-table th{font-size:12px;font-weight:700;color:var(--text-muted);background:var(--bg)}
 .fin-analysis-table tr:last-child td{border-bottom:none}
@@ -267,7 +267,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .amount.paid{color:var(--success)}
 .amount.remaining{color:var(--warning)}
 .budget-item .label{font-size:12px;color:var(--text-muted)}
-.payments-table{width:100%;border-collapse:collapse}
+.payments-table{width:100%;border-collapse:collapse;table-layout:fixed}
 .payments-table th{text-align:right;padding:10px 14px;font-size:12px;font-weight:600;color:var(--text-muted);border-bottom:2px solid var(--border);background:var(--bg)}
 .payments-table td{padding:12px 14px;font-size:14px;border-bottom:1px solid var(--border)}
 .payments-table tr:last-child td{border-bottom:none}
@@ -378,14 +378,14 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .budget-builder-card-title{font-size:16px;font-weight:700;color:var(--primary)}
 .budget-builder-card-meta{font-size:13px;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:4px}
 .budget-builder-editor .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-.budget-category-section{margin-bottom:20px;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card)}
+.budget-category-section{margin-bottom:20px;border:1px solid var(--border);border-radius:14px;overflow:visible;background:var(--card)}
 .budget-category-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:var(--bg);border-bottom:1px solid var(--border);flex-wrap:wrap}
 .budget-category-title{font-size:15px;font-weight:700;color:var(--primary)}
 .budget-category-contact{display:flex;align-items:center;gap:8px;flex:1 1 240px;min-width:200px;max-width:360px}
 .budget-category-contact label{font-size:12px;font-weight:600;color:var(--text-muted);white-space:nowrap}
 .budget-category-contact select{flex:1;min-width:0;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-family:'Heebo',sans-serif;font-size:13px;background:#fff;direction:rtl}
 .budget-category-subtotal{font-size:14px;font-weight:700;color:var(--accent);white-space:nowrap}
-.budget-items-table{width:100%;border-collapse:collapse}
+.budget-items-table{width:100%;border-collapse:collapse;table-layout:fixed}
 .budget-items-table th{text-align:right;padding:10px 12px;font-size:12px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);background:#fff}
 .budget-items-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
 .budget-items-table tr:last-child td{border-bottom:none}
@@ -414,7 +414,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .budget-add-category-wrap.open input{display:block}
 .budget-client-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1200;display:none;overflow-y:auto;padding:24px 16px calc(24px + env(safe-area-inset-bottom,0px)) 16px;-webkit-overflow-scrolling:touch}
 .budget-client-overlay.open{display:block}
-.budget-client-sheet{max-width:920px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.2);overflow:hidden}
+.budget-client-sheet{max-width:920px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.2);overflow:visible}
 .budget-client-toolbar{display:flex;flex-wrap:wrap;gap:10px;padding:14px 18px;background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
 .budget-client-body{padding:28px 32px}
 .budget-client-header{text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:3px solid var(--primary)}
@@ -422,7 +422,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .budget-client-logo-sub{font-size:13px;color:var(--text-muted)}
 .budget-client-doc-title{font-size:22px;font-weight:800;color:var(--primary);margin:16px 0 8px}
 .budget-client-meta{font-size:14px;color:var(--text-muted);display:flex;flex-wrap:wrap;justify-content:center;gap:8px 20px}
-.budget-client-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px}
+.budget-client-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;table-layout:fixed}
 .budget-client-table th,.budget-client-table td{padding:10px 12px;text-align:right;border:1px solid var(--border)}
 .budget-client-table th{background:var(--primary);color:#fff;font-weight:600;font-size:13px}
 .budget-client-table .cat-row td{background:var(--bg);font-weight:700;color:var(--primary);border-top:2px solid var(--border)}
@@ -434,8 +434,6 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .budget-donut-print-img{display:none;max-width:220px;height:auto}
 @media(max-width:1023px){
   .budget-builder-editor .form-row{grid-template-columns:1fr}
-  .budget-items-table{min-width:920px}
-  .budget-items-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .budget-client-body{padding:20px 16px}
 }
 @media print{
@@ -455,7 +453,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .project-report-pdf h2{font-size:15px;font-weight:700;color:var(--primary);margin:24px 0 10px;border-bottom:2px solid var(--border);padding-bottom:6px}
 .project-report-pdf .report-meta{font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:4px}
 .project-report-pdf .report-brand{font-size:12px;color:var(--text-muted);margin-bottom:16px}
-.project-report-pdf table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.project-report-pdf table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;table-layout:fixed}
 .project-report-pdf th,.project-report-pdf td{border:1px solid var(--border);padding:8px 10px;text-align:right;vertical-align:top}
 .project-report-pdf th{background:var(--primary);color:#fff;font-weight:600}
 .project-report-pdf .fin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
@@ -533,12 +531,11 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .migration-progress{font-size:13px;color:var(--steel);min-height:20px}
 .expiry-expired{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:#fef2f2;color:var(--danger);font-weight:600;font-size:13px}
 .phase-insurance-warning{display:flex;align-items:center;gap:6px;margin-top:8px;padding:8px 10px;border-radius:8px;background:#fef2f2;color:var(--danger);font-size:12px;font-weight:600}
-.subcontractors-table{width:100%;border-collapse:collapse}
+.subcontractors-table{width:100%;border-collapse:collapse;table-layout:fixed}
 .subcontractors-table th{text-align:right;padding:10px 14px;font-size:12px;font-weight:600;color:var(--text-muted);border-bottom:2px solid var(--border);background:var(--bg)}
 .subcontractors-table thead th,.punch-items-table thead th{position:sticky;top:0;z-index:10;background:var(--bg);box-shadow:0 2px 0 var(--border)}
 .subcontractors-table td{padding:12px 14px;font-size:14px;border-bottom:1px solid var(--border);vertical-align:middle}
 .subcontractors-table tr:last-child td{border-bottom:none}
-.table-scroll .subcontractors-table{min-width:720px}
 .update-media-block{margin-top:12px}
 .update-media-block img,.update-media-block video{max-width:100%;max-height:320px;border-radius:12px;border:1px solid var(--border)}
 .fin-progress-card{margin:24px 0}
@@ -570,16 +567,26 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .mobile-tab-item .tab-svg{width:18px;height:18px;flex-shrink:0}
 .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:280;opacity:0;transition:opacity .3s}
 .sidebar-backdrop.open{display:block;opacity:1}
-.table-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:4px;max-width:100%}
+.table-scroll,.budget-items-scroll,.gantt-scroll{position:relative;width:100%;max-width:100%;overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;scrollbar-width:thin;overscroll-behavior-x:contain;touch-action:pan-x pan-y;margin:0 -4px;padding:4px}
+.budget-items-scroll{margin:0;padding:0 0 4px}
+.table-scroll::-webkit-scrollbar,.budget-items-scroll::-webkit-scrollbar,.gantt-scroll::-webkit-scrollbar{width:6px;height:6px}
+.table-scroll::-webkit-scrollbar-thumb,.budget-items-scroll::-webkit-scrollbar-thumb,.gantt-scroll::-webkit-scrollbar-thumb{background:rgba(107,122,141,.45);border-radius:3px}
+.table-scroll::-webkit-scrollbar-track,.budget-items-scroll::-webkit-scrollbar-track,.gantt-scroll::-webkit-scrollbar-track{background:transparent}
 .table-scroll .payments-table{min-width:560px}
 .table-scroll .punch-items-table{min-width:520px}
+.table-scroll .subcontractors-table{min-width:720px}
+.table-scroll .fin-analysis-table{min-width:640px}
+.budget-items-scroll .budget-items-table,.table-scroll .budget-items-table{min-width:920px}
+.table-scroll .budget-client-table{min-width:720px}
 .table-scroll-cards{overflow-x:visible}
 .table-scroll-cards .subcontractors-table,.table-scroll-cards .punch-items-table{min-width:0!important;width:100%}
 .tabs-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:4px}
 .tabs-scroll .tabs{flex-wrap:nowrap;min-width:max-content}
 .responsive-stack{flex-wrap:wrap;gap:12px}
 .blueprint-pin::after{content:'';position:absolute;inset:-8px;border-radius:50%}
-.card:has(>.table-scroll){overflow:visible}
+.card:has(>.table-scroll),.card:has(.table-scroll),.card:has(.budget-items-scroll){overflow:visible}
+.card.fin-analysis-table-wrap,.payments-desktop{overflow:visible}
+.table-scroll table,.budget-items-scroll table{width:100%;table-layout:fixed}
 @supports(padding:max(0px,env(safe-area-inset-top))){
   .login-panel{padding-left:max(28px,env(safe-area-inset-left));padding-right:max(28px,env(safe-area-inset-right));padding-bottom:max(28px,env(safe-area-inset-bottom))}
 }
@@ -4584,10 +4591,10 @@ function renderBudgetClientBodyHtml(budget,items){
     '<span><strong>כתובת:</strong> '+escHtml(budget.projectAddress||'—')+'</span>'+
     '<span><strong>תאריך:</strong> '+formatSubcontractorDate(budget.budgetDate)+'</span>'+
     '</div></div>'+
-    '<table class="budget-client-table"><thead><tr>'+
+    '<div class="table-scroll"><table class="budget-client-table"><thead><tr>'+
     '<th>תיאור</th><th>איש קשר</th><th>כמות</th><th>יחידה</th><th>מחיר ליחידה</th><th>סה"כ</th></tr></thead><tbody>'+
     (tableRows||'<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">אין פריטים</td></tr>')+
-    '</tbody></table>'+
+    '</tbody></table></div>'+
     '<div class="budget-client-totals">'+
     '<div class="budget-summary-row"><span>סה"כ לפני מע"מ</span><strong>'+fmtMoney(t.beforeVat)+'</strong></div>'+
     '<div class="budget-summary-row"><span>מע"מ (17%)</span><strong>'+fmtMoney(t.vat)+'</strong></div>'+
@@ -6056,7 +6063,7 @@ function renderActivityLog(el){
   var countLabel=activityLogTypeFilter&&logs.length?('מציג '+filtered.length+' מתוך '+logs.length+' רשומות'):('('+logs.length+' רשומות)');
   el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('scroll-text')+' לוג פעולות</h1><p>היסטוריית פעולות מנהל במערכת '+countLabel+'</p></div></div>'+
     (logs.length===0?'<div class="empty-state card"><div class="empty-icon">'+ic('scroll-text')+'</div><p>אין פעולות מתועדות עדיין</p></div>':
-    '<div class="card" style="padding:0;overflow:hidden">'+
+    '<div class="card" style="padding:0">'+
     renderActivityLogFilterBarHtml()+
     (filtered.length===0?'<div class="empty-state" style="padding:32px 18px"><div class="empty-icon">'+ic('scroll-text')+'</div><p>אין פעולות בסינון הנוכחי</p></div>':
     '<div style="padding:0 0 12px"><div class="activity-log-header"><span>משתמש</span><span>פעולה</span><span>פרטים</span><span>תאריך</span></div>'+
