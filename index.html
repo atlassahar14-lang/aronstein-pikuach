@@ -335,6 +335,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .offline-punch-pending-badge{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;margin-bottom:14px;background:#fef3c7;border:1px solid #fbbf24;border-radius:20px;font-size:12px;font-weight:600;color:#92400e}
 .punch-detail-row{display:flex;gap:8px;font-size:14px;margin-bottom:8px;line-height:1.5}
 .punch-detail-row .label{color:var(--text-muted);min-width:72px}
+.punch-upload-retry-panel{display:none;margin:0 0 16px;padding:12px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;font-size:13px;color:var(--danger);line-height:1.5}
+.punch-upload-retry-panel.show{display:block}
+.punch-upload-retry-panel .btn{margin-top:10px}
 .subcontractors-filter-bar,.list-filter-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;margin-bottom:12px}
 .specialty-settings-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
 .specialty-settings-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;font-size:14px}
@@ -1034,6 +1037,10 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="punch-detail-row"><span class="label">סטטוס:</span><span id="punch-view-status"></span></div>
     </div>
     <div id="punch-form-panel">
+      <div id="punch-upload-retry-panel" class="punch-upload-retry-panel">
+        <p id="punch-upload-error-msg">העלאה נכשלה — הנתונים נשמרו, נסה שוב</p>
+        <button type="button" class="btn btn-outline btn-sm" id="punch-retry-upload-btn" onclick="retryPunchPhotoUpload()">נסה שוב</button>
+      </div>
       <div class="form-group"><label>תיאור *</label><textarea id="punch-desc" placeholder="תאר את הליקוי..."></textarea></div>
       <div class="form-group"><label>קבלן</label><select id="punch-subcontractor"><option value="">— ללא —</option></select></div>
       <div class="form-group"><label>דחיפות</label><select id="punch-urgency"><option value="נמוכה">נמוכה</option><option value="בינונית" selected>בינונית</option><option value="קריטית">קריטית</option></select></div>
@@ -2133,6 +2140,8 @@ var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
 var appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()},appUsers=[],subcontractorsCache=[],punchItemsCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
 const OFFLINE_PUNCH_STORAGE_KEY='offline_punch_items';
+const PUNCH_FORM_DRAFT_PREFIX='punch_form_draft_';
+var punchDraftAutosaveTimer=null,punchPendingPhotoUpload=null;
 var offlinePunchSyncInProgress=false;
 var subcontractorSpecialtyFilter='',showDailyLogForm=false;
 var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='',activityLogTypeFilter='',galleryStageFilter='';
@@ -3013,7 +3022,82 @@ function readFileAsDataUrl(file){
 function isLikelyNetworkError(err){
   if(!navigator.onLine)return true;
   var msg=(err&&err.message||String(err||'')).toLowerCase();
-  return msg.includes('failed to fetch')||msg.includes('networkerror')||msg.includes('load failed')||msg.includes('network request failed');
+  return msg.includes('failed to fetch')||msg.includes('networkerror')||msg.includes('load failed')||msg.includes('network request failed')||msg.includes('timeout')||msg.includes('timed out');
+}
+function getPunchFormDraftKey(projectId){
+  return PUNCH_FORM_DRAFT_PREFIX+(projectId||'');
+}
+function readPunchFormDraft(projectId){
+  try{
+    var raw=localStorage.getItem(getPunchFormDraftKey(projectId));
+    if(!raw)return null;
+    return JSON.parse(raw);
+  }catch(e){return null;}
+}
+function punchDraftHasContent(draft){
+  if(!draft)return false;
+  return !!(String(draft.description||'').trim()||String(draft.location||'').trim()||draft.deadline);
+}
+function formatPunchDraftSavedTime(iso){
+  try{
+    return new Date(iso).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  }catch(e){return '';}
+}
+function collectPunchFormDraft(){
+  return {
+    description:document.getElementById('punch-desc').value,
+    subcontractor_id:document.getElementById('punch-subcontractor').value||'',
+    urgency:document.getElementById('punch-urgency').value||'בינונית',
+    deadline:document.getElementById('punch-deadline').value||'',
+    location:document.getElementById('punch-location').value||'',
+    pin_x:punchPinDraft&&punchPinDraft.x!=null?punchPinDraft.x:null,
+    pin_y:punchPinDraft&&punchPinDraft.y!=null?punchPinDraft.y:null,
+    savedAt:new Date().toISOString()
+  };
+}
+function savePunchFormDraftToStorage(projectId){
+  if(!projectId)return;
+  var draft=collectPunchFormDraft();
+  if(!punchDraftHasContent(draft))return;
+  try{localStorage.setItem(getPunchFormDraftKey(projectId),JSON.stringify(draft));}catch(e){console.warn('savePunchFormDraftToStorage',e);}
+}
+function clearPunchFormDraft(projectId){
+  if(!projectId)return;
+  try{localStorage.removeItem(getPunchFormDraftKey(projectId));}catch(e){}
+}
+function stopPunchDraftAutosave(){
+  if(punchDraftAutosaveTimer){clearInterval(punchDraftAutosaveTimer);punchDraftAutosaveTimer=null;}
+}
+function startPunchDraftAutosave(projectId){
+  stopPunchDraftAutosave();
+  if(!projectId)return;
+  punchDraftAutosaveTimer=setInterval(function(){
+    var overlay=document.getElementById('modal-punch-item');
+    var formPanel=document.getElementById('punch-form-panel');
+    if(!overlay||!overlay.classList.contains('open')||!formPanel||formPanel.style.display==='none')return;
+    savePunchFormDraftToStorage(projectId);
+  },10000);
+}
+function applyPunchFormDraft(draft){
+  document.getElementById('punch-desc').value=draft.description||'';
+  document.getElementById('punch-urgency').value=draft.urgency||'בינונית';
+  document.getElementById('punch-deadline').value=draft.deadline||'';
+  document.getElementById('punch-location').value=draft.location||'';
+  populatePunchSubcontractorSelect(draft.subcontractor_id||'');
+  punchPinDraft={x:draft.pin_x!=null?draft.pin_x:null,y:draft.pin_y!=null?draft.pin_y:null};
+}
+function showPunchUploadErrorUi(show){
+  var panel=document.getElementById('punch-upload-retry-panel');
+  if(panel)panel.classList.toggle('show',!!show);
+}
+function resetPunchFormFields(pinX,pinY){
+  punchPinDraft={x:pinX!=null?pinX:null,y:pinY!=null?pinY:null};
+  document.getElementById('punch-desc').value='';
+  document.getElementById('punch-urgency').value='בינונית';
+  document.getElementById('punch-deadline').value='';
+  document.getElementById('punch-location').value='';
+  var photoInput=document.getElementById('punch-photo');
+  if(photoInput)photoInput.value='';
 }
 async function buildPunchItemOfflineEntry(proj,row,photoFile){
   var entry={
@@ -3283,27 +3367,38 @@ function onBlueprintImageClick(e){
 }
 function openNewPunchModal(pinX,pinY){
   if(!requireAdmin()||!requireProjectAccess())return;
+  var proj=getCurrentProject();if(!proj)return;
   viewingPunchItemId=null;
-  punchPinDraft={x:pinX!=null?pinX:null,y:pinY!=null?pinY:null};
+  punchPendingPhotoUpload=null;
+  showPunchUploadErrorUi(false);
   document.getElementById('modal-punch-title').textContent='ליקוי חדש';
   document.getElementById('punch-view-panel').style.display='none';
   document.getElementById('punch-form-panel').style.display='';
   document.getElementById('punch-save-btn').style.display='';
   document.getElementById('punch-fixed-btn').style.display='none';
-  document.getElementById('punch-desc').value='';
-  document.getElementById('punch-urgency').value='בינונית';
-  document.getElementById('punch-deadline').value='';
-  document.getElementById('punch-location').value='';
-  var photoInput=document.getElementById('punch-photo');
-  if(photoInput)photoInput.value='';
   clearUploadInputError('punch-photo',{});
   clearFormErrors('modal-punch-item');
   populatePunchSubcontractorSelect('');
+  var draft=readPunchFormDraft(proj.id);
+  var restored=false;
+  if(draft&&draft.savedAt&&punchDraftHasContent(draft)){
+    restored=confirm('נמצאה טיוטה שמורה מ-'+formatPunchDraftSavedTime(draft.savedAt)+', האם לשחזר?');
+  }
+  if(restored){
+    applyPunchFormDraft(draft);
+    if(pinX!=null&&pinY!=null)punchPinDraft={x:pinX,y:pinY};
+  }else{
+    resetPunchFormFields(pinX,pinY);
+  }
   openModal('modal-punch-item');
   refreshIcons(document.getElementById('modal-punch-item'));
+  startPunchDraftAutosave(proj.id);
 }
 function openPunchItemView(itemId){
   if(!requireProjectAccess())return;
+  stopPunchDraftAutosave();
+  punchPendingPhotoUpload=null;
+  showPunchUploadErrorUi(false);
   var item=punchItemsCache.find(function(x){return x.id===itemId;});
   if(!item)return;
   viewingPunchItemId=itemId;
@@ -3364,6 +3459,8 @@ async function savePunchItem(){
     if(!navigator.onLine){
       var offlineEntry=await buildPunchItemOfflineEntry(proj,row,photoFile);
       await queueOfflinePunchItem(offlineEntry);
+      clearPunchFormDraft(proj.id);
+      stopPunchDraftAutosave();
       closeModal('modal-punch-item');
       showToast('אין חיבור — הליקוי נשמר במכשיר ויועלה אוטומטית כשהחיבור יחזור','error',6000);
       await initPunchListTab();
@@ -3374,6 +3471,8 @@ async function savePunchItem(){
       if(isLikelyNetworkError(res.error)){
         var offlineEntryNet=await buildPunchItemOfflineEntry(proj,row,photoFile);
         await queueOfflinePunchItem(offlineEntryNet);
+        clearPunchFormDraft(proj.id);
+        stopPunchDraftAutosave();
         closeModal('modal-punch-item');
         showToast('אין חיבור — הליקוי נשמר במכשיר ויועלה אוטומטית כשהחיבור יחזור','error',6000);
         await initPunchListTab();
@@ -3382,21 +3481,61 @@ async function savePunchItem(){
       showToast('שגיאה בשמירת הליקוי: '+formatSupabaseErrorHint(res.error.message),'error');
       return;
     }
+    logActivity('ליקוי חדש','פרויקט: '+proj.name+' · '+row.description);
     if(photoFile){
       var upload=await uploadMediaFile('punch-photos/'+proj.id+'/'+res.data.id,photoFile);
       if(!upload.ok){
-        showToast('הליקוי נשמר אך העלאת התמונה נכשלה: '+formatSupabaseErrorHint(upload.error),'error');
-      }else{
-        var upPhoto=await supabase.from('punch_items').update({photo_url:upload.data.url}).eq('id',res.data.id);
-        if(upPhoto.error)showToast('הליקוי נשמר אך שמירת קישור התמונה נכשלה','error');
+        punchPendingPhotoUpload={itemId:res.data.id,projectId:proj.id,photoFile:photoFile};
+        showPunchUploadErrorUi(true);
+        clearPunchFormDraft(proj.id);
+        showToast('העלאה נכשלה — הנתונים נשמרו, נסה שוב','error',6000);
+        return;
+      }
+      var upPhoto=await supabase.from('punch_items').update({photo_url:upload.data.url}).eq('id',res.data.id);
+      if(upPhoto.error){
+        punchPendingPhotoUpload={itemId:res.data.id,projectId:proj.id,photoFile:photoFile};
+        showPunchUploadErrorUi(true);
+        clearPunchFormDraft(proj.id);
+        showToast('העלאה נכשלה — הנתונים נשמרו, נסה שוב','error',6000);
+        return;
       }
     }
-    logActivity('ליקוי חדש','פרויקט: '+proj.name+' · '+row.description);
+    clearPunchFormDraft(proj.id);
+    stopPunchDraftAutosave();
+    punchPendingPhotoUpload=null;
+    showPunchUploadErrorUi(false);
     closeModal('modal-punch-item');
     showToast('הליקוי נשמר בהצלחה');
     await initPunchListTab();
   }finally{
     if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='שמור';}
+  }
+}
+async function retryPunchPhotoUpload(){
+  if(!punchPendingPhotoUpload)return;
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var pending=punchPendingPhotoUpload;
+  var retryBtn=document.getElementById('punch-retry-upload-btn');
+  if(retryBtn){retryBtn.disabled=true;retryBtn.textContent='מנסה...';}
+  try{
+    var upload=await uploadMediaFile('punch-photos/'+pending.projectId+'/'+pending.itemId,pending.photoFile);
+    if(!upload.ok){
+      showToast('העלאה נכשלה — הנתונים נשמרו, נסה שוב','error',6000);
+      return;
+    }
+    var upPhoto=await supabase.from('punch_items').update({photo_url:upload.data.url}).eq('id',pending.itemId);
+    if(upPhoto.error){
+      showToast('העלאה נכשלה — הנתונים נשמרו, נסה שוב','error',6000);
+      return;
+    }
+    punchPendingPhotoUpload=null;
+    showPunchUploadErrorUi(false);
+    stopPunchDraftAutosave();
+    closeModal('modal-punch-item');
+    showToast('התמונה הועלתה והליקוי נשמר בהצלחה');
+    await initPunchListTab();
+  }finally{
+    if(retryBtn){retryBtn.disabled=false;retryBtn.textContent='נסה שוב';}
   }
 }
 async function markPunchFixed(){
@@ -6047,6 +6186,11 @@ function closeModal(id){
   resetModalPosition(overlay.querySelector('.modal'));
   if(modalOpenCount>0)modalOpenCount--;
   syncBodyScrollLock();
+  if(id==='modal-punch-item'){
+    stopPunchDraftAutosave();
+    punchPendingPhotoUpload=null;
+    showPunchUploadErrorUi(false);
+  }
 }
 function initDraggableModals(){
   var drag=null;
@@ -6734,7 +6878,7 @@ Object.assign(window,{
   openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,setGalleryStageFilter,
   toggleRemoveGalleryImage,removePendingGalleryFile,saveGalleryPost,deleteGalleryPost,handleGalleryImageError,
   openPhotoLightbox,closePhotoLightbox,
-  handleBlueprintUpload,openNewPunchModal,openPunchItemView,onBlueprintImageClick,savePunchItem,markPunchFixed,onPunchFilterChange,
+  handleBlueprintUpload,openNewPunchModal,openPunchItemView,onBlueprintImageClick,savePunchItem,retryPunchPhotoUpload,markPunchFixed,onPunchFilterChange,
   openDailyLogForm,cancelDailyLogForm,saveDailyLog,onDailyLogFilterChange,onActivityLogFilterChange,
   startNewBudgetDraft,openBudgetEdit,duplicateBudget,saveBudgetBuilder,deleteBudget,backToBudgetList,
   addBudgetItemToCategory,removeBudgetItem,onBudgetDraftFieldChange,onBudgetItemFieldChange,
