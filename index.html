@@ -173,9 +173,12 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .dash-overdue-row .overdue-meta{font-size:12px;color:var(--text-muted)}
 .dash-overdue-row .btn{flex-shrink:0}
 .projects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
-.project-card{background:var(--card);border-radius:16px;padding:22px;border:1px solid var(--border);cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.project-card{background:var(--card);border-radius:16px;padding:22px;border:1px solid var(--border);cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.05);position:relative}
 .project-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.1);border-color:var(--primary-light)}
-.project-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.project-card-delete{position:absolute;top:10px;left:10px;width:28px;height:28px;border:none;border-radius:8px;background:var(--bg);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;z-index:2;transition:background .2s,color .2s}
+.project-card-delete:hover{background:#fef2f2;color:var(--danger)}
+.project-card-delete svg{width:14px;height:14px}
+.project-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-left:32px}
 .project-name{font-size:17px;font-weight:700;color:var(--primary)}
 .project-address{font-size:12px;color:var(--text-muted);margin-top:3px}
 .status-badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
@@ -1060,6 +1063,18 @@ img,svg,video,canvas{max-width:100%;height:auto}
         <button class="btn btn-outline" onclick="closeGalleryPostModal()">ביטול</button>
         <button class="btn btn-primary" id="gallery-post-save-btn" style="width:auto" onclick="saveGalleryPost()">שמור</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: confirm delete project -->
+<div class="modal-overlay" id="modal-delete-project">
+  <div class="modal" style="width:440px">
+    <div class="modal-header"><div class="modal-title">מחיקת פרויקט</div><button class="modal-close" onclick="closeDeleteProjectModal()"><i data-lucide="x"></i></button></div>
+    <p id="delete-project-confirm-text" style="font-size:15px;line-height:1.6;color:var(--text);margin:0"></p>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeDeleteProjectModal()">ביטול</button>
+      <button class="btn btn-danger" id="delete-project-confirm-btn" onclick="executeDeleteProject()">כן, מחק</button>
     </div>
   </div>
 </div>
@@ -2096,7 +2111,7 @@ function bindModalValidationClear(modalId){
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
 var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
-var appDataCache={projects:[],activityLog:[]},appUsers=[],subcontractorsCache=[],punchItemsCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false;
+var appDataCache={projects:[],activityLog:[]},appUsers=[],subcontractorsCache=[],punchItemsCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
 const OFFLINE_PUNCH_STORAGE_KEY='offline_punch_items';
 var offlinePunchSyncInProgress=false;
 var subcontractorSpecialtyFilter='',showDailyLogForm=false;
@@ -5035,7 +5050,8 @@ function projectStatusBadgeMeta(status){
 function projectCardHTML(p){
   var paid=p.payments.reduce(function(s,x){return s+Number(x.amount||0);},0);
   var sc=projectStatusBadgeMeta(p.status);
-  return '<div class="project-card" onclick="showView(\'project\',\''+p.id+'\')">'+
+  return '<div class="project-card" data-project-id="'+escHtml(p.id)+'" onclick="showView(\'project\',\''+p.id+'\')">'+
+    '<button type="button" class="project-card-delete admin-only-action" title="מחק פרויקט" onclick="event.stopPropagation();confirmDeleteProject(\''+p.id+'\')">'+ic('trash-2')+'</button>'+
     '<div class="project-card-header"><div><div class="project-name">'+p.name+'</div><div class="project-address">'+projectAddressLine(p,true)+'</div></div>'+
     '<span class="status-badge '+sc[0]+'">'+sc[1]+'</span></div>'+
     '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+(p.progress||0)+'%"></div></div>'+
@@ -5896,6 +5912,49 @@ async function saveProject(){
   showView(currentView);
 }
 
+function confirmDeleteProject(projectId){
+  if(!requireAdmin())return;
+  var proj=appDataCache.projects.find(function(p){return p.id===projectId;});
+  if(!proj)return;
+  pendingDeleteProjectId=projectId;
+  document.getElementById('delete-project-confirm-text').textContent='האם למחוק את הפרויקט '+proj.name+'? פעולה זו אינה ניתנת לביטול';
+  openModal('modal-delete-project');
+  refreshIcons(document.getElementById('modal-delete-project'));
+}
+function closeDeleteProjectModal(){
+  pendingDeleteProjectId=null;
+  closeModal('modal-delete-project');
+}
+async function executeDeleteProject(){
+  if(!requireAdmin()||!pendingDeleteProjectId)return;
+  var id=pendingDeleteProjectId;
+  var proj=appDataCache.projects.find(function(p){return p.id===id;});
+  if(!proj){closeDeleteProjectModal();return;}
+  var name=proj.name;
+  var btn=document.getElementById('delete-project-confirm-btn');
+  if(btn){btn.disabled=true;btn.textContent='מוחק...';}
+  appDataCache.projects=appDataCache.projects.filter(function(p){return p.id!==id;});
+  logActivity('מחיקת פרויקט',name);
+  var saved=await persistAppData();
+  closeDeleteProjectModal();
+  if(btn){btn.disabled=false;btn.textContent='כן, מחק';}
+  if(!saved.ok){
+    await refreshAppData();
+    showToast('שגיאה במחיקת הפרויקט: '+formatSupabaseErrorHint(saved.error),'error');
+    if(currentView==='projects')renderProjectsList(document.getElementById('main-content'));
+    else if(currentView==='dashboard')renderDashboard(document.getElementById('main-content'));
+    return;
+  }
+  document.querySelectorAll('.project-card[data-project-id="'+id+'"]').forEach(function(card){card.remove();});
+  if(currentProjectId===id){
+    currentProjectId=null;
+    showView('projects');
+  }else{
+    renderSidebar();
+  }
+  showToast('הפרויקט "'+name+'" נמחק');
+}
+
 function openAddUserModal(){
   if(!requireAdmin())return;
   if(!appDataCache.projects.length){alert('יש ליצור פרויקט לפני הוספת לקוח');return;}
@@ -6418,7 +6477,7 @@ Object.assign(window,{
   doLogin,doLogout,showForgotPassword,showLoginForm,submitForgotPassword,
   saveUser,deleteUser,changeAdminPass,sendAdminResetEmail,resetData,
   showView,switchTab,openModal,closeModal,toggleMobileSidebar,closeMobileSidebar,toggleMobileTabMenu,closeMobileTabMenu,exportProjectOverviewPdf,
-  openNewProjectModal,openEditProjectModal,saveProject,openAddUserModal,
+  openNewProjectModal,openEditProjectModal,saveProject,confirmDeleteProject,closeDeleteProjectModal,executeDeleteProject,openAddUserModal,
   openAddSubcontractorModal,openEditSubcontractorModal,saveSubcontractor,deleteSubcontractor,onSubcontractorSpecialtyFilterChange,
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,onPaymentFilterChange,exportPaymentsCsv,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
