@@ -1096,7 +1096,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 
 <!-- Modal: confirm delete project -->
 <div class="modal-overlay" id="modal-delete-project">
-  <div class="modal" style="width:440px">
+  <div class="modal" style="max-width:min(90vw,440px)">
     <div class="modal-header"><div class="modal-title">מחיקת פרויקט</div><button class="modal-close" onclick="closeDeleteProjectModal()"><i data-lucide="x"></i></button></div>
     <p id="delete-project-confirm-text" style="font-size:15px;line-height:1.6;color:var(--text);margin:0"></p>
     <div class="modal-footer">
