@@ -112,7 +112,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .btn-logout:hover{background:rgba(255,255,255,.2)}
 .main-content{flex:1;min-width:0;box-sizing:border-box;padding:32px;min-height:100vh}
 .main-shell{flex:1;min-width:0;margin-right:var(--sidebar);margin-left:0;width:calc(100% - var(--sidebar));display:flex;flex-direction:column;min-height:100vh}
-.app-topbar{position:sticky;top:0;z-index:200;background:var(--card);border-bottom:1px solid var(--border);padding:14px 32px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.sidebar-search{padding:0 12px 14px;flex-shrink:0}
 .global-search{position:relative;max-width:520px;width:100%}
 .global-search-field{display:flex;align-items:center;gap:10px;background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:0 14px;transition:border-color .2s,box-shadow .2s}
 .global-search-field:focus-within{border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(42,64,120,.12)}
@@ -131,6 +131,17 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .global-search-type.project{background:#dbeafe;color:#1e40af}
 .global-search-type.client{background:#dcfce7;color:#166534}
 .global-search-type.subcontractor{background:#fef9c3;color:#854d0e}
+.sidebar .global-search{max-width:none}
+.sidebar .global-search-field{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.22)}
+.sidebar .global-search-field:focus-within{border-color:rgba(255,255,255,.45);box-shadow:0 0 0 3px rgba(255,255,255,.12)}
+.sidebar .global-search-field input{color:#fff}
+.sidebar .global-search-field input::placeholder{color:rgba(255,255,255,.5)}
+.sidebar .global-search-icon{color:rgba(255,255,255,.65)}
+.sidebar .global-search-results{position:relative;top:auto;right:auto;left:auto;margin-top:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);box-shadow:none;max-height:min(280px,40vh)}
+.sidebar .global-search-empty{color:rgba(255,255,255,.55)}
+.sidebar .global-search-item{color:#fff}
+.sidebar .global-search-item:hover,.sidebar .global-search-item:focus,.sidebar .global-search-item.active{background:rgba(255,255,255,.12)}
+.sidebar .global-search-item-name{color:#fff}
 .page-header{margin-bottom:28px}
 .page-header h1{font-size:26px;font-weight:800;color:var(--primary)}
 .page-header p{font-size:14px;color:var(--text-muted);margin-top:4px}
@@ -429,8 +440,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .user-row-name{font-size:15px;font-weight:600}
 .user-row-meta{font-size:12px;color:var(--text-muted)}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:1000}
-.modal-overlay.open{display:block}
-.modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:20px;padding:32px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.2);z-index:1001}
+.modal-overlay.open{display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:max(24px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.modal{position:relative;top:auto;left:auto;transform:none;background:#fff;border-radius:20px;padding:32px;width:500px;max-width:95vw;flex-shrink:0;overflow:visible;box-shadow:0 24px 64px rgba(0,0,0,.2);z-index:1001;margin:0 auto}
+.form-group select,.modal .form-group select{cursor:pointer;pointer-events:auto;min-height:44px;appearance:auto;-webkit-appearance:menulist}
 .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;cursor:grab;user-select:none;touch-action:none}
 .modal.dragging .modal-header{cursor:grabbing}
 .modal-title{font-size:20px;font-weight:700;color:var(--primary);pointer-events:none}
@@ -567,13 +579,10 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .sidebar-nav{padding-top:8px;overflow-y:auto;-webkit-overflow-scrolling:touch}
   .desktop-only-tabs{display:none!important}
   .mobile-tab-bar{display:block}
-  .main-content{margin-right:0!important;margin-left:0!important;width:100%!important;padding:calc(68px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+  .main-content{margin-right:0!important;margin-left:0!important;width:100%!important;padding:calc(56px + env(safe-area-inset-top,0px) + 16px) max(16px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
   .main-shell{margin-right:0!important;margin-left:0!important;width:100%!important}
-  .app-topbar{position:fixed;top:calc(56px + env(safe-area-inset-top,0px));left:0;right:0;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));z-index:245}
-  .global-search{max-width:none}
-  .global-search-field input{font-size:16px;padding:12px 0}
-  #app.has-topbar-mobile .main-shell.has-topbar .main-content{padding-top:calc(120px + env(safe-area-inset-top,0px))}
-  #app.has-topbar-mobile .mobile-tab-drawer{top:calc(104px + env(safe-area-inset-top,0px))}
+  .sidebar-search{padding:0 16px 12px}
+  .sidebar .global-search-field input{font-size:16px;padding:10px 0}
   .page-header h1{font-size:22px}
   .project-detail-title{font-size:22px}
   .flex-between.responsive-stack{flex-direction:column;align-items:stretch!important}
@@ -629,7 +638,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .gantt-card-actions{width:100%}
   .gantt-card-actions .btn{flex:1;justify-content:center}
   .modal-overlay.open{display:flex!important;align-items:flex-start;justify-content:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
-  .modal-overlay.open .modal{position:relative;top:auto;left:auto;transform:none;margin:0 auto;flex-shrink:0}
+  .modal-overlay.open .modal{position:relative;top:auto;left:auto;transform:none;margin:0 auto;flex-shrink:0;overflow:visible;max-width:calc(100vw - 24px)}
   .modal-footer .btn-primary,.modal-footer .btn-accent,.modal-footer .btn-danger{width:100%!important;max-width:100%}
   .blueprint-viewer-wrap.clickable{cursor:pointer;touch-action:manipulation}
   .blueprint-viewer-wrap img{max-height:min(55vh,480px)}
@@ -654,7 +663,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .login-logo .icon{width:48px;height:48px}
   .login-subtitle{font-size:13px;line-height:1.55}
   .login-footer{font-size:13px}
-  .main-content{padding:calc(68px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(20px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+  .main-content{padding:calc(56px + env(safe-area-inset-top,0px) + 16px) max(12px,env(safe-area-inset-right,0px)) max(20px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
   .card{padding:16px}
   .stats-grid{grid-template-columns:1fr}
   .dash-metrics{grid-template-columns:1fr}
@@ -825,6 +834,15 @@ img,svg,video,canvas{max-width:100%;height:auto}
         <h2>ארונשטיין פיקוח וניהול</h2>
         <p>מערכת ניהול</p>
       </div>
+      <div class="sidebar-search admin-only-action" id="sidebar-search-wrap">
+        <div class="global-search" id="global-search">
+          <div class="global-search-field">
+            <span class="global-search-icon" aria-hidden="true"><i data-lucide="search"></i></span>
+            <input type="search" id="global-search-input" placeholder="חיפוש פרויקט, לקוח, קבלן..." autocomplete="off" aria-label="חיפוש גלובלי" aria-expanded="false" aria-controls="global-search-results" onfocus="openGlobalSearch()" oninput="onGlobalSearchInput()" onkeydown="onGlobalSearchKeydown(event)"/>
+          </div>
+          <div class="global-search-results" id="global-search-results" role="listbox" aria-label="תוצאות חיפוש"></div>
+        </div>
+      </div>
       <nav class="sidebar-nav" id="sidebar-nav"></nav>
       <div class="sidebar-footer">
         <div class="user-info">
@@ -835,15 +853,6 @@ img,svg,video,canvas{max-width:100%;height:auto}
       </div>
     </aside>
     <div class="main-shell">
-      <header class="app-topbar admin-only-action" id="app-topbar">
-        <div class="global-search" id="global-search">
-          <div class="global-search-field">
-            <span class="global-search-icon" aria-hidden="true"><i data-lucide="search"></i></span>
-            <input type="search" id="global-search-input" placeholder="חיפוש פרויקט, לקוח, קבלן..." autocomplete="off" aria-label="חיפוש גלובלי" aria-expanded="false" aria-controls="global-search-results" onfocus="openGlobalSearch()" oninput="onGlobalSearchInput()" onkeydown="onGlobalSearchKeydown(event)"/>
-          </div>
-          <div class="global-search-results" id="global-search-results" role="listbox" aria-label="תוצאות חיפוש"></div>
-        </div>
-      </header>
       <main class="main-content" id="main-content"></main>
     </div>
   </div>
@@ -923,7 +932,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="form-group"><label>טלפון</label><input type="tel" id="sub-phone" placeholder="050-0000000"/></div>
       <div class="form-group"><label>אימייל</label><input type="email" id="sub-email" placeholder="email@example.com"/></div>
     </div>
-    <div class="form-group"><label>תחום התמחות</label><select id="sub-specialty"><option value="">—</option></select></div>
+    <div class="form-group"><label for="sub-specialty">תחום התמחות</label><select id="sub-specialty"><option value="">—</option><option value="שלד ובטון">שלד ובטון</option><option value="טיח וריצוף">טיח וריצוף</option><option value="חשמל">חשמל</option><option value="אינסטלציה וצנרת">אינסטלציה וצנרת</option><option value="גבס ותקרות">גבס ותקרות</option><option value="איטום וחוץ">איטום וחוץ</option><option value="מסגרות ואלומיניום">מסגרות ואלומיניום</option><option value="עיצוב פנים">עיצוב פנים</option><option value="ניהול פרויקט">ניהול פרויקט</option><option value="אחר">אחר</option></select></div>
     <div class="grid-2">
       <div class="form-group"><label>תוקף ביטוח</label><input type="date" id="sub-insurance"/></div>
       <div class="form-group"><label>תוקף אישור בטיחות</label><input type="date" id="sub-safety"/></div>
@@ -4054,14 +4063,10 @@ function renderSidebar(){
   document.getElementById('user-role-sb').textContent=currentUser.role==='admin'?'מנהל מערכת':'לקוח';
   var appLayout=document.querySelector('.app-layout');
   if(appLayout)appLayout.classList.toggle('client-mode',!isAdmin());
-  var shell=document.querySelector('.main-shell');
-  if(shell)shell.classList.toggle('has-topbar',isAdmin());
-  var appEl=document.getElementById('app');
-  if(appEl)appEl.classList.toggle('has-topbar-mobile',isAdmin());
   var mobileLogout=document.getElementById('mobile-logout-btn');
   if(mobileLogout)refreshIcons(mobileLogout);
-  var topbar=document.getElementById('app-topbar');
-  if(topbar)refreshIcons(topbar);
+  var searchWrap=document.getElementById('sidebar-search-wrap');
+  if(searchWrap)refreshIcons(searchWrap);
   var nav=document.getElementById('sidebar-nav');
   if(currentUser.role==='admin'){
     nav.innerHTML='<div class="nav-section-title">ניהול</div>'+
@@ -4107,6 +4112,7 @@ function closeMobileSidebar(){
   var bd=document.getElementById('sidebar-backdrop');
   if(sb)sb.classList.remove('open');
   if(bd)bd.classList.remove('open');
+  closeGlobalSearch();
   syncBodyScrollLock();
   updateHamburgerIcon(false);
 }
@@ -4321,7 +4327,8 @@ function initGlobalSearchHandlers(){
   document.addEventListener('click',function(e){
     var wrap=document.getElementById('global-search');
     if(!wrap||wrap.contains(e.target))return;
-    closeGlobalSearch();
+    if(e.target.closest('#sidebar-nav .nav-item'))closeGlobalSearch();
+    else if(!e.target.closest('#sidebar'))closeGlobalSearch();
   });
 }
 
@@ -5061,9 +5068,24 @@ function populateSubcontractorSpecialtySelect(selectedValue){
   if(!sel)return;
   var selected=selectedValue==null?'':String(selectedValue);
   var opts=getSubcontractorSpecialtyOptions();
-  sel.innerHTML='<option value="">—</option>'+opts.map(function(opt){
-    return '<option'+(opt===selected?' selected':'')+'>'+escHtml(opt)+'</option>';
-  }).join('');
+  var existing={};
+  Array.prototype.forEach.call(sel.options,function(o){existing[o.value||o.textContent]=true;});
+  opts.forEach(function(opt){
+    if(existing[opt])return;
+    var o=document.createElement('option');
+    o.value=opt;
+    o.textContent=opt;
+    sel.appendChild(o);
+    existing[opt]=true;
+  });
+  sel.value=selected;
+  if(selected&&sel.value!==selected){
+    var extra=document.createElement('option');
+    extra.value=selected;
+    extra.textContent=selected;
+    extra.selected=true;
+    sel.appendChild(extra);
+  }
 }
 function getSubcontractorsForDisplay(){
   var subs=subcontractorsCache.slice();
@@ -5256,7 +5278,10 @@ function renderSettings(el){
 }
 
 function resetModalPosition(modal){
-  modal.style.left='50%';modal.style.top='50%';modal.style.transform='translate(-50%,-50%)';
+  if(!modal)return;
+  modal.style.left='';
+  modal.style.top='';
+  modal.style.transform='';
 }
 var modalOpenCount=0;
 function syncBodyScrollLock(){
