@@ -381,6 +381,18 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .budget-summary-row:last-child{border-bottom:none}
 .budget-summary-row.total{font-size:18px;font-weight:800;color:var(--primary);padding-top:12px;margin-top:4px}
 .budget-summary-row.admin-only{margin-top:4px;font-size:13px;color:var(--text-muted)}
+.budget-donut-wrap{margin-top:20px;padding-top:20px;border-top:1px dashed var(--border);display:flex;flex-direction:column;align-items:center;gap:18px}
+.budget-donut-chart{position:relative;flex-shrink:0}
+.budget-donut-chart svg{display:block;overflow:visible}
+.budget-donut-center-label{font-family:'Heebo',sans-serif;font-size:11px;font-weight:600;fill:var(--text-muted)}
+.budget-donut-center-value{font-family:'Heebo',sans-serif;font-size:13px;font-weight:800;fill:var(--primary)}
+.budget-donut-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 20px;width:100%}
+.budget-donut-legend-item{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--text);flex-wrap:wrap}
+.budget-donut-swatch{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.budget-donut-legend-label{font-weight:600;color:var(--primary)}
+.budget-donut-legend-amount{font-weight:700;direction:ltr}
+.budget-donut-legend-pct{color:var(--text-muted);font-size:12px}
+.budget-donut-empty-text{font-size:13px;color:var(--text-muted);text-align:center;margin:0}
 .budget-add-category-wrap{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center}
 .budget-add-category-wrap input{flex:1;min-width:160px;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px;display:none}
 .budget-add-category-wrap.open input{display:block}
@@ -2093,6 +2105,7 @@ var toastTimer=null;
 var budgetsCache=[],budgetItemsByBudget={},budgetBuilderMode='list',editingBudgetId=null;
 var budgetBuilderDraft=null,budgetPendingContactItemId=null;
 const BUDGET_BUILDER_CATEGORIES=['חפירות','שלד','חשמל','אינסטלציה','טיח','ריצוף','גמר','אחר'];
+const BUDGET_DONUT_COLORS=['#1B2B5E','#2a4078','#e8a020','#22c55e','#3b82f6','#8b5cf6','#ef4444','#14b8a6','#f97316','#6366f1','#0ea5e9','#a855f7'];
 const BUDGET_UNITS=['מ"ר','מ"ק','מ"ל','יחידה','טון','קג','שעה','ק"מ'];
 const BUDGET_DEFAULT_UNIT='יחידה';
 const SUBCONTRACTOR_SPECIALTIES=['שלד ובטון','טיח וריצוף','חשמל','אינסטלציה וצנרת','גבס ותקרות','איטום וחוץ','מסגרות ואלומיניום','עיצוב פנים','ניהול פרויקט','אחר'];
@@ -3601,6 +3614,87 @@ function calcBudgetTotals(items,marginPercent){
   var total=Math.round((beforeVat+vat)*100)/100;
   return {subtotal:subtotal,marginAmt:marginAmt,beforeVat:beforeVat,vat:vat,total:total};
 }
+function calcBudgetCategoryChartData(items,marginPercent,categoryOrder){
+  var totals=calcBudgetTotals(items,marginPercent);
+  var grand=totals.total;
+  if(grand<=0)return {total:0,segments:[]};
+  var sub=totals.subtotal;
+  var catSums={};
+  (items||[]).forEach(function(it){
+    var cat=(it.category||'').trim()||'אחר';
+    var line=calcBudgetLineTotal(it.quantity,it.unitPrice);
+    if(line>0)catSums[cat]=(catSums[cat]||0)+line;
+  });
+  var order=categoryOrder||Object.keys(catSums);
+  var seen={},segments=[];
+  order.forEach(function(cat){
+    if(seen[cat]||!catSums[cat])return;
+    seen[cat]=1;
+    var raw=catSums[cat];
+    var amount=sub>0?Math.round(raw/sub*grand*100)/100:0;
+    if(amount<=0)return;
+    segments.push({category:cat,amount:amount,pct:Math.round(amount/grand*1000)/10});
+  });
+  Object.keys(catSums).forEach(function(cat){
+    if(seen[cat])return;
+    var raw=catSums[cat];
+    var amount=sub>0?Math.round(raw/sub*grand*100)/100:0;
+    if(amount<=0)return;
+    segments.push({category:cat,amount:amount,pct:Math.round(amount/grand*1000)/10});
+  });
+  return {total:grand,segments:segments};
+}
+function budgetDonutPolar(cx,cy,r,angle){
+  return {x:cx+r*Math.cos(angle),y:cy+r*Math.sin(angle)};
+}
+function budgetDonutArcPath(cx,cy,rOuter,rInner,start,end,color){
+  if(end-start>=Math.PI*2-0.0001){
+    return '<circle cx="'+cx+'" cy="'+cy+'" r="'+rOuter+'" fill="'+color+'"/>'+
+      '<circle cx="'+cx+'" cy="'+cy+'" r="'+rInner+'" fill="#fff"/>';
+  }
+  var p1o=budgetDonutPolar(cx,cy,rOuter,start);
+  var p2o=budgetDonutPolar(cx,cy,rOuter,end);
+  var p2i=budgetDonutPolar(cx,cy,rInner,end);
+  var p1i=budgetDonutPolar(cx,cy,rInner,start);
+  var large=(end-start)>Math.PI?1:0;
+  var d='M '+p1o.x+' '+p1o.y+
+    ' A '+rOuter+' '+rOuter+' 0 '+large+' 1 '+p2o.x+' '+p2o.y+
+    ' L '+p2i.x+' '+p2i.y+
+    ' A '+rInner+' '+rInner+' 0 '+large+' 0 '+p1i.x+' '+p1i.y+' Z';
+  return '<path fill="'+color+'" d="'+d+'"/>';
+}
+function renderBudgetDonutChartHtml(items,marginPercent,categoryOrder){
+  var data=calcBudgetCategoryChartData(items,marginPercent,categoryOrder);
+  if(!data.segments.length){
+    return '<div class="budget-donut-wrap budget-donut-empty"><p class="budget-donut-empty-text">אין נתונים לגרף — הוסף פריטים עם סכום</p></div>';
+  }
+  var size=220,cx=size/2,cy=size/2,rOuter=90,rInner=56;
+  var startAngle=-Math.PI/2;
+  var slices='';
+  data.segments.forEach(function(seg,i){
+    var frac=seg.amount/data.total;
+    if(frac<=0)return;
+    var endAngle=startAngle+frac*Math.PI*2;
+    var color=BUDGET_DONUT_COLORS[i%BUDGET_DONUT_COLORS.length];
+    slices+=budgetDonutArcPath(cx,cy,rOuter,rInner,startAngle,endAngle,color);
+    startAngle=endAngle;
+  });
+  var legend=data.segments.map(function(seg,i){
+    var color=BUDGET_DONUT_COLORS[i%BUDGET_DONUT_COLORS.length];
+    return '<div class="budget-donut-legend-item">'+
+      '<span class="budget-donut-swatch" style="background:'+color+'"></span>'+
+      '<span class="budget-donut-legend-label">'+escHtml(seg.category)+'</span>'+
+      '<span class="budget-donut-legend-amount">'+fmtMoney(seg.amount)+'</span>'+
+      '<span class="budget-donut-legend-pct">('+seg.pct+'%)</span></div>';
+  }).join('');
+  return '<div class="budget-donut-wrap">'+
+    '<div class="budget-donut-chart">'+
+    '<svg viewBox="0 0 '+size+' '+size+'" width="'+size+'" height="'+size+'" role="img" aria-label="גרף חלוקת תקציב לפי קטגוריות">'+slices+
+    '<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" class="budget-donut-center-label">סה"כ כולל מע"מ</text>'+
+    '<text x="'+cx+'" y="'+(cy+14)+'" text-anchor="middle" class="budget-donut-center-value">'+escHtml(fmtMoney(data.total))+'</text>'+
+    '</svg></div>'+
+    '<div class="budget-donut-legend">'+legend+'</div></div>';
+}
 function getBudgetDraftCategories(){
   var seen={},order=[];
   BUDGET_BUILDER_CATEGORIES.forEach(function(c){seen[c]=1;order.push(c);});
@@ -3958,6 +4052,10 @@ function updateBudgetSummaryDisplay(){
       .reduce(function(s,it){return s+calcBudgetLineTotal(it.quantity,it.unitPrice);},0);
     el.textContent=fmtMoney(sum);
   });
+  var donutEl=document.getElementById('budget-category-donut');
+  if(donutEl){
+    donutEl.innerHTML=renderBudgetDonutChartHtml(budgetBuilderDraft.items,budgetBuilderDraft.marginPercent,getBudgetDraftCategories());
+  }
 }
 function renderBudgetItemEditorRow(it){
   return '<tr>'+
@@ -4005,7 +4103,8 @@ function renderBudgetBuilderEditorHtml(){
     '<div class="budget-summary-box">'+
     '<div class="budget-summary-row"><span>סה"כ לפני מע"מ</span><strong id="budget-before-vat">'+fmtMoney(totals.beforeVat)+'</strong></div>'+
     '<div class="budget-summary-row"><span>מע"מ (17%)</span><strong id="budget-vat">'+fmtMoney(totals.vat)+'</strong></div>'+
-    '<div class="budget-summary-row total"><span>סה"כ כולל מע"מ</span><strong id="budget-grand-total">'+fmtMoney(totals.total)+'</strong></div></div></div></div>';
+    '<div class="budget-summary-row total"><span>סה"כ כולל מע"מ</span><strong id="budget-grand-total">'+fmtMoney(totals.total)+'</strong></div>'+
+    '<div id="budget-category-donut">'+renderBudgetDonutChartHtml(d.items,d.marginPercent,cats)+'</div></div></div></div>';
 }
 function renderBudgetBuilderListHtml(budgets,loadedOk){
   var html='<div class="section-actions"><div class="section-title">'+ic('calculator')+' בניית תקציב</div>'+
