@@ -426,6 +426,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .budget-client-table .num{direction:ltr;text-align:left;white-space:nowrap}
 .budget-client-notes{margin-top:20px;padding:14px 16px;background:var(--bg);border-radius:10px;font-size:14px;line-height:1.6}
 .budget-client-totals{margin-top:24px;max-width:360px;margin-right:0;margin-left:auto}
+.budget-client-donut{margin-top:20px;padding-top:16px;border-top:1px dashed var(--border)}
+.budget-client-donut .budget-donut-wrap{margin-top:0;padding-top:0;border-top:none}
+.budget-donut-print-img{display:none;max-width:220px;height:auto}
 @media(max-width:1023px){
   .budget-builder-editor .form-row{grid-template-columns:1fr}
   .budget-items-table{min-width:920px}
@@ -437,6 +440,10 @@ img,svg,video,canvas{max-width:100%;height:auto}
   body.budget-print-mode #budget-print-root,body.budget-print-mode #budget-print-root *{visibility:visible!important}
   body.budget-print-mode #budget-print-root{position:absolute;inset:0;width:100%;padding:0;margin:0;background:#fff}
   body.budget-print-mode .budget-client-toolbar{display:none!important}
+  body.budget-print-mode .budget-donut-wrap{break-inside:avoid;page-break-inside:avoid}
+  body.budget-print-mode .budget-donut-chart svg{display:block!important;overflow:visible!important}
+  body.budget-print-mode .budget-donut-chart[data-print-swap="1"] svg{display:none!important}
+  body.budget-print-mode .budget-donut-print-img{display:block!important;margin:0 auto;overflow:visible!important}
   .budget-client-overlay{background:#fff!important;padding:0!important}
   .budget-client-sheet{box-shadow:none!important;border-radius:0!important;max-width:none!important}
 }
@@ -3739,6 +3746,95 @@ function budgetDonutArcPath(cx,cy,rOuter,rInner,start,end,color){
     ' A '+rInner+' '+rInner+' 0 '+large+' 0 '+p1i.x+' '+p1i.y+' Z';
   return '<path fill="'+color+'" d="'+d+'"/>';
 }
+function getBudgetCategoriesFromItems(items){
+  var seen={},order=[];
+  BUDGET_BUILDER_CATEGORIES.forEach(function(c){seen[c]=1;order.push(c);});
+  (items||[]).forEach(function(it){
+    var cat=(it.category||'').trim()||'אחר';
+    if(!seen[cat]){seen[cat]=1;order.push(cat);}
+  });
+  return order;
+}
+function inlineBudgetDonutSvgStyles(svgEl){
+  var clone=svgEl.cloneNode(true);
+  clone.querySelectorAll('text').forEach(function(node){
+    var style=window.getComputedStyle(node);
+    node.setAttribute('fill',style.fill||'#1B2B5E');
+    node.setAttribute('font-family',style.fontFamily||'Heebo,sans-serif');
+    node.setAttribute('font-size',style.fontSize||'13px');
+    node.setAttribute('font-weight',style.fontWeight||'600');
+  });
+  clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  return clone;
+}
+function budgetDonutSvgToPngDataUrl(svgEl,scale){
+  scale=scale||2;
+  return new Promise(function(resolve,reject){
+    try{
+      var clone=inlineBudgetDonutSvgStyles(svgEl);
+      var vb=clone.viewBox&&clone.viewBox.baseVal;
+      var w=(vb&&vb.width)||parseFloat(clone.getAttribute('width'))||220;
+      var h=(vb&&vb.height)||parseFloat(clone.getAttribute('height'))||220;
+      clone.setAttribute('width',String(w));
+      clone.setAttribute('height',String(h));
+      var svgStr=new XMLSerializer().serializeToString(clone);
+      var blob=new Blob([svgStr],{type:'image/svg+xml;charset=utf-8'});
+      var url=URL.createObjectURL(blob);
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var canvas=document.createElement('canvas');
+          canvas.width=Math.round(w*scale);
+          canvas.height=Math.round(h*scale);
+          var ctx=canvas.getContext('2d');
+          ctx.setTransform(scale,0,0,scale,0,0);
+          ctx.drawImage(img,0,0,w,h);
+          URL.revokeObjectURL(url);
+          resolve(canvas.toDataURL('image/png'));
+        }catch(err){
+          URL.revokeObjectURL(url);
+          reject(err);
+        }
+      };
+      img.onerror=function(){
+        URL.revokeObjectURL(url);
+        reject(new Error('svg to png failed'));
+      };
+      img.src=url;
+    }catch(e){reject(e);}
+  });
+}
+async function prepareBudgetDonutChartsForPrint(root){
+  var swaps=[];
+  if(!root)return function(){};
+  var charts=root.querySelectorAll('.budget-donut-chart');
+  for(var i=0;i<charts.length;i++){
+    var wrap=charts[i];
+    var svg=wrap.querySelector('svg');
+    if(!svg)continue;
+    try{
+      var dataUrl=await budgetDonutSvgToPngDataUrl(svg);
+      var img=document.createElement('img');
+      img.src=dataUrl;
+      img.className='budget-donut-print-img';
+      img.width=parseFloat(svg.getAttribute('width'))||220;
+      img.height=parseFloat(svg.getAttribute('height'))||220;
+      img.alt=svg.getAttribute('aria-label')||'גרף חלוקת תקציב לפי קטגוריות';
+      wrap.setAttribute('data-print-swap','1');
+      svg.style.display='none';
+      wrap.appendChild(img);
+      if(img.decode)await img.decode();
+      swaps.push({wrap:wrap,svg:svg,img:img});
+    }catch(e){console.warn('prepareBudgetDonutChartsForPrint',e);}
+  }
+  return function restoreBudgetDonutChartsAfterPrint(){
+    swaps.forEach(function(entry){
+      if(entry.img&&entry.img.parentNode)entry.img.parentNode.removeChild(entry.img);
+      if(entry.svg)entry.svg.style.display='';
+      if(entry.wrap)entry.wrap.removeAttribute('data-print-swap');
+    });
+  };
+}
 function renderBudgetDonutChartHtml(items,marginPercent,categoryOrder){
   var data=calcBudgetCategoryChartData(items,marginPercent,categoryOrder);
   if(!data.segments.length){
@@ -4319,12 +4415,14 @@ async function deleteBudget(id){
 }
 function renderBudgetClientBodyHtml(budget,items){
   var t=calcBudgetTotals(items,budget.marginPercent);
-  var cats=[],seen={};
-  items.forEach(function(it){
-    if(!seen[it.category]){seen[it.category]=1;cats.push(it.category);}
-  });
+  var cats=getBudgetCategoriesFromItems(items);
+  var donutHtml=renderBudgetDonutChartHtml(items,budget.marginPercent||0,cats);
   var tableRows='';
-  cats.forEach(function(cat){
+  var tableCats=[],tableSeen={};
+  items.forEach(function(it){
+    if(!tableSeen[it.category]){tableSeen[it.category]=1;tableCats.push(it.category);}
+  });
+  tableCats.forEach(function(cat){
     var catItems=items.filter(function(it){return it.category===cat;});
     if(!catItems.length)return;
     var catSum=catItems.reduce(function(s,it){return s+calcBudgetLineTotal(it.quantity,it.unitPrice);},0);
@@ -4352,6 +4450,7 @@ function renderBudgetClientBodyHtml(budget,items){
     '<div class="budget-summary-row"><span>סה"כ לפני מע"מ</span><strong>'+fmtMoney(t.beforeVat)+'</strong></div>'+
     '<div class="budget-summary-row"><span>מע"מ (17%)</span><strong>'+fmtMoney(t.vat)+'</strong></div>'+
     '<div class="budget-summary-row total"><span>סה"כ כולל מע"מ</span><strong>'+fmtMoney(t.total)+'</strong></div></div>'+
+    '<div class="budget-client-donut">'+donutHtml+'</div>'+
     (budget.notes?'<div class="budget-client-notes"><strong>הערות:</strong> '+escHtml(budget.notes)+'</div>':'');
 }
 async function openBudgetClientView(budgetId){
@@ -4405,11 +4504,26 @@ function closeBudgetClientView(ev){
   if(overlay)overlay.classList.remove('open');
   document.body.classList.remove('budget-print-mode');
   document.body.style.overflow='';
+  if(budgetDonutPrintRestore){budgetDonutPrintRestore();budgetDonutPrintRestore=null;}
 }
-function printBudgetClientView(){
+var budgetDonutPrintRestore=null;
+async function printBudgetClientView(){
+  var root=document.getElementById('budget-print-root');
+  if(budgetDonutPrintRestore){budgetDonutPrintRestore();budgetDonutPrintRestore=null;}
+  if(root){
+    try{
+      budgetDonutPrintRestore=await prepareBudgetDonutChartsForPrint(root);
+    }catch(e){
+      console.warn('printBudgetClientView donut prep',e);
+      budgetDonutPrintRestore=null;
+    }
+  }
   document.body.classList.add('budget-print-mode');
   window.print();
-  setTimeout(function(){document.body.classList.remove('budget-print-mode');},500);
+  setTimeout(function(){
+    document.body.classList.remove('budget-print-mode');
+    if(budgetDonutPrintRestore){budgetDonutPrintRestore();budgetDonutPrintRestore=null;}
+  },500);
 }
 
 async function ensureUserProfile(authUser){
