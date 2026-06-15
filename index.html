@@ -1921,7 +1921,7 @@ function bindModalValidationClear(modalId){
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
 var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
-var appDataCache={projects:[],activityLog:[]},appUsers=[],subcontractorsCache=[],punchItemsCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false;
+var appDataCache={projects:[],activityLog:[]},appUsers=[],subcontractorsCache=[],punchItemsCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false;
 var viewingPunchItemId=null,punchPinDraft={x:null,y:null},punchBlueprintSignedUrl=null;
 var subcontractorSpecialtyFilter='',showDailyLogForm=false;
 var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='',activityLogTypeFilter='',galleryStageFilter='';
@@ -2449,6 +2449,7 @@ async function persistAppData(opts){
     p_activity_log:row.activity_log
   });
   if(!rpc.error)return {ok:true,bytes:bytes};
+  if(await checkSupabaseSessionError(rpc.error))return {ok:false,sessionExpired:true};
   console.warn('persistAppData rpc failed, trying update',rpc.error);
   var upd=await supabase.from('app_data').update({
     projects:row.projects,
@@ -2456,6 +2457,7 @@ async function persistAppData(opts){
     updated_at:row.updated_at
   }).eq('id','main');
   if(!upd.error)return {ok:true,bytes:bytes};
+  if(await checkSupabaseSessionError(upd.error))return {ok:false,sessionExpired:true};
   var ins=await supabase.from('app_data').insert({
     id:'main',
     projects:row.projects,
@@ -2475,6 +2477,7 @@ async function persistActivityLogOnly(){
   }).eq('id','main');
   if(res.error){
     console.error('persistActivityLogOnly',res.error);
+    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
     return {ok:false,error:res.error.message};
   }
   return {ok:true};
@@ -2484,6 +2487,7 @@ async function refreshAppData(){
   var res=await supabase.from('app_data').select('projects,activity_log').eq('id','main').maybeSingle();
   if(res.error){
     console.error('refreshAppData',res.error);
+    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
     if(!appDataCache.projects.length)appDataCache={projects:[],activityLog:[]};
     return {ok:false,error:res.error.message||String(res.error)};
   }
@@ -2511,7 +2515,7 @@ async function refreshAppData(){
 
 function formatSupabaseErrorHint(errMsg){
   var m=(errMsg||'').toLowerCase();
-  if(m.includes('jwt')||m.includes('401')||m.includes('not authenticated'))return 'ה-session פג תוקף — התנתק והתחבר מחדש.';
+  if(isSessionAuthError({message:errMsg}))return 'ה-session פג תוקף — התנתק והתחבר מחדש.';
   if(m.includes('bucket')||m.includes('not found')&&m.includes('storage'))return 'חסר bucket בשם media ב-Supabase Storage (Public).';
   if(m.includes('payload')||m.includes('too large')||m.includes('413'))return 'נתוני הפרויקט גדולים מדי (למשל תמונות Base64 ישנות).';
   if(m.includes('500')||m.includes('internal server'))return 'שגיאת שרת בשמירה — הרץ את supabase-setup.sql המעודכן (פונקציית save_app_data), או בדוק אם נתוני הפרויקט גדולים מדי.';
@@ -2522,6 +2526,33 @@ function formatSupabaseErrorHint(errMsg){
   if(m.includes('punch_items')&&(m.includes('location')||m.includes('photo_url')))return 'חסרות עמודות location / photo_url בטבלת punch_items — הרץ את supabase-punch-items-location-photo-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('fetch')||m.includes('network')||m.includes('522')||m.includes('timeout'))return 'בעיית רשת או Supabase לא זמין.';
   return errMsg||'שגיאה לא ידועה';
+}
+
+function isSessionAuthError(err){
+  if(!err)return false;
+  var status=err.status||err.statusCode;
+  if(status===401||status==='401')return true;
+  var msg=(err.message||err.error_description||err.msg||String(err)).toLowerCase();
+  return msg.includes('jwt expired')||msg.includes('invalid jwt')||(msg.includes('jwt')&&msg.includes('expir'))||msg.includes('not authenticated')||/\b401\b/.test(msg);
+}
+async function handleSessionExpiry(){
+  if(sessionExpiryHandling||voluntaryLogout)return;
+  sessionExpiryHandling=true;
+  try{
+    showToast('פג תוקף החיבור — מתחבר מחדש...','error',4500);
+    var sess=await supabase.auth.getSession();
+    if(sess.data.session)await supabase.auth.signOut();
+    else{showLoginScreen();sessionExpiryHandling=false;}
+  }catch(e){
+    console.error('handleSessionExpiry',e);
+    showLoginScreen();
+    sessionExpiryHandling=false;
+  }
+}
+async function checkSupabaseSessionError(error){
+  if(!error||!isSessionAuthError(error))return false;
+  await handleSessionExpiry();
+  return true;
 }
 
 async function saveData(d){
@@ -2563,6 +2594,7 @@ async function refreshAppUsers(){
   var res=await supabase.from('profiles').select('*').order('created_at',{ascending:false});
   if(res.error){
     console.error('refreshAppUsers',res.error);
+    if(await checkSupabaseSessionError(res.error))return false;
     return false;
   }
   appUsers=(res.data||[]).map(mapProfileRow);
@@ -2586,6 +2618,7 @@ async function refreshSubcontractors(){
   var res=await supabase.from('subcontractors').select('*').order('company_name',{ascending:true});
   if(res.error){
     console.error('refreshSubcontractors',res.error);
+    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
     return {ok:false,error:res.error.message};
   }
   subcontractorsCache=(res.data||[]).map(mapSubcontractorRow);
@@ -2662,6 +2695,7 @@ async function refreshPunchItems(projectId){
   var res=await supabase.from('punch_items').select('*').eq('project_id',projectId).order('created_at',{ascending:false});
   if(res.error){
     console.error('refreshPunchItems',res.error);
+    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
     punchItemsCache=[];
     return {ok:false,error:res.error.message};
   }
@@ -2981,6 +3015,7 @@ async function refreshDailyLogs(projectId){
   var res=await supabase.from('daily_logs').select('*').eq('project_id',projectId).order('log_date',{ascending:false}).order('created_at',{ascending:false});
   if(res.error){
     console.error('refreshDailyLogs',res.error);
+    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
     dailyLogsCache=[];
     return {ok:false,error:res.error.message};
   }
@@ -3277,6 +3312,7 @@ async function refreshAllStandaloneBudgets(){
   var res=await supabase.from('budgets').select('*').is('project_id',null).order('created_at',{ascending:false});
   if(res.error){
     console.error('refreshAllStandaloneBudgets',res.error);
+    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
     budgetsCache=[];
     return {ok:false,error:res.error.message};
   }
@@ -3341,6 +3377,7 @@ async function refreshBudgetItems(budgetId){
   }
   if(res.error){
     console.error('refreshBudgetItems',res.error);
+    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
     return {ok:false,error:res.error.message};
   }
   budgetItemsByBudget[budgetId]=(res.data||[]).map(mapBudgetItemRow);
@@ -3359,6 +3396,7 @@ async function refreshAllBudgetItemsCache(){
   }
   if(res.error){
     console.error('refreshAllBudgetItemsCache',res.error);
+    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
     return {ok:false,error:res.error.message};
   }
   var grouped={};
@@ -3882,6 +3920,7 @@ function printBudgetClientView(){
 
 async function ensureUserProfile(authUser){
   var res=await supabase.from('profiles').select('*').eq('id',authUser.id).maybeSingle();
+  if(res.error&&await checkSupabaseSessionError(res.error))return null;
   if(res.data){
     if(authUser.email===ADMIN_EMAIL&&res.data.role!=='admin'){
       await supabase.from('profiles').update({role:'admin'}).eq('id',authUser.id);
@@ -3913,6 +3952,7 @@ function renderClientNoProject(el){
 async function startApp(user){
   currentUser=user;
   var refresh=await refreshAppData();
+  if(refresh.sessionExpired)return;
   if(!refresh.ok){
     var hint=formatSupabaseErrorHint(refresh.error);
     var hasCache=appDataCache.projects&&appDataCache.projects.length>0;
@@ -3980,8 +4020,17 @@ supabase.auth.onAuthStateChange(function(event,session){
     try{
       if((event==='INITIAL_SESSION'||event==='SIGNED_IN')&&session&&session.user){
         await handleAuthSession(session.user,event);
+      }else if(event==='TOKEN_REFRESHED'){
+        if(!session||!session.user){
+          if(authBootstrapped&&!voluntaryLogout)await handleSessionExpiry();
+          else{showLoginScreen();sessionExpiryHandling=false;}
+        }
       }else if(event==='SIGNED_OUT'){
+        if(!voluntaryLogout&&!sessionExpiryHandling&&authBootstrapped&&currentUser){
+          showToast('פג תוקף החיבור — מתחבר מחדש...','error',4500);
+        }
         showLoginScreen();
+        sessionExpiryHandling=false;
       }
     }catch(e){
       console.error(e);
@@ -4055,6 +4104,7 @@ async function doLogin(){
 async function doLogout(){
   closeMobileSidebar();
   closeMobileTabMenu();
+  voluntaryLogout=true;
   try{
     var res=await supabase.auth.signOut();
     if(res.error)console.error('Logout error',res.error);
@@ -4065,6 +4115,7 @@ async function doLogout(){
   currentProjectId=null;
   currentTab='overview';
   showLoginScreen();
+  voluntaryLogout=false;
 }
 
 function renderSidebar(){
