@@ -1171,6 +1171,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="form-group"><label>כולל פינוי פסולת</label><select id="price-offer-includes-waste"><option value="no">לא</option><option value="yes">כן</option></select></div>
     </div>
     <div class="form-group"><label>הערות</label><textarea id="price-offer-notes" placeholder="הערות להצעה"></textarea></div>
+    <div class="form-group"><label>העלאת הצעת מחיר (PDF)</label><label class="upload-label"><i data-lucide="file-text"></i> בחר קובץ PDF<input type="file" id="price-offer-pdf" accept=".pdf,application/pdf"/></label><p class="upload-hint">PDF עד 10MB</p><div id="price-offer-pdf-preview" class="file-preview"></div><div id="price-offer-pdf-existing" class="file-preview-existing"></div><div id="price-offer-pdf-upload-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span id="price-offer-pdf-upload-text">מעלה PDF...</span></div><div id="price-offer-pdf-upload-error" class="upload-error"></div></div>
     <div class="price-offer-total-preview" id="price-offer-total-preview">סה"כ משוער: ₪0</div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-price-offer')">ביטול</button>
@@ -1319,6 +1320,7 @@ const WHATSAPP_PHONE='972526471756';
 const WHATSAPP_MSG='שלום, אני לקוח במערכת ארונשטיין פיקוח וניהול ויש לי שאלה לגבי הפרויקט שלי';
 const STORAGE_BUCKET='media';
 const PAYMENT_RECEIPTS_BUCKET='payment-receipts';
+const PRICE_OFFERS_BUCKET='price-offers';
 const PROJECT_BLUEPRINTS_BUCKET='project-blueprints';
 const COMPRESS_MAX_EDGE=1920;
 const COMPRESS_JPEG_QUALITY=0.8;
@@ -1841,6 +1843,53 @@ async function openPaymentReceipt(paymentId){
     return;
   }
   if(pay.receiptUrl)window.open(pay.receiptUrl,'_blank','noopener,noreferrer');
+}
+function priceOfferHasPdf(offer){
+  return !!(offer&&offer.offerPdfUrl);
+}
+function resetPriceOfferPdfForm(existingOffer){
+  clearFilePreview('price-offer-pdf','price-offer-pdf-preview');
+  setPriceOfferPdfUploadUi(false);
+  var existingEl=document.getElementById('price-offer-pdf-existing');
+  if(existingEl){
+    if(existingOffer&&existingOffer.offerPdfUrl)existingEl.innerHTML='קובץ PDF קיים: '+escHtml(existingOffer.contractorName||'הצעה');
+    else existingEl.innerHTML='';
+  }
+}
+function setPriceOfferPdfUploadUi(loading,message,errorMsg){
+  var spinner=document.getElementById('price-offer-pdf-upload-status');
+  var errEl=document.getElementById('price-offer-pdf-upload-error');
+  var textEl=document.getElementById('price-offer-pdf-upload-text');
+  if(spinner)spinner.classList.toggle('show',!!loading);
+  if(textEl&&message)textEl.textContent=message;
+  if(errEl){
+    if(errorMsg){errEl.textContent=errorMsg;errEl.classList.add('show');}
+    else errEl.classList.remove('show');
+  }
+}
+function validatePriceOfferPdfFile(file){
+  if(!file)return {ok:false,message:'לא נבחר קובץ'};
+  if(file.size>UPLOAD_MAX_BYTES)return {ok:false,message:'הקובץ גדול מדי — גודל מקסימלי 10MB'};
+  var ext=resolveUploadFileExtension(file);
+  if(ext!=='pdf'&&file.type!=='application/pdf')return {ok:false,message:'נא לבחור קובץ PDF בלבד'};
+  return {ok:true};
+}
+async function uploadPriceOfferPdfFile(projectId,offerId,file){
+  var path=projectId+'/'+offerId+'-'+Date.now()+'.pdf';
+  var res=await supabase.storage.from(PRICE_OFFERS_BUCKET).upload(path,file,{cacheControl:'3600',upsert:false,contentType:'application/pdf'});
+  if(res.error)return {ok:false,error:res.error.message};
+  return {ok:true,data:{path:path,name:file.name}};
+}
+async function openPriceOfferPdf(offerId){
+  if(!requireProjectAccess())return;
+  var offer=priceOffersCache.find(function(o){return o.id===offerId;});
+  if(!offer||!offer.offerPdfUrl){showToast('לא נמצא קובץ PDF להצעה זו','error');return;}
+  var res=await supabase.storage.from(PRICE_OFFERS_BUCKET).createSignedUrl(offer.offerPdfUrl,3600);
+  if(res.error||!res.data||!res.data.signedUrl){
+    alert('שגיאה בפתיחת ה-PDF:\n'+formatSupabaseErrorHint((res.error&&res.error.message)||'signed url failed'));
+    return;
+  }
+  window.open(res.data.signedUrl,'_blank','noopener,noreferrer');
 }
 function normalizeProjectGallery(proj){
   if(!proj)return;
@@ -3267,7 +3316,7 @@ function formatSupabaseErrorHint(errMsg){
   if(m.includes('punch_items')&&(m.includes('location')||m.includes('photo_url')))return 'חסרות עמודות location / photo_url בטבלת punch_items — הרץ את supabase-punch-items-location-photo-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('milestones'))return 'חסרה טבלת milestones — הרץ את supabase-milestones-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('finish_selections'))return 'חסרה טבלת finish_selections — הרץ את supabase-finish-selections-migration.sql ב-Supabase SQL Editor.';
-  if(m.includes('price_categories'))return 'חסרה עמודת price_categories בטבלת app_data — הרץ את supabase-price-offers-category-migration.sql ב-Supabase SQL Editor.';
+  if(m.includes('offer_pdf_url'))return 'חסרה עמודת offer_pdf_url בטבלת price_offers — הרץ את supabase-price-offers-pdf-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('price_comparisons')||m.includes('price_offers'))return 'חסרות עמודות/טבלאות price_offers — הרץ את supabase-price-comparisons-migration.sql ואז supabase-price-offers-category-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('specialties'))return 'חסרה עמודת specialties בטבלת app_data — הרץ את supabase-specialties-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('fetch')||m.includes('network')||m.includes('522')||m.includes('timeout'))return 'בעיית רשת או Supabase לא זמין.';
@@ -3993,6 +4042,7 @@ function mapPriceOfferRow(r){
     includesWasteRemoval:!!r.includes_waste_removal,
     notes:r.notes||'',
     totalPrice:Number(r.total_price)||0,
+    offerPdfUrl:r.offer_pdf_url||'',
     createdAt:r.created_at
   };
 }
@@ -4131,7 +4181,7 @@ function renderPriceOffersTableHtml(offers,showCategory){
   return (hasColorLegend?'<p style="font-size:12px;color:var(--text-muted);margin:0 0 12px"><span style="color:#166534;font-weight:700">ירוק</span> = הזולה ביותר · <span style="color:#b91c1c;font-weight:700">אדום</span> = היקרה ביותר (בתוך כל קטגוריה)</p>':'')+
     '<div class="table-scroll"><table class="price-offers-table"><thead><tr>'+
     (showCategory?'<th>קטגוריה</th>':'')+
-    '<th>קבלן</th><th>סוג חומר</th><th>עלות חומר</th><th>עלות עבודה</th><th>מע"מ</th><th>פינוי פסולת</th><th>הערות</th><th>סה"כ</th>'+
+    '<th>קבלן</th><th>סוג חומר</th><th>עלות חומר</th><th>עלות עבודה</th><th>מע"מ</th><th>פינוי פסולת</th><th>הערות</th><th>סה"כ</th><th>PDF</th>'+
     (isAdmin()?'<th></th>':'')+
     '</tr></thead><tbody>'+
     offers.map(function(o){
@@ -4146,6 +4196,7 @@ function renderPriceOffersTableHtml(offers,showCategory){
         '<td>'+(o.includesWasteRemoval?'כן':'לא')+'</td>'+
         '<td>'+escHtml(o.notes||'—')+'</td>'+
         '<td class="total-cell">'+fmtMoney(Number(o.totalPrice)||0)+'</td>'+
+        '<td>'+(priceOfferHasPdf(o)?'<button type="button" class="btn btn-outline btn-sm" onclick="openPriceOfferPdf(\''+o.id+'\')" title="פתח הצעת מחיר" aria-label="פתח PDF">📄</button>':'—')+'</td>'+
         (isAdmin()?'<td><div class="flex-gap">'+
           '<button type="button" class="btn btn-outline btn-sm admin-only-action" onclick="openEditPriceOfferModal(\''+o.id+'\')">'+ic('pencil')+'</button>'+
           '<button type="button" class="btn btn-danger btn-sm admin-only-action" onclick="deletePriceOffer(\''+o.id+'\')">'+ic('trash-2')+'</button></div></td>':'')+
@@ -4213,6 +4264,7 @@ function openAddPriceOfferModal(){
   document.getElementById('price-offer-includes-vat').value='no';
   document.getElementById('price-offer-includes-waste').value='no';
   document.getElementById('price-offer-notes').value='';
+  resetPriceOfferPdfForm(null);
   updatePriceOfferTotalPreview();
   openModal('modal-price-offer');
 }
@@ -4230,6 +4282,7 @@ function openEditPriceOfferModal(id){
   document.getElementById('price-offer-includes-vat').value=o.includesVat?'yes':'no';
   document.getElementById('price-offer-includes-waste').value=o.includesWasteRemoval?'yes':'no';
   document.getElementById('price-offer-notes').value=o.notes||'';
+  resetPriceOfferPdfForm(o);
   updatePriceOfferTotalPreview();
   openModal('modal-price-offer');
 }
@@ -4242,6 +4295,8 @@ async function savePriceOffer(){
   var laborCost=Number(document.getElementById('price-offer-labor-cost').value)||0;
   var includesVat=document.getElementById('price-offer-includes-vat').value==='yes';
   var includesWaste=document.getElementById('price-offer-includes-waste').value==='yes';
+  var existing=editingPriceOfferId?priceOffersCache.find(function(x){return x.id===editingPriceOfferId;}):null;
+  var pdfFile=document.getElementById('price-offer-pdf').files[0];
   var row={
     project_id:proj.id,
     category:document.getElementById('price-offer-category').value||'אחר',
@@ -4254,17 +4309,54 @@ async function savePriceOffer(){
     notes:document.getElementById('price-offer-notes').value.trim(),
     total_price:calcOfferTotalPrice(materialCost,laborCost,includesVat)
   };
-  var res;
-  if(editingPriceOfferId)res=await supabase.from('price_offers').update(row).eq('id',editingPriceOfferId);
-  else res=await supabase.from('price_offers').insert(row);
-  if(res.error){showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
-  await refreshPriceOffersCache(proj.id);
-  var wasEdit=!!editingPriceOfferId;
-  closeModal('modal-price-offer');
-  editingPriceOfferId=null;
-  refreshPriceComparisonsTab();
-  showToast('ההצעה נשמרה');
-  logActivity('השוואת מחירים',(wasEdit?'עריכת הצעה':'הוספת הצעה')+': '+contractor);
+  if(existing&&existing.offerPdfUrl&&!pdfFile)row.offer_pdf_url=existing.offerPdfUrl;
+  var btn=document.querySelector('#modal-price-offer .btn-primary');
+  var cancelBtn=document.querySelector('#modal-price-offer .btn-outline');
+  var origText=btn?btn.textContent:'';
+  setPriceOfferPdfUploadUi(false);
+  try{
+    if(pdfFile){
+      var fileCheck=validatePriceOfferPdfFile(pdfFile);
+      if(!fileCheck.ok){
+        setPriceOfferPdfUploadUi(false,null,fileCheck.message);
+        return;
+      }
+    }
+    var offerId=editingPriceOfferId;
+    var res;
+    if(editingPriceOfferId)res=await supabase.from('price_offers').update(row).eq('id',editingPriceOfferId);
+    else res=await supabase.from('price_offers').insert(row).select('id');
+    if(res.error){showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
+    if(!offerId&&res.data&&res.data[0])offerId=res.data[0].id;
+    if(pdfFile&&offerId){
+      if(btn){btn.disabled=true;btn.textContent='מעלה PDF...';}
+      if(cancelBtn)cancelBtn.disabled=true;
+      setPriceOfferPdfUploadUi(true,'מעלה PDF...');
+      var upload=await uploadPriceOfferPdfFile(proj.id,offerId,pdfFile);
+      if(!upload.ok){
+        setPriceOfferPdfUploadUi(false,null,'שגיאה בהעלאת PDF: '+formatSupabaseErrorHint(upload.error));
+        showToast('שגיאה בהעלאת PDF: '+formatSupabaseErrorHint(upload.error),'error');
+        return;
+      }
+      var pdfRes=await supabase.from('price_offers').update({offer_pdf_url:upload.data.path}).eq('id',offerId);
+      if(pdfRes.error){
+        setPriceOfferPdfUploadUi(false,null,'שגיאה בשמירת PDF: '+formatSupabaseErrorHint(pdfRes.error.message));
+        showToast('שגיאה בשמירת PDF: '+formatSupabaseErrorHint(pdfRes.error.message),'error');
+        return;
+      }
+    }
+    await refreshPriceOffersCache(proj.id);
+    var wasEdit=!!editingPriceOfferId;
+    closeModal('modal-price-offer');
+    editingPriceOfferId=null;
+    refreshPriceComparisonsTab();
+    showToast('ההצעה נשמרה');
+    logActivity('השוואת מחירים',(wasEdit?'עריכת הצעה':'הוספת הצעה')+': '+contractor);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=origText;}
+    if(cancelBtn)cancelBtn.disabled=false;
+    setPriceOfferPdfUploadUi(false);
+  }
 }
 async function deletePriceOffer(id){
   if(!requireAdmin()||!requireProjectAccess())return;
@@ -8231,6 +8323,27 @@ document.getElementById('forgot-email').addEventListener('keydown',function(e){i
 document.getElementById('logout-btn').addEventListener('click',function(e){e.preventDefault();doLogout();});
 document.getElementById('upd-media').addEventListener('change',function(){showFilePreview('upd-media','upd-media-preview',{errorElId:'upd-media-upload-error',allowPdf:true,allowVideo:true});});
 document.getElementById('pay-receipt').addEventListener('change',function(){showFilePreview('pay-receipt','pay-receipt-preview',{errorElId:'pay-receipt-upload-error',allowPdf:true});});
+document.getElementById('price-offer-pdf').addEventListener('change',function(){
+  var input=this;
+  var preview=document.getElementById('price-offer-pdf-preview');
+  revokePreviewUrl('price-offer-pdf');
+  if(preview)preview.innerHTML='';
+  var file=input.files&&input.files[0];
+  if(!file)return;
+  var check=validatePriceOfferPdfFile(file);
+  if(!check.ok){
+    setUploadInputError('price-offer-pdf',check.message,{errorElId:'price-offer-pdf-upload-error'});
+    return;
+  }
+  clearUploadInputError('price-offer-pdf',{errorElId:'price-offer-pdf-upload-error'});
+  var objectUrl=URL.createObjectURL(file);
+  filePreviewUrls['price-offer-pdf']=objectUrl;
+  if(preview){
+    preview.innerHTML=renderFilePreviewContent(file,objectUrl)+
+      '<div class="file-preview-meta"><span>'+escHtml(file.name)+'</span><button type="button" class="file-preview-remove" onclick="clearFilePreview(\'price-offer-pdf\',\'price-offer-pdf-preview\')">הסר</button></div>';
+    refreshIcons(preview);
+  }
+});
 document.getElementById('punch-photo').addEventListener('change',function(){validateUploadInputFile('punch-photo',{allowPdf:false});});
 document.getElementById('gallery-post-files').addEventListener('change',onGalleryPostFilesSelected);
 Object.assign(window,{
@@ -8245,7 +8358,7 @@ Object.assign(window,{
   openAddMilestoneModal,openEditMilestoneModal,saveMilestone,deleteMilestone,markMilestoneDone,goToMilestonesView,
   openAddFinishSelectionModal,openEditFinishSelectionModal,saveFinishSelection,deleteFinishSelection,markFinishSelectionDone,saveFinishSelectionNotes,onFinishCategoryFilterChange,
   openAddPriceCategoryModal,savePriceCategory,onPriceCategoryFilterChange,
-  openAddPriceOfferModal,openEditPriceOfferModal,savePriceOffer,deletePriceOffer,updatePriceOfferTotalPreview,
+  openAddPriceOfferModal,openEditPriceOfferModal,savePriceOffer,deletePriceOffer,updatePriceOfferTotalPreview,openPriceOfferPdf,
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,exportDailyLogsCsv,
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,
   openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,setGalleryStageFilter,
