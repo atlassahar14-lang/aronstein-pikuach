@@ -1285,7 +1285,8 @@ function tabIc(name){
     'message-circle':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
     'scale':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16v6"/><path d="M8 16v6"/><path d="M12 2v20"/><path d="M12 2 8 6"/><path d="M12 2l4 4"/><path d="M2 10h20"/></svg>',
     'map-pin':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
-    'clipboard-list':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>'
+    'clipboard-list':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>',
+    'palette':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.5 17.5 2 12 2z"/></svg>'
   };
   return icons[name]||'';
 }
@@ -2455,7 +2456,7 @@ function getDefaultProjects(){
 }
 
 function isAdmin(){return !!(currentUser&&currentUser.role==='admin');}
-var CLIENT_HIDDEN_TABS=['budget-analysis','financial'];
+var CLIENT_HIDDEN_TABS=['budget-analysis','financial','finish-selections'];
 function getProjectClientVisibility(p){
   var cv=p&&p.client_visibility;
   var out={};
@@ -2495,6 +2496,7 @@ function getProjectTabDefs(messagesTabBadge){
     ['financial','דוח פיננסי','trending-up',''],
     ['docs','מסמכים','folder',''],
     ['gallery','גלריה','camera',''],
+    ['finish-selections','בחירות גמרים','palette',''],
     ['punch','ליקויים','map-pin',''],
     ['daily-log','יומן עבודה','clipboard-list',''],
     ['updates','עדכונים','bell',''],
@@ -3538,10 +3540,40 @@ function renderFinishCategoryFiltersHtml(active){
 }
 function onFinishCategoryFilterChange(cat){
   finishSelectionsCategoryFilter=cat||'';
-  if(currentView==='finish-selections'){
-    var el=document.getElementById('main-content');
-    if(el)renderFinishSelectionsScreen(el);
-  }
+  refreshFinishSelectionsTab();
+}
+function renderFinishSelectionsTabContentHtml(proj,loaded){
+  var list=getFinishSelectionsForProject(proj.id);
+  if(finishSelectionsCategoryFilter)list=list.filter(function(s){return s.category===finishSelectionsCategoryFilter;});
+  var pending=list.filter(function(s){return s.status==='pending';});
+  var inProg=list.filter(function(s){return s.status==='in_progress';});
+  var done=list.filter(function(s){return s.status==='done';});
+  var addBtn=isAdmin()?'<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddFinishSelectionModal()">'+ic('plus')+' הוסף בחירה</button>':'';
+  return '<div class="section-actions"><div class="section-title">'+tabIc('palette')+' בחירות גמרים</div>'+
+    (addBtn?'<div class="flex-gap">'+addBtn+'</div>':'')+
+    '</div>'+
+    '<p style="font-size:13px;color:var(--text-muted);margin:-8px 0 16px">'+pending.length+' ממתינות · '+inProg.length+' בתהליך · '+done.length+' הושלמו</p>'+
+    renderFinishOverdueAlertHtml(proj.id)+
+    (!loaded.ok?'<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינה: '+escHtml(formatSupabaseErrorHint(loaded.error||'שגיאה'))+'</div>':'')+
+    renderFinishCategoryFiltersHtml(finishSelectionsCategoryFilter)+
+    (list.length?'<div class="finish-selections-grid">'+list.map(renderFinishSelectionCardHtml).join('')+'</div>':
+    '<div class="empty-state card"><div class="empty-icon">🎨</div><p>אין בחירות גמרים לפרויקט זה</p>'+
+    (isAdmin()?'<button type="button" class="btn btn-primary admin-only-action" style="margin-top:16px" onclick="openAddFinishSelectionModal()">'+ic('plus')+' הוסף בחירה</button>':'')+
+    '</div>');
+}
+async function initFinishSelectionsTab(){
+  var root=document.getElementById('finish-selections-tab-root');
+  if(!root)return;
+  var proj=getCurrentProject();
+  if(!proj){root.innerHTML='<div class="empty-state card"><p>פרויקט לא נמצא</p></div>';return;}
+  root.innerHTML='<div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען בחירות גמרים...</p></div>';
+  refreshIcons(root);
+  var loaded=await refreshFinishSelectionsCache();
+  root.innerHTML=renderFinishSelectionsTabContentHtml(proj,loaded);
+  refreshIcons(root);
+}
+function refreshFinishSelectionsTab(){
+  if(currentView==='project'&&currentTab==='finish-selections')initFinishSelectionsTab();
 }
 function renderFinishOverdueAlertHtml(projectId){
   var overdue=getOverdueFinishSelections(projectId);
@@ -3573,46 +3605,7 @@ function renderFinishSelectionCardHtml(s){
     '<button type="button" class="btn btn-danger btn-sm admin-only-action" onclick="deleteFinishSelection(\''+s.id+'\')">'+ic('trash-2')+' מחיקה</button>':'')+
     '</div></div>';
 }
-async function renderFinishSelectionsScreen(el){
-  if(!el)return;
-  var proj=getCurrentProject();
-  if(!proj&&!isAdmin()){
-    if(currentUser&&currentUser.projectId){
-      currentProjectId=currentUser.projectId;
-      proj=getCurrentProject();
-    }
-  }
-  if(!proj){
-    el.innerHTML='<div class="page-header"><h1>🎨 בחירות גמרים</h1><p>בחר פרויקט כדי לצפות בבחירות גמרים</p></div>'+
-      '<div class="empty-state card"><div class="empty-icon">🎨</div><p>אין פרויקט פעיל</p>'+
-      (isAdmin()?'<button type="button" class="btn btn-primary" style="margin-top:16px" onclick="showView(\'projects\')">'+ic('construction')+' לרשימת פרויקטים</button>':'')+
-      '</div>';
-    refreshIcons(el);
-    return;
-  }
-  el.innerHTML='<div class="page-header"><h1>🎨 בחירות גמרים — '+escHtml(proj.name)+'</h1><p>טוען...</p></div>';
-  var loaded=await refreshFinishSelectionsCache();
-  var list=getFinishSelectionsForProject(proj.id);
-  if(finishSelectionsCategoryFilter)list=list.filter(function(s){return s.category===finishSelectionsCategoryFilter;});
-  var pending=list.filter(function(s){return s.status==='pending';});
-  var inProg=list.filter(function(s){return s.status==='in_progress';});
-  var done=list.filter(function(s){return s.status==='done';});
-  var addBtn=isAdmin()?'<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddFinishSelectionModal()">'+ic('plus')+' הוסף בחירה</button>':'';
-  el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>🎨 בחירות גמרים — '+escHtml(proj.name)+'</h1><p>'+
-    pending.length+' ממתינות · '+inProg.length+' בתהליך · '+done.length+' הושלמו</p></div>'+
-    (addBtn?'<div class="flex-gap">'+addBtn+'</div>':'')+
-    '</div>'+
-    (isAdmin()?'<button type="button" class="back-btn admin-only-action" onclick="showView(\'project\',\''+proj.id+'\')">← חזרה לפרויקט</button>':'')+
-    renderFinishOverdueAlertHtml(proj.id)+
-    (!loaded.ok?'<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינה: '+escHtml(formatSupabaseErrorHint(loaded.error||'שגיאה'))+'</div>':'')+
-    renderFinishCategoryFiltersHtml(finishSelectionsCategoryFilter)+
-    (list.length?'<div class="finish-selections-grid">'+list.map(renderFinishSelectionCardHtml).join('')+'</div>':
-    '<div class="empty-state card"><div class="empty-icon">🎨</div><p>אין בחירות גמרים לפרויקט זה</p>'+
-    (isAdmin()?'<button type="button" class="btn btn-primary admin-only-action" style="margin-top:16px" onclick="openAddFinishSelectionModal()">'+ic('plus')+' הוסף בחירה</button>':'')+
-    '</div>');
-  refreshIcons(el);
-}
-function openAddFinishSelectionModal(){
+async function openAddFinishSelectionModal(){
   if(!requireAdmin()||!requireProjectAccess())return;
   editingFinishSelectionId=null;
   document.getElementById('modal-finish-selection-title').textContent='בחירת גמר חדשה';
@@ -3673,10 +3666,7 @@ async function saveFinishSelection(){
   var wasEdit=!!editingFinishSelectionId;
   closeModal('modal-finish-selection');
   editingFinishSelectionId=null;
-  if(currentView==='finish-selections'){
-    var el=document.getElementById('main-content');
-    if(el)await renderFinishSelectionsScreen(el);
-  }
+  refreshFinishSelectionsTab();
   showToast('בחירת הגמר נשמרה');
   logActivity('בחירות גמרים',(wasEdit?'עריכה':'הוספה')+': '+title);
 }
@@ -3705,10 +3695,7 @@ async function markFinishSelectionDone(id){
   }).eq('id',id);
   if(res.error){showToast('שגיאה בעדכון: '+formatSupabaseErrorHint(res.error.message),'error');return;}
   await refreshFinishSelectionsCache();
-  if(currentView==='finish-selections'){
-    var el=document.getElementById('main-content');
-    if(el)await renderFinishSelectionsScreen(el);
-  }
+  refreshFinishSelectionsTab();
   showToast('הבחירה סומנה כהושלמה');
   logActivity('בחירות גמרים','הושלם: '+s.title);
 }
@@ -3719,10 +3706,7 @@ async function deleteFinishSelection(id){
   var res=await supabase.from('finish_selections').delete().eq('id',id);
   if(res.error){showToast('שגיאה במחיקה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
   await refreshFinishSelectionsCache();
-  if(currentView==='finish-selections'){
-    var el=document.getElementById('main-content');
-    if(el)await renderFinishSelectionsScreen(el);
-  }
+  refreshFinishSelectionsTab();
   showToast('בחירת הגמר נמחקה');
   if(s)logActivity('בחירות גמרים','מחיקה: '+s.title);
 }
@@ -5676,7 +5660,6 @@ function renderSidebar(){
       '<div class="nav-item '+(currentView==='dashboard'?'active':'')+'" onclick="showView(\'dashboard\')"><span class="nav-icon">'+ic('layout-dashboard')+'</span> דשבורד</div>'+
       '<div class="nav-item '+(currentView==='projects'?'active':'')+'" onclick="showView(\'projects\')"><span class="nav-icon">'+ic('construction')+'</span> פרויקטים</div>'+
       '<div class="nav-item '+(currentView==='milestones'?'active':'')+'" onclick="showView(\'milestones\')"><span class="nav-icon">🚩</span> אבני דרך</div>'+
-      '<div class="nav-item '+(currentView==='finish-selections'?'active':'')+'" onclick="showView(\'finish-selections\')"><span class="nav-icon">🎨</span> בחירות גמרים</div>'+
       '<div class="nav-item '+(currentView==='budget-builder'?'active':'')+'" onclick="showView(\'budget-builder\')"><span class="nav-icon">'+ic('calculator')+'</span> בניית תקציב</div>'+
       '<div class="nav-section-title">מערכת</div>'+
       '<div class="nav-item '+(currentView==='clients'?'active':'')+'" onclick="showView(\'clients\')"><span class="nav-icon">'+ic('users')+'</span> לקוחות</div>'+
@@ -5696,8 +5679,8 @@ function renderSidebar(){
   refreshIcons(nav);
 }
 
-var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-builder':'בניית תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה',punch:'ליקויים','daily-log':'יומן עבודה',updates:'עדכונים',messages:'שאלות'};
-var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',milestones:'אבני דרך','finish-selections':'בחירות גמרים','budget-builder':'בניית תקציב',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
+var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-builder':'בניית תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה','finish-selections':'בחירות גמרים',punch:'ליקויים','daily-log':'יומן עבודה',updates:'עדכונים',messages:'שאלות'};
+var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',milestones:'אבני דרך','budget-builder':'בניית תקציב',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
   if(el)el.textContent=text||'ארונשטיין פיקוח וניהול';
@@ -5954,7 +5937,7 @@ function showView(view,pid){
       view='project';
       pid=currentUser.projectId;
     }
-    if(view!=='project'&&view!=='milestones'&&view!=='finish-selections'){
+    if(view!=='project'&&view!=='milestones'){
       view='project';
       pid=currentUser.projectId;
     }
@@ -5977,7 +5960,6 @@ function showView(view,pid){
   else if(view==='subcontractors')renderSubcontractors(el);
   else if(view==='budget-builder')renderBudgetBuilder(el);
   else if(view==='milestones')renderMilestonesScreen(el);
-  else if(view==='finish-selections')renderFinishSelectionsScreen(el);
   else if(view==='activity-log')renderActivityLog(el);
   else if(view==='settings')renderSettings(el);
   if(view!=='project'){
@@ -5992,9 +5974,6 @@ function showView(view,pid){
   }else if(view==='milestones'){
     var mProj=getCurrentProject();
     updateMobileHeaderTitle(mProj?(MOBILE_VIEW_TITLES.milestones+' — '+mProj.name):MOBILE_VIEW_TITLES.milestones);
-  }else if(view==='finish-selections'){
-    var fProj=getCurrentProject();
-    updateMobileHeaderTitle(fProj?(MOBILE_VIEW_TITLES['finish-selections']+' — '+fProj.name):MOBILE_VIEW_TITLES['finish-selections']);
   }else{
     updateMobileHeaderTitle(MOBILE_VIEW_TITLES[view]||'ארונשטיין פיקוח וניהול');
   }
@@ -6488,6 +6467,9 @@ function renderProjectDetail(el){
   // GALLERY TAB
   html+='<div id="tab-gallery" class="tab-content '+(currentTab==='gallery'?'active':'')+'">'+renderGalleryTabInnerHtml(p)+'</div>';
 
+  // FINISH SELECTIONS TAB (admin)
+  if(isAdminUser)html+='<div id="tab-finish-selections" class="tab-content '+(currentTab==='finish-selections'?'active':'')+'"><div id="finish-selections-tab-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div></div>';
+
   // PUNCH LIST TAB
   html+='<div id="tab-punch" class="tab-content '+(currentTab==='punch'?'active':'')+'"><div id="punch-tab-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div></div>';
 
@@ -6535,6 +6517,7 @@ function renderProjectDetail(el){
     if(currentTab==='financial')renderFinancialCharts(p);
     if(currentTab==='punch')initPunchListTab();
     if(currentTab==='daily-log')initDailyLogTab();
+    if(currentTab==='finish-selections')initFinishSelectionsTab();
   },50);
 }
 
@@ -6650,6 +6633,7 @@ async function switchTab(t){
     }
     if(t==='punch')initPunchListTab();
     if(t==='daily-log')initDailyLogTab();
+    if(t==='finish-selections')initFinishSelectionsTab();
     var ml=document.getElementById('messages-list');
     if(ml)setTimeout(function(){ml.scrollTop=ml.scrollHeight;},50);
     return;
