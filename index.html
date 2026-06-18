@@ -273,6 +273,23 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .milestone-meta strong{color:var(--text);font-weight:600}
 .milestone-desc{font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5}
 .milestone-actions{display:flex;flex-wrap:wrap;gap:8px}
+.budget-changes-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px}
+.budget-change-summary-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;text-align:center}
+.budget-change-summary-card .label{font-size:12px;color:var(--text-muted);margin-bottom:6px}
+.budget-change-summary-card .value{font-size:22px;font-weight:800;color:var(--primary)}
+.budget-change-summary-card.warn .value{color:var(--warning)}
+.budget-change-summary-card.danger .value{color:var(--danger)}
+.budget-change-overrun-alert{display:none;background:linear-gradient(90deg,#b91c1c,#dc2626);color:#fff;padding:14px 18px;border-radius:12px;margin-bottom:20px;font-size:14px;line-height:1.5;box-shadow:0 2px 12px rgba(185,28,28,.25)}
+.budget-change-overrun-alert.show{display:block}
+.budget-change-status{display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap}
+.budget-change-status.pending{background:#fef9c3;color:#854d0e}
+.budget-change-status.approved{background:#dcfce7;color:#166534}
+.budget-change-status.rejected{background:#fee2e2;color:#b91c1c}
+.budget-change-type{display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;background:var(--bg);color:var(--text)}
+.budget-change-type.addition{color:var(--danger)}
+.budget-change-type.reduction{color:var(--success)}
+.budget-changes-table .amount-add{color:var(--danger);font-weight:700;direction:ltr;text-align:left}
+.budget-changes-table .amount-reduce{color:var(--success);font-weight:700;direction:ltr;text-align:left}
 .fin-analysis-table{width:100%;border-collapse:collapse;margin-top:8px;table-layout:fixed}
 .fin-analysis-table th,.fin-analysis-table td{padding:12px 14px;text-align:right;border-bottom:1px solid var(--border);font-size:14px}
 .fin-analysis-table th{font-size:12px;font-weight:700;color:var(--text-muted);background:var(--bg)}
@@ -600,6 +617,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .table-scroll .punch-items-table{min-width:520px}
 .table-scroll .subcontractors-table{min-width:720px}
 .table-scroll .fin-analysis-table{min-width:640px}
+.table-scroll .budget-changes-table{min-width:720px}
 .budget-items-scroll .budget-items-table,.table-scroll .budget-items-table{min-width:920px}
 .table-scroll .budget-client-table{min-width:720px}
 .table-scroll-cards{overflow-x:visible}
@@ -1030,6 +1048,23 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeBudgetQuickSubcontractorModal()">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="saveBudgetQuickSubcontractor()">שמור</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Budget change -->
+<div class="modal-overlay" id="modal-budget-change">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">הוספת שינוי תקציבי</div><button class="modal-close" onclick="closeModal('modal-budget-change')"><i data-lucide="x"></i></button></div>
+    <div class="form-group"><label>כותרת</label><input type="text" id="budget-change-title" placeholder="לדוגמה: תוספת עבודות חשמל"/></div>
+    <div class="form-group"><label>תיאור</label><textarea id="budget-change-desc" placeholder="פירוט השינוי"></textarea></div>
+    <div class="grid-2">
+      <div class="form-group"><label>סכום (₪)</label><input type="number" id="budget-change-amount" min="0" step="1" placeholder="0"/></div>
+      <div class="form-group"><label>סוג שינוי</label><select id="budget-change-type"><option value="addition">תוספת</option><option value="reduction">הפחתה</option></select></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-budget-change')">ביטול</button>
+      <button class="btn btn-primary" style="width:auto" onclick="saveBudgetChange()">שמור</button>
     </div>
   </div>
 </div>
@@ -2189,12 +2224,12 @@ function bindModalValidationClear(modalId){
   modal.addEventListener('input',clearGroup);
   modal.addEventListener('change',clearGroup);
 }
-['modal-project','modal-user','modal-payment','modal-phase','modal-milestone','modal-subcontractor','modal-budget-subcontractor','modal-update','modal-gallery-post','modal-punch-item'].forEach(bindModalValidationClear);
+['modal-project','modal-user','modal-payment','modal-phase','modal-milestone','modal-budget-change','modal-subcontractor','modal-budget-subcontractor','modal-update','modal-gallery-post','modal-punch-item'].forEach(bindModalValidationClear);
 
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null,editingMilestoneId=null;
 var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
-var appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()},appUsers=[],subcontractorsCache=[],punchItemsCache=[],milestonesCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
+var appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()},appUsers=[],subcontractorsCache=[],punchItemsCache=[],milestonesCache=[],budgetChangesCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
 const OFFLINE_PUNCH_STORAGE_KEY='offline_punch_items';
 const PUNCH_FORM_DRAFT_PREFIX='punch_form_draft_';
 var punchDraftAutosaveTimer=null,punchPendingPhotoUpload=null;
@@ -2236,6 +2271,7 @@ function resetAppSessionState(){
   subcontractorsCache=[];
   punchItemsCache=[];
   milestonesCache=[];
+  budgetChangesCache=[];
   dailyLogsCache=[];
   budgetsCache=[];
   budgetItemsByBudget={};
@@ -2862,6 +2898,7 @@ function formatSupabaseErrorHint(errMsg){
   if(m.includes('profiles')&&m.includes('phone')||m.includes('column')&&m.includes('phone'))return 'חסרה עמודת phone בטבלת profiles — הרץ את supabase-profiles-phone-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('punch_items')&&(m.includes('location')||m.includes('photo_url')))return 'חסרות עמודות location / photo_url בטבלת punch_items — הרץ את supabase-punch-items-location-photo-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('milestones'))return 'חסרה טבלת milestones — הרץ את supabase-milestones-migration.sql ב-Supabase SQL Editor.';
+  if(m.includes('budget_changes'))return 'חסרה טבלת budget_changes — הרץ את supabase-budget-changes-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('specialties'))return 'חסרה עמודת specialties בטבלת app_data — הרץ את supabase-specialties-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('fetch')||m.includes('network')||m.includes('522')||m.includes('timeout'))return 'בעיית רשת או Supabase לא זמין.';
   return errMsg||'שגיאה לא ידועה';
@@ -3306,6 +3343,202 @@ async function deleteMilestone(id){
     if(el)await renderMilestonesScreen(el);
   }else updateMilestoneAlertBanner();
   showToast('אבן הדרך נמחקה');
+}
+function mapBudgetChangeRow(r){
+  return {
+    id:r.id,
+    projectId:r.project_id,
+    title:r.title,
+    description:r.description||'',
+    amount:Number(r.amount)||0,
+    changeType:r.change_type||'addition',
+    status:r.status||'pending',
+    requestedBy:r.requested_by||'',
+    approvedBy:r.approved_by||'',
+    createdAt:r.created_at
+  };
+}
+function budgetChangeSignedAmount(c){
+  var amt=Math.abs(Number(c.amount)||0);
+  return c.changeType==='reduction'?-amt:amt;
+}
+function budgetChangeTypeLabel(type){
+  return type==='reduction'?'הפחתה':'תוספת';
+}
+function budgetChangeStatusLabel(status){
+  return {pending:'ממתין',approved:'מאושר',rejected:'נדחה'}[status]||status;
+}
+function formatBudgetChangeAmountDisplay(c){
+  var amt=Math.abs(Number(c.amount)||0);
+  if(c.changeType==='reduction')return '-'+fmtMoney(amt);
+  return '+'+fmtMoney(amt);
+}
+function formatBudgetChangeDate(iso){
+  if(!iso)return '—';
+  try{
+    return new Date(iso).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});
+  }catch(e){return '—';}
+}
+async function refreshBudgetChangesCache(){
+  if(!currentUser){budgetChangesCache=[];return {ok:false};}
+  var res;
+  if(isAdmin()){
+    res=await supabase.from('budget_changes').select('*').order('created_at',{ascending:false});
+  }else if(currentUser.projectId){
+    res=await supabase.from('budget_changes').select('*').eq('project_id',currentUser.projectId).order('created_at',{ascending:false});
+  }else{
+    budgetChangesCache=[];
+    return {ok:true};
+  }
+  if(res.error){
+    console.error('refreshBudgetChangesCache',res.error);
+    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
+    budgetChangesCache=[];
+    return {ok:false,error:res.error.message};
+  }
+  budgetChangesCache=(res.data||[]).map(mapBudgetChangeRow);
+  return {ok:true};
+}
+function getBudgetChangesForProject(projectId){
+  return budgetChangesCache.filter(function(c){return c.projectId===projectId;});
+}
+function calcBudgetChangesSummary(changes,projectBudget){
+  var approved=changes.filter(function(c){return c.status==='approved';});
+  var pending=changes.filter(function(c){return c.status==='pending';});
+  var netApproved=approved.reduce(function(s,c){return s+budgetChangeSignedAmount(c);},0);
+  var pendingSum=pending.reduce(function(s,c){return s+Math.abs(Number(c.amount)||0);},0);
+  var budget=Number(projectBudget)||0;
+  var overrunPct=budget>0&&netApproved>0?(netApproved/budget)*100:0;
+  return {
+    approvedCount:approved.length,
+    pendingCount:pending.length,
+    netApproved:netApproved,
+    pendingSum:pendingSum,
+    overrunPct:Math.round(overrunPct*10)/10,
+    showOverrunAlert:netApproved>0&&budget>0&&overrunPct>5
+  };
+}
+function renderBudgetChangeTableRow(c){
+  var amtCls=c.changeType==='reduction'?'amount-reduce':'amount-add';
+  var actions='';
+  if(c.status==='pending'&&isAdmin()){
+    actions='<div class="flex-gap">'+
+      '<button type="button" class="btn btn-accent btn-sm admin-only-action" onclick="approveBudgetChange(\''+c.id+'\')">'+ic('circle-check')+' אשר</button>'+
+      '<button type="button" class="btn btn-danger btn-sm admin-only-action" onclick="rejectBudgetChange(\''+c.id+'\')">'+ic('x')+' דחה</button>'+
+      '</div>';
+  }else{
+    actions='<span style="color:var(--text-muted);font-size:12px">'+escHtml(c.approvedBy?('על ידי '+c.approvedBy):'—')+'</span>';
+  }
+  return '<tr>'+
+    '<td style="font-weight:600">'+escHtml(c.title)+'</td>'+
+    '<td class="'+amtCls+'">'+formatBudgetChangeAmountDisplay(c)+'</td>'+
+    '<td><span class="budget-change-type '+c.changeType+'">'+budgetChangeTypeLabel(c.changeType)+'</span></td>'+
+    '<td><span class="budget-change-status '+c.status+'">'+budgetChangeStatusLabel(c.status)+'</span></td>'+
+    '<td>'+escHtml(formatBudgetChangeDate(c.createdAt))+'</td>'+
+    '<td>'+actions+'</td></tr>';
+}
+async function renderBudgetChangesScreen(el){
+  if(!el)return;
+  var proj=getCurrentProject();
+  if(!proj&&!isAdmin()){
+    if(currentUser&&currentUser.projectId){
+      currentProjectId=currentUser.projectId;
+      proj=getCurrentProject();
+    }
+  }
+  if(!proj){
+    el.innerHTML='<div class="page-header"><h1>📝 שינויים תקציביים</h1><p>בחר פרויקט כדי לצפות בחריגות ושינויים</p></div>'+
+      '<div class="empty-state card"><div class="empty-icon">'+ic('file-text')+'</div><p>אין פרויקט פעיל</p>'+
+      (isAdmin()?'<button type="button" class="btn btn-primary" style="margin-top:16px" onclick="showView(\'projects\')">'+ic('construction')+' לרשימת פרויקטים</button>':'')+
+      '</div>';
+    refreshIcons(el);
+    return;
+  }
+  el.innerHTML='<div class="page-header"><h1>📝 שינויים תקציביים</h1><p>טוען...</p></div>';
+  var loaded=await refreshBudgetChangesCache();
+  var list=getBudgetChangesForProject(proj.id);
+  var budget=getProjectBudget(proj);
+  var sum=calcBudgetChangesSummary(list,budget);
+  var overrunAlert=sum.showOverrunAlert?
+    '<div class="budget-change-overrun-alert show"><strong>התראת חריגה תקציבית:</strong> סה"כ השינויים המאושרים ('+fmtMoney(sum.netApproved)+') עולים על 5% מתקציב הפרויקט ('+fmtMoney(budget)+') — '+sum.overrunPct+'% חריגה.</div>':'';
+  var addBtn='<button type="button" class="btn btn-primary btn-sm" onclick="openAddBudgetChangeModal()">'+ic('plus')+' הוסף שינוי</button>';
+  el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>📝 שינויים תקציביים — '+escHtml(proj.name)+'</h1><p>חריגות תקציביות ושינויים בפרויקט</p></div>'+
+    '<div class="flex-gap">'+addBtn+'</div></div>'+
+    (isAdmin()?'<button type="button" class="back-btn admin-only-action" onclick="showView(\'project\',\''+proj.id+'\')">← חזרה לפרויקט</button>':'')+
+    (!loaded.ok?'<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינה: '+escHtml(formatSupabaseErrorHint(loaded.error||'שגיאה'))+'</div>':'')+
+    overrunAlert+
+    '<div class="budget-changes-summary">'+
+    '<div class="budget-change-summary-card"><div class="label">חריגות מאושרות</div><div class="value">'+sum.approvedCount+'</div></div>'+
+    '<div class="budget-change-summary-card warn"><div class="label">ממתינות לאישור</div><div class="value">'+sum.pendingCount+'</div></div>'+
+    '<div class="budget-change-summary-card'+(sum.netApproved>0?' danger':'')+'"><div class="label">סכום חריגה מצטבר (מאושר)</div><div class="value">'+fmtMoney(sum.netApproved)+'</div></div>'+
+    '</div>'+
+    (list.length?'<div class="card"><div class="table-scroll"><table class="payments-table budget-changes-table"><thead><tr>'+
+    '<th>שם</th><th>סכום</th><th>סוג</th><th>סטטוס</th><th>תאריך</th><th></th>'+
+    '</tr></thead><tbody>'+list.map(renderBudgetChangeTableRow).join('')+'</tbody></table></div></div>':
+    '<div class="empty-state card"><div class="empty-icon">'+ic('file-text')+'</div><p>אין שינויים תקציביים עדיין</p></div>');
+  refreshIcons(el);
+}
+function openAddBudgetChangeModal(){
+  if(!requireProjectAccess())return;
+  document.getElementById('budget-change-title').value='';
+  document.getElementById('budget-change-desc').value='';
+  document.getElementById('budget-change-amount').value='';
+  document.getElementById('budget-change-type').value='addition';
+  openModal('modal-budget-change');
+}
+async function saveBudgetChange(){
+  if(!requireProjectAccess())return;
+  var proj=getCurrentProject();if(!proj)return;
+  var title=document.getElementById('budget-change-title').value.trim();
+  var amount=Number(document.getElementById('budget-change-amount').value);
+  if(!title||!amount||amount<=0){alert('נא למלא כותרת וסכום חיובי');return;}
+  var row={
+    project_id:proj.id,
+    title:title,
+    description:document.getElementById('budget-change-desc').value.trim(),
+    amount:amount,
+    change_type:document.getElementById('budget-change-type').value||'addition',
+    status:'pending',
+    requested_by:currentUser?currentUser.name:''
+  };
+  var res=await supabase.from('budget_changes').insert(row);
+  if(res.error){showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
+  await refreshBudgetChangesCache();
+  closeModal('modal-budget-change');
+  if(currentView==='budget-changes'){
+    var el=document.getElementById('main-content');
+    if(el)await renderBudgetChangesScreen(el);
+  }
+  showToast('השינוי נשלח לאישור');
+}
+async function approveBudgetChange(id){
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var c=budgetChangesCache.find(function(x){return x.id===id;});
+  if(!c||c.status!=='pending')return;
+  var res=await supabase.from('budget_changes').update({status:'approved',approved_by:currentUser?currentUser.name:''}).eq('id',id);
+  if(res.error){showToast('שגיאה באישור: '+formatSupabaseErrorHint(res.error.message),'error');return;}
+  await refreshBudgetChangesCache();
+  logActivity('אישור שינוי תקציבי',c.title+' — '+fmtMoney(c.amount));
+  if(currentView==='budget-changes'){
+    var el=document.getElementById('main-content');
+    if(el)await renderBudgetChangesScreen(el);
+  }
+  showToast('השינוי אושר');
+}
+async function rejectBudgetChange(id){
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var c=budgetChangesCache.find(function(x){return x.id===id;});
+  if(!c||c.status!=='pending')return;
+  if(!confirm('לדחות את השינוי "'+c.title+'"?'))return;
+  var res=await supabase.from('budget_changes').update({status:'rejected',approved_by:currentUser?currentUser.name:''}).eq('id',id);
+  if(res.error){showToast('שגיאה בדחייה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
+  await refreshBudgetChangesCache();
+  logActivity('דחיית שינוי תקציבי',c.title);
+  if(currentView==='budget-changes'){
+    var el=document.getElementById('main-content');
+    if(el)await renderBudgetChangesScreen(el);
+  }
+  showToast('השינוי נדחה');
 }
 async function getBlueprintSignedUrl(path){
   if(!path)return null;
@@ -5048,6 +5281,7 @@ async function startApp(user){
   await refreshAppUsers();
   await refreshSubcontractors();
   await refreshMilestonesCache();
+  await refreshBudgetChangesCache();
   if(isAdmin()&&appDataCache.projects.some(projectHasBase64Media)){
     var mig=await migrateBase64MediaToStorage();
     if(!mig.ok){
@@ -5238,6 +5472,7 @@ function renderSidebar(){
       '<div class="nav-item '+(currentView==='dashboard'?'active':'')+'" onclick="showView(\'dashboard\')"><span class="nav-icon">'+ic('layout-dashboard')+'</span> דשבורד</div>'+
       '<div class="nav-item '+(currentView==='projects'?'active':'')+'" onclick="showView(\'projects\')"><span class="nav-icon">'+ic('construction')+'</span> פרויקטים</div>'+
       '<div class="nav-item '+(currentView==='milestones'?'active':'')+'" onclick="showView(\'milestones\')"><span class="nav-icon">🚩</span> אבני דרך</div>'+
+      '<div class="nav-item '+(currentView==='budget-changes'?'active':'')+'" onclick="showView(\'budget-changes\')"><span class="nav-icon">📝</span> שינויים תקציביים</div>'+
       '<div class="nav-item '+(currentView==='budget-builder'?'active':'')+'" onclick="showView(\'budget-builder\')"><span class="nav-icon">'+ic('calculator')+'</span> בניית תקציב</div>'+
       '<div class="nav-section-title">מערכת</div>'+
       '<div class="nav-item '+(currentView==='clients'?'active':'')+'" onclick="showView(\'clients\')"><span class="nav-icon">'+ic('users')+'</span> לקוחות</div>'+
@@ -5247,13 +5482,14 @@ function renderSidebar(){
   } else {
     nav.innerHTML='<div class="nav-section-title">הפרויקט שלי</div>'+
       '<div class="nav-item '+(currentView==='project'?'active':'')+'" onclick="showView(\'project\',\''+currentUser.projectId+'\')"><span class="nav-icon">'+ic('house')+'</span> הפרויקט שלי</div>'+
-      '<div class="nav-item '+(currentView==='milestones'?'active':'')+'" onclick="showView(\'milestones\',\''+currentUser.projectId+'\')"><span class="nav-icon">🚩</span> אבני דרך</div>';
+      '<div class="nav-item '+(currentView==='milestones'?'active':'')+'" onclick="showView(\'milestones\',\''+currentUser.projectId+'\')"><span class="nav-icon">🚩</span> אבני דרך</div>'+
+      '<div class="nav-item '+(currentView==='budget-changes'?'active':'')+'" onclick="showView(\'budget-changes\',\''+currentUser.projectId+'\')"><span class="nav-icon">📝</span> שינויים תקציביים</div>';
   }
   refreshIcons(nav);
 }
 
 var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-builder':'בניית תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה',punch:'ליקויים','daily-log':'יומן עבודה',updates:'עדכונים',messages:'שאלות'};
-var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',milestones:'אבני דרך','budget-builder':'בניית תקציב',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
+var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',milestones:'אבני דרך','budget-changes':'שינויים תקציביים','budget-builder':'בניית תקציב',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
   if(el)el.textContent=text||'ארונשטיין פיקוח וניהול';
@@ -5505,7 +5741,7 @@ function showView(view,pid){
   var el=document.getElementById('main-content');
   if(!isAdmin()){
     if(!currentUser.projectId){renderClientNoProject(el);return;}
-    if(view!=='project'&&view!=='milestones'){
+    if(view!=='project'&&view!=='milestones'&&view!=='budget-changes'){
       view='project';
       pid=currentUser.projectId;
     }
@@ -5528,6 +5764,7 @@ function showView(view,pid){
   else if(view==='subcontractors')renderSubcontractors(el);
   else if(view==='budget-builder')renderBudgetBuilder(el);
   else if(view==='milestones')renderMilestonesScreen(el);
+  else if(view==='budget-changes')renderBudgetChangesScreen(el);
   else if(view==='activity-log')renderActivityLog(el);
   else if(view==='settings')renderSettings(el);
   if(view!=='project'){
@@ -5542,6 +5779,9 @@ function showView(view,pid){
   }else if(view==='milestones'){
     var mProj=getCurrentProject();
     updateMobileHeaderTitle(mProj?(MOBILE_VIEW_TITLES.milestones+' — '+mProj.name):MOBILE_VIEW_TITLES.milestones);
+  }else if(view==='budget-changes'){
+    var bcProj=getCurrentProject();
+    updateMobileHeaderTitle(bcProj?(MOBILE_VIEW_TITLES['budget-changes']+' — '+bcProj.name):MOBILE_VIEW_TITLES['budget-changes']);
   }else{
     updateMobileHeaderTitle(MOBILE_VIEW_TITLES[view]||'ארונשטיין פיקוח וניהול');
   }
@@ -7228,6 +7468,7 @@ Object.assign(window,{
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,onPaymentFilterChange,exportPaymentsCsv,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
   openAddMilestoneModal,openEditMilestoneModal,saveMilestone,deleteMilestone,markMilestoneDone,goToMilestonesView,
+  openAddBudgetChangeModal,saveBudgetChange,approveBudgetChange,rejectBudgetChange,
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,exportDailyLogsCsv,
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,
   openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,setGalleryStageFilter,
