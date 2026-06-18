@@ -63,6 +63,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .form-group.has-error input,.form-group.has-error select,.form-group.has-error textarea{border-color:var(--danger)}
 .form-group.has-error input:focus,.form-group.has-error select:focus,.form-group.has-error textarea:focus{border-color:var(--danger)}
 .field-error{display:none;font-size:12px;color:var(--danger);margin-top:6px;line-height:1.4}
+.form-group label .req-mark,.form-group label .req{color:var(--danger);font-weight:700}
 .form-group.has-error .field-error{display:block}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border:none;border-radius:10px;font-family:'Heebo',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
 .btn-primary{background:var(--primary);color:#fff;width:100%;justify-content:center}
@@ -448,7 +449,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .app-toast.show{transform:translateX(-50%) translateY(0);opacity:1}
 .app-toast.toast-success{background:#ecfdf5;color:#047857;border:2px solid #6ee7b7}
 .app-toast.toast-error{background:#fef2f2;color:#b91c1c;border:2px solid #fca5a5}
-@media(max-width:1023px){
+@media(max-width:1180px){
   .app-toast{top:calc(72px + env(safe-area-inset-top,0px))}
 }
 .daily-log-form-card{margin-bottom:24px}
@@ -522,7 +523,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .budget-client-donut{margin-top:20px;padding-top:16px;border-top:1px dashed var(--border)}
 .budget-client-donut .budget-donut-wrap{margin-top:0;padding-top:0;border-top:none}
 .budget-donut-print-img{display:none;max-width:220px;height:auto}
-@media(max-width:1023px){
+@media(max-width:1180px){
   .budget-builder-editor .form-row{grid-template-columns:1fr}
   .budget-client-body{padding:20px 16px}
 }
@@ -564,8 +565,8 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .user-row-name{font-size:15px;font-weight:600}
 .user-row-meta{font-size:12px;color:var(--text-muted)}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:1000}
-.modal-overlay.open{display:flex;align-items:center;justify-content:center;overflow:hidden;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
-.modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:20px;padding:32px;width:100%;max-width:min(90vw,600px);max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;box-shadow:0 24px 64px rgba(0,0,0,.2);z-index:1001;margin:0;flex-shrink:0}
+.modal-overlay.open{display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.modal{position:relative;top:auto;left:auto;transform:none;background:#fff;border-radius:20px;padding:32px;width:100%;max-width:min(90vw,600px);max-height:min(90dvh,calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 32px));overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;box-shadow:0 24px 64px rgba(0,0,0,.2);z-index:1001;margin:16px auto;flex-shrink:0}
 .form-group select,.modal .form-group select{cursor:pointer;pointer-events:auto;min-height:44px;appearance:auto;-webkit-appearance:menulist}
 .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;cursor:grab;user-select:none;touch-action:none}
 .modal.dragging .modal-header{cursor:grabbing}
@@ -680,7 +681,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 @supports(padding:max(0px,env(safe-area-inset-top))){
   .login-panel{padding-left:max(28px,env(safe-area-inset-left));padding-right:max(28px,env(safe-area-inset-right));padding-bottom:max(28px,env(safe-area-inset-bottom))}
 }
-@media(max-width:1023px){
+@media(max-width:1180px){
   .form-group input,.form-group select,.form-group textarea,.message-input-wrap input{font-size:16px;min-height:44px}
   .form-group textarea{min-height:88px}
   .btn{min-height:44px;touch-action:manipulation}
@@ -717,6 +718,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .desktop-only-tabs{display:none!important}
   .mobile-tab-bar{display:block}
   .main-content{margin-right:0!important;margin-left:0!important;width:100%!important;padding:calc(56px + env(safe-area-inset-top,0px) + 16px) max(16px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+  .client-mode .main-content{padding-bottom:calc(56px + env(safe-area-inset-top,0px) + 88px + env(safe-area-inset-bottom,0px))}
   .main-shell{margin-right:0!important;margin-left:0!important;width:100%!important}
   .sidebar-search{padding:0 16px 12px}
   .sidebar .global-search-field input{font-size:16px;padding:10px 0}
@@ -737,7 +739,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .whatsapp-fab .wa-icon{width:24px;height:24px}
   .project-meta{flex-wrap:wrap;gap:8px}
   .grid-2{grid-template-columns:1fr}
-  .modal{padding:24px 20px;border-radius:16px;max-width:min(90vw,600px);max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .modal{padding:24px 20px;border-radius:16px;max-width:min(90vw,600px);max-height:min(90dvh,calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 24px));overflow-y:auto;-webkit-overflow-scrolling:touch}
   .modal-header{cursor:default;touch-action:auto}
   .modal-footer{flex-direction:column-reverse;align-items:stretch}
   .modal-footer .btn{width:100%;justify-content:center}
@@ -774,7 +776,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .gantt-card-head{flex-direction:column;align-items:stretch!important}
   .gantt-card-actions{width:100%}
   .gantt-card-actions .btn{flex:1;justify-content:center}
-  .modal-overlay.open{display:flex!important;align-items:center;justify-content:center;overflow:hidden;padding:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+  .modal-overlay.open{display:flex!important;align-items:flex-start;justify-content:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
   .modal-footer .btn-primary,.modal-footer .btn-accent,.modal-footer .btn-danger{width:100%!important;max-width:100%}
   .blueprint-viewer-wrap.clickable{cursor:pointer;touch-action:manipulation}
   .blueprint-viewer-wrap img{max-height:min(55vh,480px)}
@@ -800,6 +802,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .login-subtitle{font-size:13px;line-height:1.55}
   .login-footer{font-size:13px}
   .main-content{padding:calc(56px + env(safe-area-inset-top,0px) + 16px) max(12px,env(safe-area-inset-right,0px)) max(20px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+  .client-mode .main-content{padding-bottom:calc(56px + env(safe-area-inset-top,0px) + 84px + env(safe-area-inset-bottom,0px))}
   .card{padding:16px}
   .milestone-alert-inner{flex-direction:column;align-items:stretch}
   .milestone-alert-btn{width:100%;text-align:center}
@@ -824,7 +827,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .payment-actions .btn{min-width:100%}
   .table-scroll .payments-table{min-width:480px}
   .tabs-scroll{margin:0 -8px;padding:4px 8px}
-  .modal{padding:20px 16px;max-width:min(90vw,600px);max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .modal{padding:20px 16px;max-width:min(90vw,600px);max-height:min(90dvh,calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 24px));overflow-y:auto;-webkit-overflow-scrolling:touch}
   .modal-title{font-size:18px}
   .empty-state{padding:32px 16px}
   .subcontractors-filter-bar{flex-direction:column;align-items:stretch!important;gap:10px}
@@ -870,13 +873,13 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .gallery-modal-image-item{width:80px;height:80px}
   .gallery-modal-image-remove{width:32px;height:32px;min-width:32px;min-height:32px}
 }
-@media(min-width:640px) and (max-width:1023px){
+@media(min-width:640px) and (max-width:1180px){
   .projects-grid{grid-template-columns:repeat(2,1fr)}
   .timeline-phases{grid-template-columns:repeat(2,1fr)}
   .doc-categories{grid-template-columns:repeat(2,1fr)}
   .stats-grid{grid-template-columns:repeat(2,1fr)}
 }
-@media(min-width:1024px){
+@media(min-width:1181px){
   .sidebar{display:flex!important;width:var(--sidebar)!important;transform:none!important;visibility:visible;right:0;left:auto}
   .sidebar-mobile-head{display:none!important}
   .sidebar-close-btn{display:none!important}
@@ -884,7 +887,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .main-shell{margin-right:var(--sidebar);width:auto}
   .main-content{margin-right:0!important;margin-left:0!important;width:100%!important}
 }
-@media(min-width:1024px) and (max-width:1279px){
+@media(min-width:1181px) and (max-width:1279px){
   .main-content{padding:28px}
   .timeline-phases{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 }
@@ -1006,16 +1009,16 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="modal-overlay" id="modal-project">
   <div class="modal">
     <div class="modal-header"><div class="modal-title" id="modal-proj-title">פרויקט חדש</div><button class="modal-close" onclick="closeModal('modal-project')"><i data-lucide="x"></i></button></div>
-    <div class="form-group"><label>שם הפרויקט</label><input type="text" id="proj-name" placeholder="לדוגמה: בית פרטי - כפר סבא"/></div>
+    <div class="form-group"><label>שם הפרויקט <span class="req-mark">*</span></label><input type="text" id="proj-name" placeholder="לדוגמה: בית פרטי - כפר סבא"/></div>
     <div class="form-group"><label>כתובת</label><input type="text" id="proj-addr" placeholder="רחוב, עיר"/></div>
     <div class="form-group"><label>מספר בית</label><input type="text" id="proj-house" placeholder="לדוגמה: 12"/></div>
     <div class="grid-2">
-      <div class="form-group"><label>שם לקוח</label><input type="text" id="proj-client-name" placeholder="שם הלקוח"/></div>
+      <div class="form-group"><label>שם לקוח <span class="req-mark">*</span></label><input type="text" id="proj-client-name" placeholder="שם הלקוח"/></div>
       <div class="form-group"><label>טלפון</label><input type="tel" id="proj-client-phone" placeholder="050-0000000" dir="ltr" style="text-align:left"/></div>
     </div>
     <div class="form-group"><label>תיאור</label><textarea id="proj-desc" placeholder="תיאור קצר"></textarea></div>
     <div class="grid-2">
-      <div class="form-group"><label>תאריך התחלה</label><input type="date" id="proj-start"/></div>
+      <div class="form-group"><label>תאריך התחלה <span class="req-mark">*</span></label><input type="date" id="proj-start"/></div>
       <div class="form-group"><label>תאריך סיום משוער</label><input type="date" id="proj-end"/></div>
     </div>
     <div class="grid-2">
@@ -1040,11 +1043,11 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="modal-overlay" id="modal-user">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">הוספת לקוח</div><button class="modal-close" onclick="closeModal('modal-user')"><i data-lucide="x"></i></button></div>
-    <div class="form-group"><label>שם מלא</label><input type="text" id="new-user-name" placeholder="שם הלקוח"/></div>
+    <div class="form-group"><label>שם מלא <span class="req-mark">*</span></label><input type="text" id="new-user-name" placeholder="שם הלקוח"/></div>
     <div class="form-group"><label for="new-user-phone">טלפון</label><input type="tel" id="new-user-phone" placeholder="050-0000000" dir="ltr" style="text-align:left"/></div>
-    <div class="form-group"><label>אימייל</label><input type="email" id="new-user-email" placeholder="email@example.com"/></div>
+    <div class="form-group"><label>אימייל <span class="req-mark">*</span></label><input type="email" id="new-user-email" placeholder="email@example.com"/></div>
     <div class="form-group"><label>סיסמה</label><input type="text" id="new-user-pass" placeholder="סיסמה"/></div>
-    <div class="form-group"><label>פרויקט משויך</label><select id="new-user-project"></select></div>
+    <div class="form-group"><label>פרויקט משויך <span class="req-mark">*</span></label><select id="new-user-project"></select></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-user')">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="saveUser()">הוסף לקוח</button>
@@ -1056,9 +1059,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="modal-overlay" id="modal-payment">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">תשלום חדש</div><button class="modal-close" onclick="closeModal('modal-payment')"><i data-lucide="x"></i></button></div>
-    <div class="form-group"><label>תיאור התשלום</label><input type="text" id="pay-desc" placeholder="לדוגמה: תשלום לקבלן שלד"/></div>
-    <div class="form-group"><label>סכום (₪)</label><input type="number" id="pay-amount" placeholder="0"/></div>
-    <div class="form-group"><label>תאריך</label><input type="date" id="pay-date"/></div>
+    <div class="form-group"><label>תיאור התשלום <span class="req-mark">*</span></label><input type="text" id="pay-desc" placeholder="לדוגמה: תשלום לקבלן שלד"/></div>
+    <div class="form-group"><label>סכום (₪) <span class="req-mark">*</span></label><input type="number" id="pay-amount" placeholder="0"/></div>
+    <div class="form-group"><label>תאריך <span class="req-mark">*</span></label><input type="date" id="pay-date"/></div>
     <div class="form-group"><label>נמען</label><input type="text" id="pay-to" placeholder="שם הקבלן / ספק"/></div>
     <div class="form-group"><label>קטגוריה</label><select id="pay-category"><option>שלד</option><option>חפירות</option><option>טיח</option><option>חשמל</option><option>אינסטלציה</option><option>ריצוף</option><option>גמר</option><option>צנרת ואינסטלציה</option><option>בידוד</option><option>פיקוח הנדסי</option><option>חוץ וגינון</option><option>אחר</option></select></div>
     <div class="form-group"><label>קבלה/חשבונית</label><label class="upload-label"><i data-lucide="paperclip"></i> בחר קובץ<input type="file" id="pay-receipt" accept=".jpg,.jpeg,.png,.webp,.heic,.pdf,image/jpeg,image/png,image/webp,image/heic,application/pdf" capture="environment"/></label><p class="upload-hint">JPG, PNG, PDF עד 10MB</p><div id="pay-receipt-preview" class="file-preview"></div><div id="pay-receipt-existing" class="file-preview-existing"></div><div id="pay-receipt-upload-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span id="pay-receipt-upload-text">מעלה קבלה...</span></div><div id="pay-receipt-upload-error" class="upload-error"></div></div>
@@ -1109,10 +1112,10 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="modal-overlay" id="modal-milestone">
   <div class="modal">
     <div class="modal-header"><div class="modal-title" id="modal-milestone-title">אבן דרך חדשה</div><button class="modal-close" onclick="closeModal('modal-milestone')"><i data-lucide="x"></i></button></div>
-    <div class="form-group"><label>שם אבן הדרך</label><input type="text" id="milestone-title" placeholder="לדוגמה: בחירת ספק מטבח"/></div>
+    <div class="form-group"><label>שם אבן הדרך <span class="req-mark">*</span></label><input type="text" id="milestone-title" placeholder="לדוגמה: בחירת ספק מטבח"/></div>
     <div class="form-group"><label>תיאור (אופציונלי)</label><textarea id="milestone-desc" placeholder="פרטים נוספים"></textarea></div>
     <div class="grid-2">
-      <div class="form-group"><label>תאריך יעד</label><input type="date" id="milestone-due"/></div>
+      <div class="form-group"><label>תאריך יעד <span class="req-mark">*</span></label><input type="date" id="milestone-due"/></div>
       <div class="form-group"><label>עדיפות</label><select id="milestone-priority"><option value="high">גבוהה</option><option value="medium">בינונית</option></select></div>
     </div>
     <div class="grid-2">
@@ -1130,10 +1133,10 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="modal-overlay" id="modal-finish-selection">
   <div class="modal">
     <div class="modal-header"><div class="modal-title" id="modal-finish-selection-title">בחירת גמר חדשה</div><button class="modal-close" onclick="closeModal('modal-finish-selection')"><i data-lucide="x"></i></button></div>
-    <div class="form-group"><label>שם הבחירה</label><input type="text" id="finish-sel-title" placeholder="לדוגמה: בחירת ריצוף פנים"/></div>
+    <div class="form-group"><label>שם הבחירה <span class="req-mark">*</span></label><input type="text" id="finish-sel-title" placeholder="לדוגמה: בחירת ריצוף פנים"/></div>
     <div class="grid-2">
       <div class="form-group"><label>קטגוריה</label><select id="finish-sel-category"></select></div>
-      <div class="form-group"><label>תאריך יעד</label><input type="date" id="finish-sel-due"/></div>
+      <div class="form-group"><label>תאריך יעד <span class="req-mark">*</span></label><input type="date" id="finish-sel-due"/></div>
     </div>
     <div class="form-group"><label>תיאור (אופציונלי)</label><textarea id="finish-sel-desc" placeholder="פרטים נוספים"></textarea></div>
     <div class="form-group admin-only-action" id="finish-sel-status-wrap"><label>סטטוס</label><select id="finish-sel-status"><option value="pending">ממתין</option><option value="in_progress">בתהליך</option><option value="done">הושלם</option></select></div>
@@ -1148,7 +1151,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="modal-overlay" id="modal-price-category">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">קטגוריה חדשה</div><button class="modal-close" onclick="closeModal('modal-price-category')"><i data-lucide="x"></i></button></div>
-    <div class="form-group"><label>שם הקטגוריה</label><input type="text" id="price-category-name" placeholder="לדוגמה: מטבח"/></div>
+    <div class="form-group"><label>שם הקטגוריה <span class="req-mark">*</span></label><input type="text" id="price-category-name" placeholder="לדוגמה: מטבח"/></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-price-category')">ביטול</button>
       <button class="btn btn-primary admin-only-action" style="width:auto" onclick="savePriceCategory()">שמור</button>
@@ -1161,7 +1164,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   <div class="modal">
     <div class="modal-header"><div class="modal-title" id="modal-price-offer-title">הוסף הצעה</div><button class="modal-close" onclick="closeModal('modal-price-offer')"><i data-lucide="x"></i></button></div>
     <div class="form-group"><label>קטגוריה</label><select id="price-offer-category"></select></div>
-    <div class="form-group"><label>שם קבלן</label><input type="text" id="price-offer-contractor" placeholder="שם הקבלן"/></div>
+    <div class="form-group"><label>שם קבלן <span class="req-mark">*</span></label><input type="text" id="price-offer-contractor" placeholder="שם הקבלן"/></div>
     <div class="form-group"><label>סוג חומר</label><input type="text" id="price-offer-material-type" placeholder="לדוגמה: גרניט פורצלן"/></div>
     <div class="grid-2">
       <div class="form-group"><label>עלות חומר (₪)</label><input type="number" id="price-offer-material-cost" min="0" step="1" value="0" oninput="updatePriceOfferTotalPreview()"/></div>
@@ -1185,7 +1188,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="modal-overlay" id="modal-phase">
   <div class="modal">
     <div class="modal-header"><div class="modal-title" id="modal-phase-title">שלב חדש</div><button class="modal-close" onclick="closeModal('modal-phase')"><i data-lucide="x"></i></button></div>
-    <div class="form-group"><label>שם השלב</label><input type="text" id="phase-name"/></div>
+    <div class="form-group"><label>שם השלב <span class="req-mark">*</span></label><input type="text" id="phase-name"/></div>
     <div class="grid-2">
       <div class="form-group"><label>תאריך התחלה</label><input type="date" id="phase-start"/></div>
       <div class="form-group"><label>תאריך סיום</label><input type="date" id="phase-end"/></div>
@@ -1229,7 +1232,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="form-group"><label>דחיפות</label><select id="punch-urgency"><option value="נמוכה">נמוכה</option><option value="בינונית" selected>בינונית</option><option value="קריטית">קריטית</option></select></div>
       <div class="form-group"><label>דד-ליין</label><input type="date" id="punch-deadline"/></div>
       <div class="form-group"><label for="punch-location">מיקום בבית</label><input type="text" id="punch-location" placeholder="לדוגמה: קומה 2 - חדר שינה"/></div>
-      <div class="form-group"><label for="punch-photo">תמונה מהשטח (אופציונלי)</label><input type="file" id="punch-photo" accept=".jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic"/><p class="upload-hint">JPG, PNG, PDF עד 10MB</p></div>
+      <div class="form-group"><label for="punch-photo">תמונה מהשטח (אופציונלי)</label><input type="file" id="punch-photo" accept=".jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic"/><p class="upload-hint">JPG, PNG עד 10MB</p></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-punch-item')">סגור</button>
@@ -1243,9 +1246,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="modal-overlay" id="modal-update">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">עדכון חדש ללקוח</div><button class="modal-close" onclick="closeModal('modal-update')"><i data-lucide="x"></i></button></div>
-    <div class="form-group"><label>כותרת</label><input type="text" id="upd-title" placeholder="לדוגמה: סיום שלב השלד"/></div>
-    <div class="form-group"><label>תוכן</label><textarea id="upd-body" placeholder="פרטי העדכון..."></textarea></div>
-    <div class="form-group"><label>תמונה / וידאו / PDF מהשטח (אופציונלי)</label><label class="upload-label"><i data-lucide="camera"></i> בחר קובץ<input type="file" id="upd-media" accept=".jpg,.jpeg,.png,.webp,.heic,.pdf,.mp4,.mov,image/jpeg,image/png,image/webp,image/heic,application/pdf,video/mp4,video/quicktime"/></label><p class="upload-hint">JPG, PNG, PDF עד 10MB</p><div id="upd-media-preview" class="file-preview"></div><div id="upd-media-upload-error" class="upload-error"></div></div>
+    <div class="form-group"><label>כותרת <span class="req-mark">*</span></label><input type="text" id="upd-title" placeholder="לדוגמה: סיום שלב השלד"/></div>
+    <div class="form-group"><label>תוכן <span class="req-mark">*</span></label><textarea id="upd-body" placeholder="פרטי העדכון..."></textarea></div>
+    <div class="form-group"><label>תמונה / וידאו / PDF מהשטח (אופציונלי)</label><label class="upload-label"><i data-lucide="camera"></i> בחר קובץ<input type="file" id="upd-media" accept=".jpg,.jpeg,.png,.webp,.heic,.pdf,.mp4,.mov,image/jpeg,image/png,image/webp,image/heic,application/pdf,video/mp4,video/quicktime"/></label><p class="upload-hint">JPG, PNG, PDF, MP4 עד 10MB</p><div id="upd-media-preview" class="file-preview"></div><div id="upd-media-upload-error" class="upload-error"></div></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-update')">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="saveUpdate()">שלח עדכון</button>
@@ -1262,7 +1265,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="form-group">
       <label>תמונות (ניתן לבחור מספר)</label>
       <label class="upload-label"><i data-lucide="camera"></i> בחר תמונות<input type="file" id="gallery-post-files" accept=".jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic" multiple/></label>
-      <p class="upload-hint">JPG, PNG, PDF עד 10MB</p>
+      <p class="upload-hint">JPG, PNG עד 10MB</p>
       <div id="gallery-post-files-error" class="upload-error"></div>
       <div id="gallery-post-images" class="gallery-modal-images"></div>
     </div>
@@ -1327,11 +1330,14 @@ const COMPRESS_MAX_EDGE=1920;
 const COMPRESS_JPEG_QUALITY=0.8;
 const MEDIA_MAX_BYTES=10*1024*1024;
 const UPLOAD_MAX_BYTES=MEDIA_MAX_BYTES;
-const UPLOAD_HINT_TEXT='JPG, PNG, PDF עד 10MB';
+const UPLOAD_HINT_TEXT='JPG, PNG, PDF, DWG, MP4 עד 10MB';
+const UPLOAD_HINT_IMAGES='JPG, PNG עד 10MB';
+const UPLOAD_HINT_PDF='PDF עד 10MB';
+const UPLOAD_HINT_MEDIA='JPG, PNG, PDF, MP4 עד 10MB';
 const UPLOAD_IMAGE_EXTS=['jpg','jpeg','png','webp','heic'];
 const UPLOAD_DOC_EXTS=['pdf','dwg'];
 const DOC_CATEGORIES=['תוכניות אדריכלות','תוכניות DWG','קונסטרוקטור','היתרים','הסכמים','אחר'];
-const DOC_CATEGORY_ICONS={'תוכניות אדריכלות':'ruler','תוכניות DWG':'pen-ruler','קונסטרוקטור':'wrench','היתרים':'clipboard-list','הסכמים':'file-pen','אחר':'file-text'};
+const DOC_CATEGORY_ICONS={'תוכניות אדריכלות':'ruler','תוכניות DWG':'pencil-ruler','קונסטרוקטור':'wrench','היתרים':'clipboard-list','הסכמים':'file-pen','אחר':'file-text'};
 const UPLOAD_VIDEO_EXTS=['mp4','mov'];
 const UPLOAD_ACCEPT_IMAGES='.jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic';
 const UPLOAD_ACCEPT_RECEIPT=UPLOAD_ACCEPT_IMAGES+',.pdf,application/pdf';
@@ -1568,10 +1574,12 @@ function renderProjectDocsTabHtml(p){
             '<button class="btn btn-danger btn-sm admin-only-action" onclick="deleteDoc(\''+d.id+'\')">'+ic('trash-2')+'</button>'+
             '</div></div>';
         }).join('')+
-        '<div class="admin-only-action" style="display:flex;gap:6px;margin-top:12px">'+
+        '<div class="admin-only-action" style="display:flex;gap:6px;margin-top:12px;flex-direction:column">'+
+        '<p class="upload-hint" style="margin:0 0 4px">'+UPLOAD_HINT_TEXT+'</p>'+
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
         '<label class="btn btn-outline btn-sm" style="cursor:pointer;flex:1;justify-content:center">'+ic('paperclip')+' העלה קובץ<input type="file" style="display:none" accept="'+getDocUploadAccept(cat)+'" onchange="uploadDocFile(event,\''+cat.replace(/'/g,'\\\'')+'\')"/></label>'+
         '<button class="btn btn-outline btn-sm" style="flex:1" onclick="addDocLink(\''+cat.replace(/'/g,'\\\'')+'\')">'+ic('link')+' הוסף לינק</button>'+
-        '</div>'+
+        '</div></div>'+
         '</div>';
     }).join('')+
     '</div>';
@@ -3750,9 +3758,13 @@ function openEditMilestoneModal(id){
 async function saveMilestone(){
   if(!requireAdmin()||!requireProjectAccess())return;
   var proj=getCurrentProject();if(!proj)return;
+  clearFormErrors('modal-milestone');
+  var ok=true;
+  if(!validateRequired('milestone-title'))ok=false;
+  if(!validateRequired('milestone-due'))ok=false;
+  if(!ok){focusFirstFormError('modal-milestone');return;}
   var title=document.getElementById('milestone-title').value.trim();
   var due=document.getElementById('milestone-due').value;
-  if(!title||!due){alert('נא למלא שם ותאריך יעד');return;}
   var row={
     project_id:proj.id,
     title:title,
@@ -3974,9 +3986,13 @@ function openEditFinishSelectionModal(id){
 async function saveFinishSelection(){
   if(!requireAdmin()||!requireProjectAccess())return;
   var proj=getCurrentProject();if(!proj)return;
+  clearFormErrors('modal-finish-selection');
+  var ok=true;
+  if(!validateRequired('finish-sel-title'))ok=false;
+  if(!validateRequired('finish-sel-due'))ok=false;
+  if(!ok){focusFirstFormError('modal-finish-selection');return;}
   var title=document.getElementById('finish-sel-title').value.trim();
   var due=document.getElementById('finish-sel-due').value;
-  if(!title||!due){alert('נא למלא שם ותאריך יעד');return;}
   var status=document.getElementById('finish-sel-status').value||'pending';
   var row={
     project_id:proj.id,
@@ -4167,14 +4183,21 @@ async function refreshPriceComparisonsCache(projectId){
   priceComparisonsCache=[];
   return {ok:true};
 }
+var priceComparisonsLoadInflight=null;
+var priceComparisonsTabInflight=null;
 async function refreshPriceComparisonsData(projectId){
-  var catLoaded=await refreshPriceComparisonsCache(projectId);
-  if(!catLoaded.ok)return catLoaded;
-  var offersLoaded=await refreshPriceOffersCache(projectId);
-  if(!offersLoaded.ok)return offersLoaded;
-  var sync=await ensurePriceCategoriesFromOffers(projectId);
-  if(!sync.ok)return sync;
-  return {ok:true};
+  if(priceComparisonsLoadInflight&&priceComparisonsLoadInflight.projectId===projectId)return priceComparisonsLoadInflight.promise;
+  var promise=(async function(){
+    var catLoaded=await refreshPriceComparisonsCache(projectId);
+    if(!catLoaded.ok)return catLoaded;
+    var offersLoaded=await refreshPriceOffersCache(projectId);
+    if(!offersLoaded.ok)return offersLoaded;
+    var sync=await ensurePriceCategoriesFromOffers(projectId);
+    if(!sync.ok)return sync;
+    return {ok:true};
+  })();
+  priceComparisonsLoadInflight={projectId:projectId,promise:promise};
+  try{return await promise;}finally{if(priceComparisonsLoadInflight&&priceComparisonsLoadInflight.promise===promise)priceComparisonsLoadInflight=null;}
 }
 function populatePriceOfferCategorySelect(selected){
   var sel=document.getElementById('price-offer-category');
@@ -4380,15 +4403,19 @@ function renderPriceComparisonsTabContentHtml(proj,loaded){
     (cats.length?renderPriceOffersTableHtml(list):'');
 }
 async function initPriceComparisonsTab(){
+  if(priceComparisonsTabInflight)return priceComparisonsTabInflight;
   var root=document.getElementById('price-comparisons-tab-root');
   if(!root)return;
-  var proj=getCurrentProject();
-  if(!proj){root.innerHTML='<div class="empty-state card"><p>פרויקט לא נמצא</p></div>';return;}
-  root.innerHTML='<div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען השוואות מחיר...</p></div>';
-  refreshIcons(root);
-  var loaded=await refreshPriceComparisonsData(proj.id);
-  root.innerHTML=renderPriceComparisonsTabContentHtml(proj,loaded);
-  refreshIcons(root);
+  priceComparisonsTabInflight=(async function(){
+    var proj=getCurrentProject();
+    if(!proj){root.innerHTML='<div class="empty-state card"><p>פרויקט לא נמצא</p></div>';return;}
+    root.innerHTML='<div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען השוואות מחיר...</p></div>';
+    refreshIcons(root);
+    var loaded=await refreshPriceComparisonsData(proj.id);
+    root.innerHTML=renderPriceComparisonsTabContentHtml(proj,loaded);
+    refreshIcons(root);
+  })();
+  try{await priceComparisonsTabInflight;}finally{priceComparisonsTabInflight=null;}
 }
 function refreshPriceComparisonsTab(){
   if(currentView==='project'&&currentTab==='price-comparisons')initPriceComparisonsTab();
@@ -4401,8 +4428,9 @@ function openAddPriceCategoryModal(){
 async function savePriceCategory(){
   if(!requireAdmin()||!requireProjectAccess())return;
   var proj=getCurrentProject();if(!proj)return;
+  clearFormErrors('modal-price-category');
+  if(!validateRequired('price-category-name')){focusFirstFormError('modal-price-category');return;}
   var name=document.getElementById('price-category-name').value.trim();
-  if(!name){alert('נא למלא שם קטגוריה');return;}
   if(isPriceCategoryExists(proj.id,name)){alert('קטגוריה זו כבר קיימת');return;}
   var res=await insertPriceCategoryRow(proj.id,name);
   if(res.error){showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
@@ -4453,8 +4481,9 @@ function openEditPriceOfferModal(id){
 async function savePriceOffer(){
   if(!requireAdmin()||!requireProjectAccess())return;
   var proj=getCurrentProject();if(!proj)return;
+  clearFormErrors('modal-price-offer');
+  if(!validateRequired('price-offer-contractor')){focusFirstFormError('modal-price-offer');return;}
   var contractor=document.getElementById('price-offer-contractor').value.trim();
-  if(!contractor){alert('נא למלא שם קבלן');return;}
   var materialCost=Number(document.getElementById('price-offer-material-cost').value)||0;
   var laborCost=Number(document.getElementById('price-offer-labor-cost').value)||0;
   var includesVat=document.getElementById('price-offer-includes-vat').value==='yes';
@@ -5809,6 +5838,7 @@ function addBudgetItemToCategory(categoryEnc){
 }
 function removeBudgetItem(itemId){
   if(!budgetBuilderDraft)return;
+  if(!confirm('למחוק את שורת התקציב?'))return;
   budgetBuilderDraft.items=budgetBuilderDraft.items.filter(function(it){return it.id!==itemId;});
   if(budgetBuilderMode==='edit')renderBudgetBuilderEditorInPlace();
   else initBudgetBuilderView();
@@ -7688,6 +7718,7 @@ async function removeSpecialtySetting(encodedName){
   if(!requireAdmin())return;
   var name=decodeURIComponent(encodedName||'').trim();
   if(!name)return;
+  if(!confirm('למחוק את התחום "'+name+'"?'))return;
   if(isSpecialtyInUse(name)){showToast('לא ניתן למחוק — תחום בשימוש על ידי קבלן','error');return;}
   var list=getSpecialtiesList();
   if(!list.some(function(s){return s===name;}))return;
@@ -7743,12 +7774,14 @@ function syncBodyScrollLock(){
   var sbOpen=document.getElementById('sidebar')&&document.getElementById('sidebar').classList.contains('open');
   var tabOpen=document.getElementById('mobile-tab-drawer')&&document.getElementById('mobile-tab-drawer').classList.contains('open');
   var migOpen=document.getElementById('migration-overlay')&&document.getElementById('migration-overlay').classList.contains('show');
-  document.body.style.overflow=(modalOpenCount>0||sbOpen||tabOpen||migOpen)?'hidden':'';
+  var lockModal=modalOpenCount>0&&window.innerWidth>=1181;
+  document.body.style.overflow=(lockModal||sbOpen||tabOpen||migOpen)?'hidden':'';
 }
 function openModal(id){
   var overlay=document.getElementById(id);
   resetModalPosition(overlay.querySelector('.modal'));
   overlay.classList.add('open');
+  overlay.scrollTop=0;
   if(!modalOpenCount++)syncBodyScrollLock();
 }
 function closeModal(id){
@@ -8208,6 +8241,7 @@ async function savePhase(){
   if(!requireAdmin()||!requireProjectAccess())return;
   clearFormErrors('modal-phase');
   if(!validateRequired('phase-name')){focusFirstFormError('modal-phase');return;}
+  if(!validateDateNotBefore('phase-end','phase-start','תאריך סיום לא יכול להיות לפני תאריך ההתחלה')){focusFirstFormError('modal-phase');return;}
   var data=getData();var proj=getCurrentProject();if(!proj)return;
   var subId=document.getElementById('phase-subcontractor').value||null;
   var plannedCostRaw=document.getElementById('phase-planned-cost').value;
@@ -8251,10 +8285,14 @@ async function saveOverallProgress(){
 
 async function saveUpdate(){
   if(!requireAdmin()||!requireProjectAccess())return;
+  clearFormErrors('modal-update');
+  var ok=true;
+  if(!validateRequired('upd-title'))ok=false;
+  if(!validateRequired('upd-body'))ok=false;
+  if(!ok){focusFirstFormError('modal-update');return;}
   var data=getData();var proj=getCurrentProject();if(!proj)return;
   var title=document.getElementById('upd-title').value.trim();
   var body=document.getElementById('upd-body').value.trim();
-  if(!title||!body){showToast('שגיאה: יש למלא כותרת ותוכן','error');return;}
   var updId='u'+Date.now();
   var upd={id:updId,title:title,body:body,date:new Date().toLocaleDateString('he-IL'),sender:'admin'};
   var file=document.getElementById('upd-media').files[0];
@@ -8364,22 +8402,29 @@ function uploadDocFile(event,cat){
   if(!fileCheck.ok){alert(fileCheck.message);return;}
   var proj=getCurrentProject();if(!proj)return;
   var docId='d'+Date.now();
-  uploadMediaFile('documents/'+proj.id+'/'+docId,file).then(async function(upload){
+  (async function(){
+    var uploadFile=file;
+    if(isCompressibleImageFile(file)){
+      var prepared=await prepareImageForUpload(file);
+      showCompressionToast(prepared);
+      uploadFile=prepared.file;
+    }
+    var upload=await uploadMediaFile('documents/'+proj.id+'/'+docId,uploadFile);
     if(!upload.ok){alert('שגיאה בהעלאת המסמך:\n'+formatSupabaseErrorHint(upload.error));return;}
     var data=getData();proj=getCurrentProject();if(!proj)return;
     proj.documents.push({
       id:docId,
-      name:file.name,
+      name:uploadFile.name||file.name,
       category:cat,
       date:new Date().toLocaleDateString('he-IL'),
       url:upload.data.url,
       path:upload.data.path,
       type:upload.data.type
     });
-    logActivity('העלאת מסמך','פרויקט: '+proj.name+' · '+file.name+' ('+cat+')');
+    logActivity('העלאת מסמך','פרויקט: '+proj.name+' · '+(uploadFile.name||file.name)+' ('+cat+')');
     if(!await saveData(data))return;
     renderProjectDetail(document.getElementById('main-content'));
-  });
+  })();
 }
 async function addDocLink(cat){
   if(!requireAdmin()||!requireProjectAccess())return;
@@ -8512,7 +8557,7 @@ Object.assign(window,{
   openGlobalSearch,onGlobalSearchInput,onGlobalSearchKeydown,navigateGlobalSearchResult
 });
 window.addEventListener('resize',function(){
-  if(window.innerWidth>=1024)closeMobileSidebar();
+  if(window.innerWidth>=1181)closeMobileSidebar();
   if(finCharts.pie)finCharts.pie.resize();
   if(finCharts.bar)finCharts.bar.resize();
 });
