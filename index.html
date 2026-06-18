@@ -23,6 +23,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .phase-actions{display:flex;gap:8px;margin-top:10px}
 .payment-actions{display:flex;gap:6px;flex-wrap:wrap}
 .doc-item-actions{display:flex;gap:4px;flex-wrap:wrap}
+.doc-file-icon{font-size:16px;line-height:1;flex-shrink:0}
 .login-panel{flex:1;display:flex;align-items:center;justify-content:center;padding:48px 56px;background:#fff;min-width:0}
 .login-panel-inner{width:100%;max-width:400px}
 .login-hero{flex:1;position:relative;background:#1B2B5E url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=80') center/cover no-repeat;min-height:360px}
@@ -1328,7 +1329,9 @@ const MEDIA_MAX_BYTES=10*1024*1024;
 const UPLOAD_MAX_BYTES=MEDIA_MAX_BYTES;
 const UPLOAD_HINT_TEXT='JPG, PNG, PDF עד 10MB';
 const UPLOAD_IMAGE_EXTS=['jpg','jpeg','png','webp','heic'];
-const UPLOAD_DOC_EXTS=['pdf'];
+const UPLOAD_DOC_EXTS=['pdf','dwg'];
+const DOC_CATEGORIES=['תוכניות אדריכלות','תוכניות DWG','קונסטרוקטור','היתרים','הסכמים','אחר'];
+const DOC_CATEGORY_ICONS={'תוכניות אדריכלות':'ruler','תוכניות DWG':'pen-ruler','קונסטרוקטור':'wrench','היתרים':'clipboard-list','הסכמים':'file-pen','אחר':'file-text'};
 const UPLOAD_VIDEO_EXTS=['mp4','mov'];
 const UPLOAD_ACCEPT_IMAGES='.jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic';
 const UPLOAD_ACCEPT_RECEIPT=UPLOAD_ACCEPT_IMAGES+',.pdf,application/pdf';
@@ -1415,6 +1418,7 @@ function mimeToUploadExtension(file){
   if(type==='image/webp')return 'webp';
   if(type==='image/heic'||type==='image/heif')return 'heic';
   if(type==='application/pdf')return 'pdf';
+  if(type==='image/vnd.dwg'||type==='application/acad'||type==='application/x-acad'||type==='application/vnd.dwg')return 'dwg';
   if(type==='video/mp4')return 'mp4';
   if(type==='video/quicktime')return 'mov';
   return '';
@@ -1497,6 +1501,49 @@ function validateUploadInputFile(inputId,opts){
 function isPdfType(type,name){
   return type==='application/pdf'||(name&&/\.pdf$/i.test(name));
 }
+function isDwgType(type,name){
+  return type==='image/vnd.dwg'||type==='application/acad'||type==='application/x-acad'||type==='application/vnd.dwg'||(name&&/\.dwg$/i.test(name));
+}
+function isPdfDoc(doc){
+  return !!(doc&&(isPdfType(doc.type,doc.name)||/\.pdf$/i.test(doc.name||'')));
+}
+function isDwgDoc(doc){
+  return !!(doc&&(isDwgType(doc.type,doc.name)||/\.dwg$/i.test(doc.name||'')));
+}
+function renderDocFileIcon(doc){
+  if(isDwgDoc(doc))return '<span class="doc-file-icon" aria-hidden="true">📐</span>';
+  if(isPdfDoc(doc))return '<span class="doc-file-icon" aria-hidden="true">📄</span>';
+  return ic('file-text');
+}
+function getDocUploadAccept(cat){
+  if(cat==='תוכניות DWG')return '.dwg,.pdf,application/pdf,image/vnd.dwg,application/acad,application/x-acad,application/vnd.dwg';
+  return '.pdf,.dwg,.jpg,.jpeg,.png,.webp,.heic,application/pdf,image/vnd.dwg,application/acad,application/x-acad';
+}
+function validateDocUploadFile(file,cat){
+  if(!file)return {ok:false,message:'לא נבחר קובץ'};
+  if(file.size>UPLOAD_MAX_BYTES)return {ok:false,message:'הקובץ גדול מדי — גודל מקסימלי 10MB'};
+  var ext=resolveUploadFileExtension(file);
+  if(cat==='תוכניות DWG'){
+    if(ext!=='dwg'&&ext!=='pdf'&&!isDwgType(file.type,file.name)&&!isPdfType(file.type,file.name)){
+      return {ok:false,message:'בקטגוריה זו ניתן להעלות קבצי DWG או PDF בלבד'};
+    }
+    return {ok:true};
+  }
+  return validateUploadFile(file,{allowPdf:true});
+}
+function getAutodeskViewerUrl(fileUrl){
+  return 'https://viewer.autodesk.com/share/url?url='+encodeURIComponent(fileUrl);
+}
+function openDocInAutodeskViewer(docId){
+  if(!requireProjectAccess())return;
+  var proj=getCurrentProject();if(!proj)return;
+  var doc=(proj.documents||[]).find(function(d){return d.id===docId;});
+  if(!doc||!doc.url||doc.url==='#'||String(doc.url).indexOf('data:')===0){
+    showToast('לא נמצא קישור לקובץ','error');
+    return;
+  }
+  window.open(getAutodeskViewerUrl(doc.url),'_blank','noopener,noreferrer');
+}
 function revokePreviewUrl(key){
   if(filePreviewUrls[key]){URL.revokeObjectURL(filePreviewUrls[key]);delete filePreviewUrls[key];}
 }
@@ -1550,7 +1597,7 @@ async function uploadMediaFile(folderPath,file){
 function isDataUrl(str){return typeof str==='string'&&str.indexOf('data:')===0;}
 function isHttpStorageUrl(str){return typeof str==='string'&&/^https:\/\//i.test(str);}
 function extFromMime(mime,fallback){
-  var map={'image/jpeg':'jpg','image/jpg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','application/pdf':'pdf'};
+  var map={'image/jpeg':'jpg','image/jpg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','application/pdf':'pdf','image/vnd.dwg':'dwg','application/acad':'dwg','application/x-acad':'dwg','application/vnd.dwg':'dwg'};
   return map[(mime||'').toLowerCase()]||fallback||'bin';
 }
 function extFromDataUrl(dataUrl,fallback){
@@ -7167,27 +7214,30 @@ function renderProjectDetail(el){
   if(isAdminUser)html+='<div id="tab-docs" class="tab-content '+(currentTab==='docs'?'active':'')+'">'+
     '<div class="section-title" style="margin-bottom:16px">'+ic('folder')+' מסמכים ותוכניות</div>'+
     '<div class="doc-categories">'+
-    ['תוכניות אדריכלות','קונסטרוקטור','היתרים','הסכמים','אחר'].map(function(cat){
-      var catIcon={'תוכניות אדריכלות':'ruler','קונסטרוקטור':'wrench','היתרים':'clipboard-list','הסכמים':'file-pen','אחר':'file-text'};
+    DOC_CATEGORIES.map(function(cat){
+      var catIcon=DOC_CATEGORY_ICONS;
       var docs=p.documents.filter(function(d){return d.category===cat;});
-      return '<div class="doc-category"><div class="doc-category-title">'+ic(catIcon[cat])+' '+cat+'</div>'+
+      return '<div class="doc-category"><div class="doc-category-title">'+ic(catIcon[cat]||'file-text')+' '+cat+'</div>'+
         (docs.length===0?'<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px">אין מסמכים</p>':'')+
         docs.map(function(d){
           var hasUrl=d.url&&d.url!=='#';
           var isHttp=hasUrl&&/^https?:\/\//i.test(d.url);
           var isData=hasUrl&&String(d.url).indexOf('data:')===0;
+          var isDwg=isDwgDoc(d);
           return '<div class="doc-item">'+
             '<div style="display:flex;align-items:center;gap:6px;font-size:13px">'+
-            (isHttp?ic('link'):isData?ic('paperclip'):ic('file-text'))+' <span>'+escHtml(d.name)+'</span></div>'+
+            renderDocFileIcon(d)+' <span>'+escHtml(d.name)+'</span></div>'+
             '<div class="doc-item-actions">'+
-            (isHttp?'<a href="'+escHtml(d.url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">פתח</a>':'')+
+            (isHttp&&!isDwg?'<a href="'+escHtml(d.url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">פתח</a>':'')+
+            (isHttp&&isDwg?'<button type="button" class="btn btn-outline btn-sm" onclick="openDocInAutodeskViewer(\''+d.id+'\')">פתח ב-Autodesk Viewer</button>'+
+            '<a href="'+escHtml(d.url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" download="'+escHtml(d.name)+'">'+ic('download')+'</a>':'')+
             (isData?'<a href="'+escHtml(d.url)+'" download="'+escHtml(d.name)+'" class="btn btn-outline btn-sm">'+ic('download')+'</a>':'')+
             '<button class="btn btn-danger btn-sm admin-only-action" onclick="deleteDoc(\''+d.id+'\')">'+ic('trash-2')+'</button>'+
             '</div></div>';
         }).join('')+
           '<div class="admin-only-action" style="display:flex;gap:6px;margin-top:12px">'+
-          '<label class="btn btn-outline btn-sm" style="cursor:pointer;flex:1;justify-content:center">'+ic('paperclip')+' העלה קובץ<input type="file" style="display:none" onchange="uploadDocFile(event,\''+cat+'\')"/></label>'+
-          '<button class="btn btn-outline btn-sm" style="flex:1" onclick="addDocLink(\''+cat+'\')">'+ic('link')+' הוסף לינק</button>'+
+          '<label class="btn btn-outline btn-sm" style="cursor:pointer;flex:1;justify-content:center">'+ic('paperclip')+' העלה קובץ<input type="file" style="display:none" accept="'+getDocUploadAccept(cat)+'" onchange="uploadDocFile(event,\''+cat.replace(/'/g,'\\\'')+'\')"/></label>'+
+          '<button class="btn btn-outline btn-sm" style="flex:1" onclick="addDocLink(\''+cat.replace(/'/g,'\\\'')+'\')">'+ic('link')+' הוסף לינק</button>'+
           '</div>'+
         '</div>';
     }).join('')+'</div></div>';
@@ -8306,7 +8356,8 @@ function uploadDocFile(event,cat){
   if(!requireAdmin()||!requireProjectAccess())return;
   var file=event.target.files[0];if(!file)return;
   event.target.value='';
-  if(file.size>UPLOAD_MAX_BYTES){alert('הקובץ גדול מדי (מקסימום 10MB)');return;}
+  var fileCheck=validateDocUploadFile(file,cat);
+  if(!fileCheck.ok){alert(fileCheck.message);return;}
   var proj=getCurrentProject();if(!proj)return;
   var docId='d'+Date.now();
   uploadMediaFile('documents/'+proj.id+'/'+docId,file).then(async function(upload){
@@ -8339,10 +8390,9 @@ async function addDocLink(cat){
 async function addDocument(){
   if(!requireAdmin()||!requireProjectAccess())return;
   var name=prompt('שם המסמך:');if(!name)return;
-  var cat=prompt('קטגוריה:\nתוכניות אדריכלות / קונסטרוקטור / היתרים / הסכמים / אחר:')||'אחר';
-  var cats=['תוכניות אדריכלות','קונסטרוקטור','היתרים','הסכמים','אחר'];
+  var cat=prompt('קטגוריה:\n'+DOC_CATEGORIES.join(' / ')+':')||'אחר';
   var data=getData();var proj=getCurrentProject();if(!proj)return;
-  proj.documents.push({id:'d'+Date.now(),name:name,category:cats.includes(cat)?cat:'אחר',date:new Date().toLocaleDateString('he-IL'),url:'#'});
+  proj.documents.push({id:'d'+Date.now(),name:name,category:DOC_CATEGORIES.indexOf(cat)>=0?cat:'אחר',date:new Date().toLocaleDateString('he-IL'),url:'#'});
   logActivity('הוספת מסמך','פרויקט: '+proj.name+' · '+name);
   if(!await saveData(data))return;
   renderProjectDetail(document.getElementById('main-content'));
@@ -8444,7 +8494,7 @@ Object.assign(window,{
   openAddPriceCategoryModal,savePriceCategory,onPriceCategoryFilterChange,
   openAddPriceOfferModal,openEditPriceOfferModal,savePriceOffer,deletePriceOffer,updatePriceOfferTotalPreview,openPriceOfferPdf,
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,exportDailyLogsCsv,
-  uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,
+  uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,openDocInAutodeskViewer,
   openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,setGalleryStageFilter,
   toggleRemoveGalleryImage,removePendingGalleryFile,saveGalleryPost,deleteGalleryPost,handleGalleryImageError,
   openPhotoLightbox,closePhotoLightbox,
