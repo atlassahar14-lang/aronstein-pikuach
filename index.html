@@ -1143,16 +1143,14 @@ img,svg,video,canvas{max-width:100%;height:auto}
   </div>
 </div>
 
-<!-- Modal: Price comparison -->
-<div class="modal-overlay" id="modal-price-comparison">
+<!-- Modal: Price category -->
+<div class="modal-overlay" id="modal-price-category">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title" id="modal-price-comparison-title">השוואה חדשה</div><button class="modal-close" onclick="closeModal('modal-price-comparison')"><i data-lucide="x"></i></button></div>
-    <div class="form-group"><label>שם העבודה</label><input type="text" id="price-comp-title" placeholder="לדוגמה: ריצוף קומת קרקע"/></div>
-    <div class="form-group"><label>קטגוריה</label><select id="price-comp-category"></select></div>
-    <div class="form-group"><label>תיאור (אופציונלי)</label><textarea id="price-comp-desc" placeholder="פרטים נוספים"></textarea></div>
+    <div class="modal-header"><div class="modal-title">קטגוריה חדשה</div><button class="modal-close" onclick="closeModal('modal-price-category')"><i data-lucide="x"></i></button></div>
+    <div class="form-group"><label>שם הקטגוריה</label><input type="text" id="price-category-name" placeholder="לדוגמה: מטבח"/></div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('modal-price-comparison')">ביטול</button>
-      <button class="btn btn-primary admin-only-action" style="width:auto" onclick="savePriceComparison()">שמור</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-price-category')">ביטול</button>
+      <button class="btn btn-primary admin-only-action" style="width:auto" onclick="savePriceCategory()">שמור</button>
     </div>
   </div>
 </div>
@@ -1161,6 +1159,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="modal-overlay" id="modal-price-offer">
   <div class="modal">
     <div class="modal-header"><div class="modal-title" id="modal-price-offer-title">הוסף הצעה</div><button class="modal-close" onclick="closeModal('modal-price-offer')"><i data-lucide="x"></i></button></div>
+    <div class="form-group"><label>קטגוריה</label><select id="price-offer-category"></select></div>
     <div class="form-group"><label>שם קבלן</label><input type="text" id="price-offer-contractor" placeholder="שם הקבלן"/></div>
     <div class="form-group"><label>סוג חומר</label><input type="text" id="price-offer-material-type" placeholder="לדוגמה: גרניט פורצלן"/></div>
     <div class="grid-2">
@@ -2317,18 +2316,18 @@ function bindModalValidationClear(modalId){
   modal.addEventListener('input',clearGroup);
   modal.addEventListener('change',clearGroup);
 }
-['modal-project','modal-user','modal-payment','modal-phase','modal-milestone','modal-finish-selection','modal-price-comparison','modal-price-offer','modal-subcontractor','modal-budget-subcontractor','modal-update','modal-gallery-post','modal-punch-item'].forEach(bindModalValidationClear);
+['modal-project','modal-user','modal-payment','modal-phase','modal-milestone','modal-finish-selection','modal-price-category','modal-price-offer','modal-subcontractor','modal-budget-subcontractor','modal-update','modal-gallery-post','modal-punch-item'].forEach(bindModalValidationClear);
 
-var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null,editingMilestoneId=null,editingFinishSelectionId=null,editingPriceComparisonId=null,editingPriceOfferId=null,selectedPriceComparisonId=null;
+var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null,editingMilestoneId=null,editingFinishSelectionId=null,editingPriceOfferId=null;
 var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
-var appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()},appUsers=[],subcontractorsCache=[],punchItemsCache=[],milestonesCache=[],finishSelectionsCache=[],priceComparisonsCache=[],priceOffersCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
+var appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:DEFAULT_PRICE_CATEGORIES.slice()},appUsers=[],subcontractorsCache=[],punchItemsCache=[],milestonesCache=[],finishSelectionsCache=[],priceOffersCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
 const OFFLINE_PUNCH_STORAGE_KEY='offline_punch_items';
 const PUNCH_FORM_DRAFT_PREFIX='punch_form_draft_';
 var punchDraftAutosaveTimer=null,punchPendingPhotoUpload=null;
 var offlinePunchSyncInProgress=false;
 var subcontractorSpecialtyFilter='',showDailyLogForm=false;
-var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='',activityLogTypeFilter='',galleryStageFilter='',finishSelectionsCategoryFilter='';
+var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='',activityLogTypeFilter='',galleryStageFilter='',finishSelectionsCategoryFilter='',priceComparisonCategoryFilter='';
 var toastTimer=null;
 var budgetsCache=[],budgetItemsByBudget={},budgetBuilderMode='list',editingBudgetId=null;
 var budgetBuilderDraft=null,budgetPendingContactItemId=null;
@@ -2379,7 +2378,7 @@ const DEFAULT_PROJECT_MILESTONES=[
   {title:'חתימת ביטוח עבודות קבלניות',priority:'high'}
 ];
 const FINISH_SELECTION_CATEGORIES=['ריצוף','סניטריה','תאורה','אלומיניום','מטבח','צבע','אחר'];
-const PRICE_COMPARISON_CATEGORIES=['שלד','חפירות','טיח','חשמל','אינסטלציה','ריצוף','גמר','אחר'];
+const DEFAULT_PRICE_CATEGORIES=['ריצוף','אלומיניום','חשמל','אינסטלציה','גמרים','אחר'];
 const DEFAULT_PROJECT_FINISH_SELECTIONS=[
   {title:'בחירת ריצוף פנים',category:'ריצוף'},
   {title:'בחירת ריצוף חוץ',category:'ריצוף'},
@@ -2398,15 +2397,14 @@ function resetListFilters(){
   galleryStageFilter='';
 }
 function resetAppSessionState(){
-  appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()};
+  appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:DEFAULT_PRICE_CATEGORIES.slice()};
   appUsers=[];
   subcontractorsCache=[];
   punchItemsCache=[];
   milestonesCache=[];
   finishSelectionsCache=[];
-  priceComparisonsCache=[];
   priceOffersCache=[];
-  selectedPriceComparisonId=null;
+  priceComparisonCategoryFilter='';
   dailyLogsCache=[];
   budgetsCache=[];
   budgetItemsByBudget={};
@@ -3085,6 +3083,25 @@ function normalizeSpecialtiesList(raw){
 function getSpecialtiesList(){
   return normalizeSpecialtiesList(appDataCache.specialties);
 }
+function normalizePriceCategoriesList(raw){
+  if(!Array.isArray(raw)||!raw.length)return DEFAULT_PRICE_CATEGORIES.slice();
+  var out=[],seen={};
+  raw.forEach(function(item){
+    var s=String(item||'').trim();
+    if(!s||seen[s])return;
+    seen[s]=true;
+    out.push(s);
+  });
+  return out.length?out:DEFAULT_PRICE_CATEGORIES.slice();
+}
+function getPriceCategoriesList(){
+  return normalizePriceCategoriesList(appDataCache.priceCategories);
+}
+function isPriceCategoryInUse(category){
+  var cat=String(category||'').trim();
+  if(!cat)return false;
+  return priceOffersCache.some(function(o){return (o.category||'')===cat;});
+}
 function isSpecialtyInUse(specialty){
   var sp=String(specialty||'').trim();
   if(!sp)return false;
@@ -3170,26 +3187,45 @@ async function persistSpecialtiesOnly(){
   }
   return {ok:true};
 }
+async function persistPriceCategoriesOnly(){
+  if(!isAdmin())return {ok:true};
+  var priceCategories=sanitizeJsonForDb(getPriceCategoriesList());
+  if(!Array.isArray(priceCategories))priceCategories=DEFAULT_PRICE_CATEGORIES.slice();
+  appDataCache.priceCategories=priceCategories;
+  var res=await supabase.from('app_data').update({
+    price_categories:priceCategories,
+    updated_at:new Date().toISOString()
+  }).eq('id','main');
+  if(res.error){
+    console.error('persistPriceCategoriesOnly',res.error);
+    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
+    return {ok:false,error:res.error.message};
+  }
+  return {ok:true};
+}
 
 async function refreshAppData(){
-  var res=await supabase.from('app_data').select('projects,activity_log,specialties').eq('id','main').maybeSingle();
+  var res=await supabase.from('app_data').select('projects,activity_log,specialties,price_categories').eq('id','main').maybeSingle();
   if(res.error){
     console.error('refreshAppData',res.error);
     if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
-    if(!appDataCache.projects.length)appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()};
+    if(!appDataCache.projects.length)appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:DEFAULT_PRICE_CATEGORIES.slice()};
     return {ok:false,error:res.error.message||String(res.error)};
   }
   if(res.data&&Array.isArray(res.data.projects)){
     var needsSpecialtySeed=!res.data.specialties||!Array.isArray(res.data.specialties)||!res.data.specialties.length;
+    var needsPriceCatSeed=!res.data.price_categories||!Array.isArray(res.data.price_categories)||!res.data.price_categories.length;
     appDataCache={
       projects:res.data.projects,
       activityLog:normalizeActivityLog(res.data.activity_log),
-      specialties:needsSpecialtySeed?DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice():normalizeSpecialtiesList(res.data.specialties)
+      specialties:needsSpecialtySeed?DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice():normalizeSpecialtiesList(res.data.specialties),
+      priceCategories:needsPriceCatSeed?DEFAULT_PRICE_CATEGORIES.slice():normalizePriceCategoriesList(res.data.price_categories)
     };
     appDataCache.projects.forEach(normalizeProjectGallery);
     appDataCache.projects.forEach(normalizeProjectClientVisibility);
     appDataCache.projects.forEach(normalizeProjectPhases);
     if(needsSpecialtySeed&&isAdmin())await persistSpecialtiesOnly();
+    if(needsPriceCatSeed&&isAdmin())await persistPriceCategoriesOnly();
     return {ok:true};
   }
   if(res.data&&res.data.projects!=null&&!Array.isArray(res.data.projects)){
@@ -3198,15 +3234,18 @@ async function refreshAppData(){
   }
   if(res.data){
     var needsSeed=!res.data.specialties||!Array.isArray(res.data.specialties)||!res.data.specialties.length;
+    var needsPriceCatSeed=!res.data.price_categories||!Array.isArray(res.data.price_categories)||!res.data.price_categories.length;
     appDataCache={
       projects:[],
       activityLog:normalizeActivityLog(res.data.activity_log),
-      specialties:needsSeed?DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice():normalizeSpecialtiesList(res.data.specialties)
+      specialties:needsSeed?DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice():normalizeSpecialtiesList(res.data.specialties),
+      priceCategories:needsPriceCatSeed?DEFAULT_PRICE_CATEGORIES.slice():normalizePriceCategoriesList(res.data.price_categories)
     };
     if(needsSeed&&isAdmin())await persistSpecialtiesOnly();
+    if(needsPriceCatSeed&&isAdmin())await persistPriceCategoriesOnly();
     return {ok:true};
   }
-  appDataCache={projects:getDefaultProjects(),activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()};
+  appDataCache={projects:getDefaultProjects(),activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:DEFAULT_PRICE_CATEGORIES.slice()};
   var seed=await persistAppData();
   if(!seed.ok){
     console.error('refreshAppData seed',seed.error);
@@ -3228,7 +3267,8 @@ function formatSupabaseErrorHint(errMsg){
   if(m.includes('punch_items')&&(m.includes('location')||m.includes('photo_url')))return 'חסרות עמודות location / photo_url בטבלת punch_items — הרץ את supabase-punch-items-location-photo-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('milestones'))return 'חסרה טבלת milestones — הרץ את supabase-milestones-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('finish_selections'))return 'חסרה טבלת finish_selections — הרץ את supabase-finish-selections-migration.sql ב-Supabase SQL Editor.';
-  if(m.includes('price_comparisons')||m.includes('price_offers'))return 'חסרות טבלאות price_comparisons / price_offers — הרץ את supabase-price-comparisons-migration.sql ב-Supabase SQL Editor.';
+  if(m.includes('price_categories'))return 'חסרה עמודת price_categories בטבלת app_data — הרץ את supabase-price-offers-category-migration.sql ב-Supabase SQL Editor.';
+  if(m.includes('price_comparisons')||m.includes('price_offers'))return 'חסרות עמודות/טבלאות price_offers — הרץ את supabase-price-comparisons-migration.sql ואז supabase-price-offers-category-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('specialties'))return 'חסרה עמודת specialties בטבלת app_data — הרץ את supabase-specialties-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('fetch')||m.includes('network')||m.includes('522')||m.includes('timeout'))return 'בעיית רשת או Supabase לא זמין.';
   return errMsg||'שגיאה לא ידועה';
@@ -3939,20 +3979,12 @@ async function seedDefaultFinishSelections(projectId,startDate,endDate){
   if(res.error)return {ok:false,error:res.error.message};
   return {ok:true};
 }
-function mapPriceComparisonRow(r){
-  return {
-    id:r.id,
-    projectId:r.project_id,
-    title:r.title,
-    description:r.description||'',
-    category:r.category||'אחר',
-    createdAt:r.created_at
-  };
-}
 function mapPriceOfferRow(r){
   return {
     id:r.id,
-    comparisonId:r.comparison_id,
+    projectId:r.project_id||'',
+    comparisonId:r.comparison_id||null,
+    category:r.category||'אחר',
     contractorName:r.contractor_name,
     materialType:r.material_type||'',
     materialCost:Number(r.material_cost)||0,
@@ -3971,11 +4003,12 @@ function calcOfferTotalPrice(materialCost,laborCost,includesVat){
   if(includesVat)return Math.round(subtotal*100)/100;
   return Math.round(subtotal*(1+VAT_RATE)*100)/100;
 }
-function populatePriceComparisonCategorySelect(selected){
-  var sel=document.getElementById('price-comp-category');
+function populatePriceOfferCategorySelect(selected){
+  var sel=document.getElementById('price-offer-category');
   if(!sel)return;
-  sel.innerHTML=PRICE_COMPARISON_CATEGORIES.map(function(c){
-    return '<option value="'+c+'"'+(c===selected?' selected':'')+'>'+c+'</option>';
+  var cats=getPriceCategoriesList();
+  sel.innerHTML=cats.map(function(c){
+    return '<option value="'+c+'"'+(c===selected?' selected':'')+'>'+escHtml(c)+'</option>';
   }).join('');
 }
 function updatePriceOfferTotalPreview(){
@@ -3987,11 +4020,8 @@ function updatePriceOfferTotalPreview(){
   var total=calcOfferTotalPrice(material,labor,includesVat);
   el.textContent='סה"כ משוער: '+fmtMoney(total)+(includesVat?' (כולל מע"מ)':' (לפני מע"מ — נוסף '+Math.round(VAT_RATE*100)+'%)');
 }
-function getPriceComparisonsForProject(projectId){
-  return priceComparisonsCache.filter(function(c){return c.projectId===projectId;});
-}
-function getOffersForComparison(comparisonId){
-  return priceOffersCache.filter(function(o){return o.comparisonId===comparisonId;});
+function getPriceOffersForProject(projectId){
+  return priceOffersCache.filter(function(o){return o.projectId===projectId;});
 }
 function getOfferPriceExtremes(offers){
   if(!offers||offers.length<2)return {min:null,max:null};
@@ -4001,58 +4031,113 @@ function getOfferPriceExtremes(offers){
   if(min===max)return {min:null,max:null};
   return {min:min,max:max};
 }
-async function refreshPriceComparisonsCache(projectId){
-  if(!currentUser){priceComparisonsCache=[];priceOffersCache=[];return {ok:false};}
+function getOfferExtremesByCategory(offers){
+  var byCat={},result={};
+  (offers||[]).forEach(function(o){
+    var cat=o.category||'אחר';
+    if(!byCat[cat])byCat[cat]=[];
+    byCat[cat].push(o);
+  });
+  Object.keys(byCat).forEach(function(cat){
+    result[cat]=getOfferPriceExtremes(byCat[cat]);
+  });
+  return result;
+}
+function getOfferRowPriceClass(offer,singleExtremes,extremesByCategory){
+  var price=Number(offer.totalPrice)||0;
+  if(extremesByCategory){
+    var ex=extremesByCategory[offer.category||'אחר'];
+    if(!ex)return '';
+    if(ex.min!=null&&price===ex.min)return 'offer-cheapest';
+    if(ex.max!=null&&price===ex.max)return 'offer-expensive';
+    return '';
+  }
+  if(!singleExtremes)return '';
+  if(singleExtremes.min!=null&&price===singleExtremes.min)return 'offer-cheapest';
+  if(singleExtremes.max!=null&&price===singleExtremes.max)return 'offer-expensive';
+  return '';
+}
+async function refreshPriceOffersCache(projectId){
+  if(!currentUser){priceOffersCache=[];return {ok:false};}
   var pid=projectId||currentProjectId;
-  if(!pid){priceComparisonsCache=[];priceOffersCache=[];return {ok:true};}
-  var compRes;
-  if(isAdmin())compRes=await supabase.from('price_comparisons').select('*').eq('project_id',pid).order('created_at',{ascending:false});
-  else if(currentUser.projectId===pid)compRes=await supabase.from('price_comparisons').select('*').eq('project_id',pid).order('created_at',{ascending:false});
-  else{priceComparisonsCache=[];priceOffersCache=[];return {ok:true};}
+  if(!pid){priceOffersCache=[];return {ok:true};}
+  if(isAdmin()||currentUser.projectId===pid){
+    var offRes=await supabase.from('price_offers').select('*').eq('project_id',pid).order('created_at',{ascending:false});
+    if(offRes.error){
+      var legacyErr=await refreshPriceOffersCacheLegacy(pid);
+      if(legacyErr.sessionExpired)return legacyErr;
+      if(legacyErr.ok)return legacyErr;
+      console.error('refreshPriceOffersCache',offRes.error);
+      if(await checkSupabaseSessionError(offRes.error))return {ok:false,sessionExpired:true};
+      priceOffersCache=[];
+      return {ok:false,error:offRes.error.message};
+    }
+    priceOffersCache=(offRes.data||[]).map(mapPriceOfferRow);
+    if(!priceOffersCache.length){
+      var legacyEmpty=await refreshPriceOffersCacheLegacy(pid);
+      if(legacyEmpty.ok&&priceOffersCache.length)return legacyEmpty;
+    }
+    return {ok:true};
+  }
+  priceOffersCache=[];
+  return {ok:true};
+}
+async function refreshPriceOffersCacheLegacy(projectId){
+  var compRes=await supabase.from('price_comparisons').select('id,project_id,category').eq('project_id',projectId);
   if(compRes.error){
-    console.error('refreshPriceComparisonsCache',compRes.error);
-    if(await checkSupabaseSessionError(compRes.error))return {ok:false,sessionExpired:true};
-    priceComparisonsCache=[];priceOffersCache=[];
+    priceOffersCache=[];
     return {ok:false,error:compRes.error.message};
   }
-  priceComparisonsCache=(compRes.data||[]).map(mapPriceComparisonRow);
-  if(!priceComparisonsCache.length){priceOffersCache=[];return {ok:true};}
-  var ids=priceComparisonsCache.map(function(c){return c.id;});
-  var offRes=await supabase.from('price_offers').select('*').in('comparison_id',ids).order('total_price',{ascending:true});
+  var comps=compRes.data||[];
+  if(!comps.length){priceOffersCache=[];return {ok:true};}
+  var compMeta={};
+  comps.forEach(function(c){compMeta[c.id]={projectId:c.project_id,category:c.category||'אחר'};});
+  var ids=comps.map(function(c){return c.id;});
+  var offRes=await supabase.from('price_offers').select('*').in('comparison_id',ids).order('created_at',{ascending:false});
   if(offRes.error){
-    console.error('refreshPriceOffersCache',offRes.error);
     priceOffersCache=[];
     return {ok:false,error:offRes.error.message};
   }
-  priceOffersCache=(offRes.data||[]).map(mapPriceOfferRow);
+  priceOffersCache=(offRes.data||[]).map(function(r){
+    var o=mapPriceOfferRow(r);
+    var meta=compMeta[r.comparison_id];
+    if(meta){
+      if(!o.projectId)o.projectId=meta.projectId;
+      if(!o.category||o.category==='אחר')o.category=meta.category||'אחר';
+    }
+    return o;
+  });
   return {ok:true};
 }
-function renderPriceComparisonCardHtml(c){
-  var offers=getOffersForComparison(c.id);
-  var extremes=getOfferPriceExtremes(offers);
-  var meta=offers.length?(offers.length+' הצעות'+(extremes.min!=null?' · הזולה ביותר: '+fmtMoney(extremes.min):'')):'אין הצעות עדיין';
-  return '<div class="price-comparison-card" onclick="openPriceComparisonDetail(\''+c.id+'\')">'+
-    '<div class="price-comparison-card-head">'+
-    '<div class="price-comparison-card-title">'+escHtml(c.title)+'</div>'+
-    '<span class="price-comparison-card-category">'+escHtml(c.category)+'</span></div>'+
-    (c.description?'<p style="font-size:13px;color:var(--text-muted);margin:0 0 8px">'+escHtml(c.description)+'</p>':'')+
-    '<div class="price-comparison-card-meta">'+escHtml(meta)+'</div></div>';
+function renderPriceCategoryFiltersHtml(active){
+  var chips='<button type="button" class="finish-category-chip'+(active===''?' active':'')+'" onclick="onPriceCategoryFilterChange(\'\')">הכל</button>';
+  chips+=getPriceCategoriesList().map(function(c){
+    return '<button type="button" class="finish-category-chip'+(active===c?' active':'')+'" onclick="onPriceCategoryFilterChange(\''+c.replace(/'/g,'\\\'')+'\')">'+escHtml(c)+'</button>';
+  }).join('');
+  var addCatBtn=isAdmin()?'<button type="button" class="btn btn-outline btn-sm admin-only-action" style="margin-right:auto" onclick="openAddPriceCategoryModal()">'+ic('plus')+' הוסף קטגוריה</button>':'';
+  return '<div class="finish-category-filters" role="toolbar" aria-label="סינון לפי קטגוריה" style="align-items:center">'+chips+addCatBtn+'</div>';
 }
-function renderPriceOffersTableHtml(offers){
-  if(!offers.length)return '<div class="empty-state card" style="margin-top:16px"><div class="empty-icon">⚖️</div><p>אין הצעות להשוואה זו</p>'+
+function onPriceCategoryFilterChange(cat){
+  priceComparisonCategoryFilter=cat||'';
+  refreshPriceComparisonsTab();
+}
+function renderPriceOffersTableHtml(offers,showCategory){
+  if(!offers.length)return '<div class="empty-state card" style="margin-top:16px"><div class="empty-icon">⚖️</div><p>אין הצעות'+(priceComparisonCategoryFilter?' בקטגוריה זו':'')+'</p>'+
     (isAdmin()?'<button type="button" class="btn btn-primary admin-only-action" style="margin-top:16px" onclick="openAddPriceOfferModal()">'+ic('plus')+' הוסף הצעה</button>':'')+
     '</div>';
-  var extremes=getOfferPriceExtremes(offers);
-  return '<div class="table-scroll"><table class="price-offers-table"><thead><tr>'+
+  var singleExtremes=priceComparisonCategoryFilter?getOfferPriceExtremes(offers):null;
+  var extremesByCategory=priceComparisonCategoryFilter?null:getOfferExtremesByCategory(offers);
+  var hasColorLegend=priceComparisonCategoryFilter?(offers.length>=2):(Object.keys(extremesByCategory).some(function(cat){var ex=extremesByCategory[cat];return ex.min!=null;}));
+  return (hasColorLegend?'<p style="font-size:12px;color:var(--text-muted);margin:0 0 12px"><span style="color:#166534;font-weight:700">ירוק</span> = הזולה ביותר · <span style="color:#b91c1c;font-weight:700">אדום</span> = היקרה ביותר (בתוך כל קטגוריה)</p>':'')+
+    '<div class="table-scroll"><table class="price-offers-table"><thead><tr>'+
+    (showCategory?'<th>קטגוריה</th>':'')+
     '<th>קבלן</th><th>סוג חומר</th><th>עלות חומר</th><th>עלות עבודה</th><th>מע"מ</th><th>פינוי פסולת</th><th>הערות</th><th>סה"כ</th>'+
     (isAdmin()?'<th></th>':'')+
     '</tr></thead><tbody>'+
     offers.map(function(o){
-      var price=Number(o.totalPrice)||0;
-      var rowCls='';
-      if(extremes.min!=null&&price===extremes.min)rowCls='offer-cheapest';
-      else if(extremes.max!=null&&price===extremes.max)rowCls='offer-expensive';
+      var rowCls=getOfferRowPriceClass(o,singleExtremes,extremesByCategory);
       return '<tr class="'+rowCls+'">'+
+        (showCategory?'<td><span class="price-comparison-card-category">'+escHtml(o.category||'אחר')+'</span></td>':'')+
         '<td><strong>'+escHtml(o.contractorName)+'</strong></td>'+
         '<td>'+escHtml(o.materialType||'—')+'</td>'+
         '<td>'+fmtMoney(o.materialCost)+'</td>'+
@@ -4060,7 +4145,7 @@ function renderPriceOffersTableHtml(offers){
         '<td>'+(o.includesVat?'כן':'לא')+'</td>'+
         '<td>'+(o.includesWasteRemoval?'כן':'לא')+'</td>'+
         '<td>'+escHtml(o.notes||'—')+'</td>'+
-        '<td class="total-cell">'+fmtMoney(price)+'</td>'+
+        '<td class="total-cell">'+fmtMoney(Number(o.totalPrice)||0)+'</td>'+
         (isAdmin()?'<td><div class="flex-gap">'+
           '<button type="button" class="btn btn-outline btn-sm admin-only-action" onclick="openEditPriceOfferModal(\''+o.id+'\')">'+ic('pencil')+'</button>'+
           '<button type="button" class="btn btn-danger btn-sm admin-only-action" onclick="deletePriceOffer(\''+o.id+'\')">'+ic('trash-2')+'</button></div></td>':'')+
@@ -4068,28 +4153,18 @@ function renderPriceOffersTableHtml(offers){
     }).join('')+
     '</tbody></table></div>';
 }
-function renderPriceComparisonsListHtml(proj,loaded){
-  var list=getPriceComparisonsForProject(proj.id);
-  var addBtn=isAdmin()?'<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddPriceComparisonModal()">'+ic('plus')+' השוואה חדשה</button>':'';
+function renderPriceComparisonsTabContentHtml(proj,loaded){
+  var list=getPriceOffersForProject(proj.id);
+  if(priceComparisonCategoryFilter)list=list.filter(function(o){return (o.category||'אחר')===priceComparisonCategoryFilter;});
+  var addBtn=isAdmin()?'<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddPriceOfferModal()">'+ic('plus')+' הוסף הצעה</button>':'';
+  var catLabel=priceComparisonCategoryFilter?priceComparisonCategoryFilter:'כל הקטגוריות';
   return '<div class="section-actions"><div class="section-title">'+tabIc('scale-balance')+' השוואת מחירים</div>'+
     (addBtn?'<div class="flex-gap">'+addBtn+'</div>':'')+
     '</div>'+
+    '<p style="font-size:13px;color:var(--text-muted);margin:-8px 0 16px">'+escHtml(catLabel)+' · '+list.length+' הצעות</p>'+
     (!loaded.ok?'<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינה: '+escHtml(formatSupabaseErrorHint(loaded.error||'שגיאה'))+'</div>':'')+
-    (list.length?'<div class="price-comparisons-list">'+list.map(renderPriceComparisonCardHtml).join('')+'</div>':
-    '<div class="empty-state card"><div class="empty-icon">⚖️</div><p>אין השוואות מחיר לפרויקט זה</p>'+
-    (isAdmin()?'<button type="button" class="btn btn-primary admin-only-action" style="margin-top:16px" onclick="openAddPriceComparisonModal()">'+ic('plus')+' השוואה חדשה</button>':'')+
-    '</div>');
-}
-function renderPriceComparisonDetailHtml(comp){
-  var offers=getOffersForComparison(comp.id);
-  var addOfferBtn=isAdmin()?'<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddPriceOfferModal()">'+ic('plus')+' הוסף הצעה</button>':'';
-  var delBtn=isAdmin()?'<button type="button" class="btn btn-danger btn-sm admin-only-action" onclick="deletePriceComparison(\''+comp.id+'\')">'+ic('trash-2')+' מחק השוואה</button>':'';
-  return '<button type="button" class="back-btn" onclick="backToPriceComparisonsList()">← חזרה לרשימת השוואות</button>'+
-    '<div class="section-actions" style="margin-top:12px"><div><h2 style="font-size:20px;font-weight:700;color:var(--primary);margin:0 0 6px">'+escHtml(comp.title)+'</h2>'+
-    '<p style="font-size:13px;color:var(--text-muted);margin:0">'+escHtml(comp.category)+(comp.description?' · '+escHtml(comp.description):'')+' · '+offers.length+' הצעות</p></div>'+
-    '<div class="flex-gap">'+addOfferBtn+(isAdmin()?'<button type="button" class="btn btn-outline btn-sm admin-only-action" onclick="openEditPriceComparisonModal(\''+comp.id+'\')">'+ic('pencil')+' עריכה</button>':'')+delBtn+'</div></div>'+
-    (offers.length>=2?'<p style="font-size:12px;color:var(--text-muted);margin:0 0 12px"><span style="color:#166534;font-weight:700">ירוק</span> = הזולה ביותר · <span style="color:#b91c1c;font-weight:700">אדום</span> = היקרה ביותר</p>':'')+
-    renderPriceOffersTableHtml(offers);
+    renderPriceCategoryFiltersHtml(priceComparisonCategoryFilter)+
+    renderPriceOffersTableHtml(list,!priceComparisonCategoryFilter);
 }
 async function initPriceComparisonsTab(){
   var root=document.getElementById('price-comparisons-tab-root');
@@ -4098,86 +4173,39 @@ async function initPriceComparisonsTab(){
   if(!proj){root.innerHTML='<div class="empty-state card"><p>פרויקט לא נמצא</p></div>';return;}
   root.innerHTML='<div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען השוואות מחיר...</p></div>';
   refreshIcons(root);
-  var loaded=await refreshPriceComparisonsCache(proj.id);
-  if(selectedPriceComparisonId){
-    var comp=priceComparisonsCache.find(function(c){return c.id===selectedPriceComparisonId;});
-    if(comp)root.innerHTML=renderPriceComparisonDetailHtml(comp);
-    else{selectedPriceComparisonId=null;root.innerHTML=renderPriceComparisonsListHtml(proj,loaded);}
-  }else root.innerHTML=renderPriceComparisonsListHtml(proj,loaded);
+  var loaded=await refreshPriceOffersCache(proj.id);
+  root.innerHTML=renderPriceComparisonsTabContentHtml(proj,loaded);
   refreshIcons(root);
 }
 function refreshPriceComparisonsTab(){
   if(currentView==='project'&&currentTab==='price-comparisons')initPriceComparisonsTab();
 }
-function openPriceComparisonDetail(id){
-  selectedPriceComparisonId=id;
+function openAddPriceCategoryModal(){
+  if(!requireAdmin())return;
+  document.getElementById('price-category-name').value='';
+  openModal('modal-price-category');
+}
+async function savePriceCategory(){
+  if(!requireAdmin())return;
+  var name=document.getElementById('price-category-name').value.trim();
+  if(!name){alert('נא למלא שם קטגוריה');return;}
+  var list=getPriceCategoriesList();
+  if(list.indexOf(name)>=0){alert('קטגוריה זו כבר קיימת');return;}
+  list.push(name);
+  appDataCache.priceCategories=list;
+  var res=await persistPriceCategoriesOnly();
+  if(!res.ok){showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(res.error),'error');return;}
+  closeModal('modal-price-category');
   refreshPriceComparisonsTab();
-}
-function backToPriceComparisonsList(){
-  selectedPriceComparisonId=null;
-  refreshPriceComparisonsTab();
-}
-function openAddPriceComparisonModal(){
-  if(!requireAdmin()||!requireProjectAccess())return;
-  editingPriceComparisonId=null;
-  document.getElementById('modal-price-comparison-title').textContent='השוואה חדשה';
-  document.getElementById('price-comp-title').value='';
-  document.getElementById('price-comp-desc').value='';
-  populatePriceComparisonCategorySelect('שלד');
-  openModal('modal-price-comparison');
-}
-function openEditPriceComparisonModal(id){
-  if(!requireAdmin()||!requireProjectAccess())return;
-  var c=priceComparisonsCache.find(function(x){return x.id===id;});
-  if(!c)return;
-  editingPriceComparisonId=id;
-  document.getElementById('modal-price-comparison-title').textContent='עריכת השוואה';
-  document.getElementById('price-comp-title').value=c.title||'';
-  document.getElementById('price-comp-desc').value=c.description||'';
-  populatePriceComparisonCategorySelect(c.category||'אחר');
-  openModal('modal-price-comparison');
-}
-async function savePriceComparison(){
-  if(!requireAdmin()||!requireProjectAccess())return;
-  var proj=getCurrentProject();if(!proj)return;
-  var title=document.getElementById('price-comp-title').value.trim();
-  if(!title){alert('נא למלא שם עבודה');return;}
-  var row={
-    project_id:proj.id,
-    title:title,
-    description:document.getElementById('price-comp-desc').value.trim(),
-    category:document.getElementById('price-comp-category').value||'אחר'
-  };
-  var res;
-  if(editingPriceComparisonId)res=await supabase.from('price_comparisons').update(row).eq('id',editingPriceComparisonId);
-  else res=await supabase.from('price_comparisons').insert(row).select('id');
-  if(res.error){showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
-  await refreshPriceComparisonsCache(proj.id);
-  var wasEdit=!!editingPriceComparisonId;
-  var newId=!wasEdit&&res.data&&res.data[0]?res.data[0].id:null;
-  closeModal('modal-price-comparison');
-  editingPriceComparisonId=null;
-  if(newId)selectedPriceComparisonId=newId;
-  refreshPriceComparisonsTab();
-  showToast('ההשוואה נשמרה');
-  logActivity('השוואת מחירים',(wasEdit?'עריכה':'הוספה')+': '+title);
-}
-async function deletePriceComparison(id){
-  if(!requireAdmin()||!requireProjectAccess())return;
-  if(!confirm('למחוק את השוואת המחיר וכל ההצעות שלה?'))return;
-  var c=priceComparisonsCache.find(function(x){return x.id===id;});
-  var res=await supabase.from('price_comparisons').delete().eq('id',id);
-  if(res.error){showToast('שגיאה במחיקה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
-  if(selectedPriceComparisonId===id)selectedPriceComparisonId=null;
-  await refreshPriceComparisonsCache(getCurrentProject().id);
-  refreshPriceComparisonsTab();
-  showToast('ההשוואה נמחקה');
-  if(c)logActivity('השוואת מחירים','מחיקה: '+c.title);
+  showToast('הקטגוריה נוספה');
+  logActivity('השוואת מחירים','הוספת קטגוריה: '+name);
 }
 function openAddPriceOfferModal(){
-  if(!requireAdmin()||!requireProjectAccess()||!selectedPriceComparisonId)return;
+  if(!requireAdmin()||!requireProjectAccess())return;
   editingPriceOfferId=null;
   document.getElementById('modal-price-offer-title').textContent='הוסף הצעה';
+  var defaultCat=priceComparisonCategoryFilter||getPriceCategoriesList()[0]||'אחר';
+  populatePriceOfferCategorySelect(defaultCat);
   document.getElementById('price-offer-contractor').value='';
   document.getElementById('price-offer-material-type').value='';
   document.getElementById('price-offer-material-cost').value='0';
@@ -4194,6 +4222,7 @@ function openEditPriceOfferModal(id){
   if(!o)return;
   editingPriceOfferId=id;
   document.getElementById('modal-price-offer-title').textContent='עריכת הצעה';
+  populatePriceOfferCategorySelect(o.category||'אחר');
   document.getElementById('price-offer-contractor').value=o.contractorName||'';
   document.getElementById('price-offer-material-type').value=o.materialType||'';
   document.getElementById('price-offer-material-cost').value=String(o.materialCost||0);
@@ -4205,7 +4234,8 @@ function openEditPriceOfferModal(id){
   openModal('modal-price-offer');
 }
 async function savePriceOffer(){
-  if(!requireAdmin()||!requireProjectAccess()||!selectedPriceComparisonId)return;
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var proj=getCurrentProject();if(!proj)return;
   var contractor=document.getElementById('price-offer-contractor').value.trim();
   if(!contractor){alert('נא למלא שם קבלן');return;}
   var materialCost=Number(document.getElementById('price-offer-material-cost').value)||0;
@@ -4213,7 +4243,8 @@ async function savePriceOffer(){
   var includesVat=document.getElementById('price-offer-includes-vat').value==='yes';
   var includesWaste=document.getElementById('price-offer-includes-waste').value==='yes';
   var row={
-    comparison_id:selectedPriceComparisonId,
+    project_id:proj.id,
+    category:document.getElementById('price-offer-category').value||'אחר',
     contractor_name:contractor,
     material_type:document.getElementById('price-offer-material-type').value.trim(),
     material_cost:materialCost,
@@ -4227,7 +4258,7 @@ async function savePriceOffer(){
   if(editingPriceOfferId)res=await supabase.from('price_offers').update(row).eq('id',editingPriceOfferId);
   else res=await supabase.from('price_offers').insert(row);
   if(res.error){showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
-  await refreshPriceComparisonsCache(getCurrentProject().id);
+  await refreshPriceOffersCache(proj.id);
   var wasEdit=!!editingPriceOfferId;
   closeModal('modal-price-offer');
   editingPriceOfferId=null;
@@ -4241,7 +4272,7 @@ async function deletePriceOffer(id){
   var o=priceOffersCache.find(function(x){return x.id===id;});
   var res=await supabase.from('price_offers').delete().eq('id',id);
   if(res.error){showToast('שגיאה במחיקה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
-  await refreshPriceComparisonsCache(getCurrentProject().id);
+  await refreshPriceOffersCache(getCurrentProject().id);
   refreshPriceComparisonsTab();
   showToast('ההצעה נמחקה');
   if(o)logActivity('השוואת מחירים','מחיקת הצעה: '+o.contractorName);
@@ -7129,7 +7160,6 @@ function renderFinancialCharts(p){
 
 async function switchTab(t){
   if(!clientCanAccessProject(currentProjectId))return;
-  if(t!=='price-comparisons')selectedPriceComparisonId=null;
   t=normalizeClientTab(t);
   currentTab=t;
   if(t==='messages'&&isAdmin()){
@@ -8186,7 +8216,7 @@ async function sendAdminResetEmail(){
 async function resetData(){
   if(!requireAdmin())return;
   logActivity('איפוס מלא','כל הנתונים אופסו לברירת מחדל');
-  appDataCache={projects:getDefaultProjects(),activityLog:appDataCache.activityLog||[],specialties:getSpecialtiesList()};
+  appDataCache={projects:getDefaultProjects(),activityLog:appDataCache.activityLog||[],specialties:getSpecialtiesList(),priceCategories:getPriceCategoriesList()};
   var res=await persistAppData();
   if(!res.ok){alert('שגיאה באיפוס הנתונים:\n'+formatSupabaseErrorHint(res.error));return;}
   location.reload();
@@ -8214,7 +8244,7 @@ Object.assign(window,{
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
   openAddMilestoneModal,openEditMilestoneModal,saveMilestone,deleteMilestone,markMilestoneDone,goToMilestonesView,
   openAddFinishSelectionModal,openEditFinishSelectionModal,saveFinishSelection,deleteFinishSelection,markFinishSelectionDone,saveFinishSelectionNotes,onFinishCategoryFilterChange,
-  openAddPriceComparisonModal,openEditPriceComparisonModal,savePriceComparison,deletePriceComparison,openPriceComparisonDetail,backToPriceComparisonsList,
+  openAddPriceCategoryModal,savePriceCategory,onPriceCategoryFilterChange,
   openAddPriceOfferModal,openEditPriceOfferModal,savePriceOffer,deletePriceOffer,updatePriceOfferTotalPreview,
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,exportDailyLogsCsv,
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,
