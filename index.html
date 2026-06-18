@@ -1334,7 +1334,6 @@ const UPLOAD_ACCEPT_IMAGES='.jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,ima
 const UPLOAD_ACCEPT_RECEIPT=UPLOAD_ACCEPT_IMAGES+',.pdf,application/pdf';
 const UPLOAD_ACCEPT_UPDATE=UPLOAD_ACCEPT_RECEIPT+',.mp4,.mov,video/mp4,video/quicktime';
 const DEFAULT_SUBCONTRACTOR_SPECIALTIES=['שלד ובטון','טיח וריצוף','חשמל','אינסטלציה וצנרת','גבס ותקרות','איטום וחוץ','מסגרות ואלומיניום','עיצוב פנים','ניהול פרויקט','אחר'];
-const DEFAULT_PRICE_CATEGORIES=['ריצוף','אלומיניום','חשמל','אינסטלציה','גמרים','אחר'];
 var loginLockTimer=null;
 var filePreviewUrls={};
 
@@ -2371,7 +2370,7 @@ function bindModalValidationClear(modalId){
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null,editingMilestoneId=null,editingFinishSelectionId=null,editingPriceOfferId=null;
 var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
-var appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:[]},appUsers=[],subcontractorsCache=[],punchItemsCache=[],milestonesCache=[],finishSelectionsCache=[],priceOffersCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
+var appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()},appUsers=[],subcontractorsCache=[],punchItemsCache=[],milestonesCache=[],finishSelectionsCache=[],priceComparisonsCache=[],priceOffersCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
 const OFFLINE_PUNCH_STORAGE_KEY='offline_punch_items';
 const PUNCH_FORM_DRAFT_PREFIX='punch_form_draft_';
 var punchDraftAutosaveTimer=null,punchPendingPhotoUpload=null;
@@ -2446,12 +2445,13 @@ function resetListFilters(){
   galleryStageFilter='';
 }
 function resetAppSessionState(){
-  appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:[]};
+  appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()};
   appUsers=[];
   subcontractorsCache=[];
   punchItemsCache=[];
   milestonesCache=[];
   finishSelectionsCache=[];
+  priceComparisonsCache=[];
   priceOffersCache=[];
   priceComparisonCategoryFilter='';
   dailyLogsCache=[];
@@ -3132,36 +3132,6 @@ function normalizeSpecialtiesList(raw){
 function getSpecialtiesList(){
   return normalizeSpecialtiesList(appDataCache.specialties);
 }
-function normalizePriceCategoriesList(raw){
-  if(!Array.isArray(raw)||!raw.length)return [];
-  var out=[],seen={};
-  raw.forEach(function(item){
-    var s=String(item||'').trim();
-    if(!s||seen[s])return;
-    seen[s]=true;
-    out.push(s);
-  });
-  return out;
-}
-function isLegacyDefaultPriceCategories(raw){
-  if(!Array.isArray(raw)||raw.length!==DEFAULT_PRICE_CATEGORIES.length)return false;
-  var set={};
-  raw.forEach(function(c){set[String(c).trim()]=true;});
-  return DEFAULT_PRICE_CATEGORIES.every(function(c){return set[c];});
-}
-function parsePriceCategoriesFromDb(raw){
-  if(!Array.isArray(raw)||!raw.length)return [];
-  if(isLegacyDefaultPriceCategories(raw))return [];
-  return normalizePriceCategoriesList(raw);
-}
-function getPriceCategoriesList(){
-  return normalizePriceCategoriesList(appDataCache.priceCategories);
-}
-function isPriceCategoryInUse(category){
-  var cat=String(category||'').trim();
-  if(!cat)return false;
-  return priceOffersCache.some(function(o){return (o.category||'')===cat;});
-}
 function isSpecialtyInUse(specialty){
   var sp=String(specialty||'').trim();
   if(!sp)return false;
@@ -3247,46 +3217,25 @@ async function persistSpecialtiesOnly(){
   }
   return {ok:true};
 }
-async function persistPriceCategoriesOnly(){
-  if(!isAdmin())return {ok:true};
-  var priceCategories=sanitizeJsonForDb(getPriceCategoriesList());
-  if(!Array.isArray(priceCategories))priceCategories=[];
-  appDataCache.priceCategories=priceCategories;
-  var res=await supabase.from('app_data').update({
-    price_categories:priceCategories,
-    updated_at:new Date().toISOString()
-  }).eq('id','main');
-  if(res.error){
-    console.error('persistPriceCategoriesOnly',res.error);
-    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
-    return {ok:false,error:res.error.message};
-  }
-  return {ok:true};
-}
-
 async function refreshAppData(){
-  var res=await supabase.from('app_data').select('projects,activity_log,specialties,price_categories').eq('id','main').maybeSingle();
+  var res=await supabase.from('app_data').select('projects,activity_log,specialties').eq('id','main').maybeSingle();
   if(res.error){
     console.error('refreshAppData',res.error);
     if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
-    if(!appDataCache.projects.length)appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:[]};
+    if(!appDataCache.projects.length)appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()};
     return {ok:false,error:res.error.message||String(res.error)};
   }
   if(res.data&&Array.isArray(res.data.projects)){
     var needsSpecialtySeed=!res.data.specialties||!Array.isArray(res.data.specialties)||!res.data.specialties.length;
-    var legacyPriceCats=isLegacyDefaultPriceCategories(res.data.price_categories);
-    var priceCategories=parsePriceCategoriesFromDb(res.data.price_categories);
     appDataCache={
       projects:res.data.projects,
       activityLog:normalizeActivityLog(res.data.activity_log),
-      specialties:needsSpecialtySeed?DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice():normalizeSpecialtiesList(res.data.specialties),
-      priceCategories:priceCategories
+      specialties:needsSpecialtySeed?DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice():normalizeSpecialtiesList(res.data.specialties)
     };
     appDataCache.projects.forEach(normalizeProjectGallery);
     appDataCache.projects.forEach(normalizeProjectClientVisibility);
     appDataCache.projects.forEach(normalizeProjectPhases);
     if(needsSpecialtySeed&&isAdmin())await persistSpecialtiesOnly();
-    if(legacyPriceCats&&isAdmin())await persistPriceCategoriesOnly();
     return {ok:true};
   }
   if(res.data&&res.data.projects!=null&&!Array.isArray(res.data.projects)){
@@ -3295,19 +3244,15 @@ async function refreshAppData(){
   }
   if(res.data){
     var needsSeed=!res.data.specialties||!Array.isArray(res.data.specialties)||!res.data.specialties.length;
-    var legacyPriceCats=isLegacyDefaultPriceCategories(res.data.price_categories);
-    var priceCategories=parsePriceCategoriesFromDb(res.data.price_categories);
     appDataCache={
       projects:[],
       activityLog:normalizeActivityLog(res.data.activity_log),
-      specialties:needsSeed?DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice():normalizeSpecialtiesList(res.data.specialties),
-      priceCategories:priceCategories
+      specialties:needsSeed?DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice():normalizeSpecialtiesList(res.data.specialties)
     };
     if(needsSeed&&isAdmin())await persistSpecialtiesOnly();
-    if(legacyPriceCats&&isAdmin())await persistPriceCategoriesOnly();
     return {ok:true};
   }
-  appDataCache={projects:getDefaultProjects(),activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:[]};
+  appDataCache={projects:getDefaultProjects(),activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()};
   var seed=await persistAppData();
   if(!seed.ok){
     console.error('refreshAppData seed',seed.error);
@@ -4041,6 +3986,16 @@ async function seedDefaultFinishSelections(projectId,startDate,endDate){
   if(res.error)return {ok:false,error:res.error.message};
   return {ok:true};
 }
+function mapPriceComparisonRow(r){
+  return {
+    id:r.id,
+    projectId:r.project_id,
+    title:r.title,
+    description:r.description||'',
+    category:r.category||r.title||'',
+    createdAt:r.created_at
+  };
+}
 function mapPriceOfferRow(r){
   return {
     id:r.id,
@@ -4065,6 +4020,81 @@ function calcOfferTotalPrice(materialCost,laborCost,includesVat){
   var subtotal=material+labor;
   if(includesVat)return Math.round(subtotal*100)/100;
   return Math.round(subtotal*(1+VAT_RATE)*100)/100;
+}
+function getPriceCategoryNamesForProject(projectId){
+  var names=[],seen={};
+  priceComparisonsCache.filter(function(c){return c.projectId===projectId;}).forEach(function(c){
+    var name=String(c.category||c.title||'').trim();
+    if(name&&!seen[name]){seen[name]=true;names.push(name);}
+  });
+  return names;
+}
+function getPriceCategoriesList(){
+  var pid=currentProjectId;
+  if(!pid)return [];
+  return getPriceCategoryNamesForProject(pid);
+}
+function isPriceCategoryExists(projectId,name){
+  var n=String(name||'').trim();
+  if(!n)return false;
+  return getPriceCategoryNamesForProject(projectId).indexOf(n)>=0;
+}
+async function insertPriceCategoryRow(projectId,categoryName){
+  return await supabase.from('price_comparisons').insert({
+    project_id:projectId,
+    title:categoryName,
+    category:categoryName,
+    description:''
+  });
+}
+async function ensurePriceCategoriesFromOffers(projectId){
+  if(!isAdmin()||!projectId)return {ok:true};
+  var existing={};
+  getPriceCategoryNamesForProject(projectId).forEach(function(c){existing[c]=true;});
+  var missing=[];
+  priceOffersCache.filter(function(o){return o.projectId===projectId;}).forEach(function(o){
+    var cat=String(o.category||'').trim();
+    if(cat&&!existing[cat]){existing[cat]=true;missing.push(cat);}
+  });
+  if(!missing.length)return {ok:true};
+  var rows=missing.map(function(cat){
+    return {project_id:projectId,title:cat,category:cat,description:''};
+  });
+  var res=await supabase.from('price_comparisons').insert(rows);
+  if(res.error){
+    console.error('ensurePriceCategoriesFromOffers',res.error);
+    return {ok:false,error:res.error.message};
+  }
+  var catRes=await supabase.from('price_comparisons').select('*').eq('project_id',projectId).order('created_at',{ascending:true});
+  if(!catRes.error)priceComparisonsCache=(catRes.data||[]).map(mapPriceComparisonRow);
+  return {ok:!res.error};
+}
+async function refreshPriceComparisonsCache(projectId){
+  if(!currentUser){priceComparisonsCache=[];return {ok:false};}
+  var pid=projectId||currentProjectId;
+  if(!pid){priceComparisonsCache=[];return {ok:true};}
+  if(isAdmin()||currentUser.projectId===pid){
+    var catRes=await supabase.from('price_comparisons').select('*').eq('project_id',pid).order('created_at',{ascending:true});
+    if(catRes.error){
+      console.error('refreshPriceComparisonsCache',catRes.error);
+      if(await checkSupabaseSessionError(catRes.error))return {ok:false,sessionExpired:true};
+      priceComparisonsCache=[];
+      return {ok:false,error:catRes.error.message};
+    }
+    priceComparisonsCache=(catRes.data||[]).map(mapPriceComparisonRow);
+    return {ok:true};
+  }
+  priceComparisonsCache=[];
+  return {ok:true};
+}
+async function refreshPriceComparisonsData(projectId){
+  var catLoaded=await refreshPriceComparisonsCache(projectId);
+  if(!catLoaded.ok)return catLoaded;
+  var offersLoaded=await refreshPriceOffersCache(projectId);
+  if(!offersLoaded.ok)return offersLoaded;
+  var sync=await ensurePriceCategoriesFromOffers(projectId);
+  if(!sync.ok)return sync;
+  return {ok:true};
 }
 function populatePriceOfferCategorySelect(selected){
   var sel=document.getElementById('price-offer-category');
@@ -4252,7 +4282,7 @@ async function initPriceComparisonsTab(){
   if(!proj){root.innerHTML='<div class="empty-state card"><p>פרויקט לא נמצא</p></div>';return;}
   root.innerHTML='<div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען השוואות מחיר...</p></div>';
   refreshIcons(root);
-  var loaded=await refreshPriceOffersCache(proj.id);
+  var loaded=await refreshPriceComparisonsData(proj.id);
   root.innerHTML=renderPriceComparisonsTabContentHtml(proj,loaded);
   refreshIcons(root);
 }
@@ -4265,15 +4295,14 @@ function openAddPriceCategoryModal(){
   openModal('modal-price-category');
 }
 async function savePriceCategory(){
-  if(!requireAdmin())return;
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var proj=getCurrentProject();if(!proj)return;
   var name=document.getElementById('price-category-name').value.trim();
   if(!name){alert('נא למלא שם קטגוריה');return;}
-  var list=getPriceCategoriesList();
-  if(list.indexOf(name)>=0){alert('קטגוריה זו כבר קיימת');return;}
-  list.push(name);
-  appDataCache.priceCategories=list;
-  var res=await persistPriceCategoriesOnly();
-  if(!res.ok){showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(res.error),'error');return;}
+  if(isPriceCategoryExists(proj.id,name)){alert('קטגוריה זו כבר קיימת');return;}
+  var res=await insertPriceCategoryRow(proj.id,name);
+  if(res.error){showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
+  await refreshPriceComparisonsCache(proj.id);
   closeModal('modal-price-category');
   priceComparisonCategoryFilter=name;
   refreshPriceComparisonsTab();
@@ -4376,7 +4405,7 @@ async function savePriceOffer(){
         return;
       }
     }
-    await refreshPriceOffersCache(proj.id);
+    await refreshPriceComparisonsData(proj.id);
     var wasEdit=!!editingPriceOfferId;
     closeModal('modal-price-offer');
     editingPriceOfferId=null;
@@ -4395,7 +4424,7 @@ async function deletePriceOffer(id){
   var o=priceOffersCache.find(function(x){return x.id===id;});
   var res=await supabase.from('price_offers').delete().eq('id',id);
   if(res.error){showToast('שגיאה במחיקה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
-  await refreshPriceOffersCache(getCurrentProject().id);
+  await refreshPriceComparisonsData(getCurrentProject().id);
   refreshPriceComparisonsTab();
   showToast('ההצעה נמחקה');
   if(o)logActivity('השוואת מחירים','מחיקת הצעה: '+o.contractorName);
@@ -8339,7 +8368,7 @@ async function sendAdminResetEmail(){
 async function resetData(){
   if(!requireAdmin())return;
   logActivity('איפוס מלא','כל הנתונים אופסו לברירת מחדל');
-  appDataCache={projects:getDefaultProjects(),activityLog:appDataCache.activityLog||[],specialties:getSpecialtiesList(),priceCategories:getPriceCategoriesList()};
+  appDataCache={projects:getDefaultProjects(),activityLog:appDataCache.activityLog||[],specialties:getSpecialtiesList()};
   var res=await persistAppData();
   if(!res.ok){alert('שגיאה באיפוס הנתונים:\n'+formatSupabaseErrorHint(res.error));return;}
   location.reload();
