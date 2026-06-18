@@ -235,7 +235,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .gantt-header-label{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
 .gantt-axis{position:relative;height:24px;background:var(--bg);border-radius:8px;overflow:hidden}
 .gantt-axis-tick{position:absolute;top:0;bottom:0;border-right:1px solid var(--border);font-size:10px;color:var(--text-muted);padding:4px 6px 0;white-space:nowrap;transform:translateX(50%)}
-.gantt-body{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.gantt-body{display:flex;flex-direction:column;gap:10px;margin-top:4px;position:relative}
 .gantt-row{display:grid;grid-template-columns:minmax(100px,140px) 1fr;gap:12px;align-items:center;min-height:52px}
 .gantt-label{font-size:14px;font-weight:700;color:var(--primary);line-height:1.35;word-break:break-word;padding:4px 0}
 .gantt-track-wrap{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -249,6 +249,19 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .gantt-meta-pct{font-weight:700;color:var(--primary)}
 .gantt-empty{padding:32px 16px}
 .gantt-today-line{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--danger);opacity:.6;z-index:2;pointer-events:none}
+.gantt-dep-overlay{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:visible}
+.gantt-dep-arrow{fill:none;stroke:var(--accent);stroke-width:2;opacity:.75}
+.gantt-dep-arrow-head{fill:var(--accent);stroke:none;opacity:.85}
+.gantt-label-deps{font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.4}
+.gantt-label-dep-link{color:var(--accent);font-weight:600}
+.gantt-row.delayed .gantt-label{color:var(--danger)}
+.timeline-dep-alert{background:linear-gradient(90deg,#c2410c,#ea580c);color:#fff;padding:14px 18px;border-radius:14px;margin-bottom:16px;font-size:14px;line-height:1.5;box-shadow:0 2px 12px rgba(234,88,12,.25)}
+.timeline-dep-alert strong{font-weight:800}
+.phase-depends-checklist{display:flex;flex-direction:column;gap:8px;max-height:180px;overflow-y:auto;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:12px}
+.phase-dep-check{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--primary);cursor:pointer}
+.phase-dep-check input{width:18px;height:18px;flex-shrink:0}
+.phase-card-deps{font-size:12px;color:var(--text-muted);margin-top:8px;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)}
+.phase-card-deps strong{color:var(--accent);font-weight:700}
 .milestone-alert-banner{display:none;background:linear-gradient(90deg,#b91c1c,#dc2626);color:#fff;padding:12px 20px;font-size:14px;line-height:1.5;box-shadow:0 2px 12px rgba(185,28,28,.35);border-bottom:2px solid rgba(0,0,0,.12)}
 .milestone-alert-banner.show{display:block}
 .milestone-alert-inner{max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;justify-content:space-between}
@@ -1126,6 +1139,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="form-group"><label>אחוז השלמה: <span id="phase-pv">0%</span></label><input type="range" id="phase-prog" min="0" max="100" value="0" oninput="document.getElementById('phase-pv').textContent=this.value+'%'" style="width:100%;margin-top:8px"/></div>
     <div class="form-group"><label>סטטוס</label><select id="phase-status"><option value="pending">טרם התחיל</option><option value="active">בביצוע</option><option value="done">הושלם</option></select></div>
     <div class="form-group"><label>קבלן אחראי</label><select id="phase-subcontractor"><option value="">— ללא —</option></select></div>
+    <div class="form-group"><label>תלוי בשלבים</label><div id="phase-depends-on-list" class="phase-depends-checklist"><p style="font-size:13px;color:var(--text-muted);margin:0">טוען...</p></div></div>
     <div class="form-group"><label for="phase-planned-cost">עלות מתוכננת (₪)</label><input type="number" id="phase-planned-cost" placeholder="0" min="0" step="1"/></div>
     <div class="form-group"><label>הערות</label><textarea id="phase-notes" placeholder="הערות לשלב זה"></textarea></div>
     <div class="modal-footer phase-modal-footer">
@@ -2427,11 +2441,11 @@ function getDefaultProjects(){
       builtArea:280,propertyArea:500,budget:2500000,status:'active',progress:35,
       budgetPlan:{שלד:900000,טיח:350000,חשמל:400000,אינסטלציה:350000,ריצוף:300000,גמר:450000,אחר:250000},
       phases:[
-        {id:'ph1',name:'שלד',status:'done',start:'2025-01-01',end:'2025-03-01',progress:100,notes:'הושלם בהצלחה'},
-        {id:'ph2',name:'טיח וגבס',status:'active',start:'2025-03-15',end:'2025-05-30',progress:60,notes:'בתהליך'},
-        {id:'ph3',name:'חשמל ואינסטלציה',status:'active',start:'2025-04-01',end:'2025-06-01',progress:40,notes:''},
-        {id:'ph4',name:'ריצוף',status:'pending',start:'2025-06-01',end:'2025-08-01',progress:0,notes:''},
-        {id:'ph5',name:'גמר',status:'pending',start:'2025-08-01',end:'2025-11-01',progress:0,notes:''}
+        {id:'ph1',name:'שלד',status:'done',start:'2025-01-01',end:'2025-03-01',progress:100,notes:'הושלם בהצלחה',depends_on:[]},
+        {id:'ph2',name:'טיח וגבס',status:'active',start:'2025-03-15',end:'2025-05-30',progress:60,notes:'בתהליך',depends_on:['ph1']},
+        {id:'ph3',name:'חשמל ואינסטלציה',status:'active',start:'2025-04-01',end:'2025-06-01',progress:40,notes:'',depends_on:['ph1']},
+        {id:'ph4',name:'ריצוף',status:'pending',start:'2025-06-01',end:'2025-08-01',progress:0,notes:'',depends_on:['ph2']},
+        {id:'ph5',name:'גמר',status:'pending',start:'2025-08-01',end:'2025-11-01',progress:0,notes:'',depends_on:['ph4','ph3']}
       ],
       payments:[
         {id:'p1',desc:'תשלום ראשון - שלד',amount:400000,date:'2025-01-15',to:'קבלן שלד בע"מ',category:'שלד'},
@@ -2618,6 +2632,138 @@ function requireProjectAccess(){
 function phaseStatusLabel(s){
   return {done:'הושלם',active:'בביצוע',pending:'ממתין'}[s]||s;
 }
+function normalizePhaseDependsOn(ph){
+  if(!ph)return ph;
+  if(!Array.isArray(ph.depends_on))ph.depends_on=[];
+  else ph.depends_on=ph.depends_on.filter(function(id){return typeof id==='string'&&id;});
+  return ph;
+}
+function normalizeProjectPhases(proj){
+  if(!proj||!Array.isArray(proj.phases))return;
+  proj.phases.forEach(normalizePhaseDependsOn);
+}
+function isPhaseDelayed(ph){
+  if(!ph||ph.status==='done')return false;
+  var end=parsePhaseDate(ph.end);
+  if(!end)return false;
+  var today=new Date();today.setHours(12,0,0,0);
+  end.setHours(12,0,0,0);
+  return end.getTime()<today.getTime();
+}
+function getDependentPhases(phaseId,phases){
+  return (phases||[]).filter(function(ph){
+    return Array.isArray(ph.depends_on)&&ph.depends_on.indexOf(phaseId)>=0;
+  });
+}
+function getPhaseById(id,phases){
+  return (phases||[]).find(function(ph){return ph.id===id;})||null;
+}
+function formatPhaseDependsOnLabel(ph,phases){
+  if(!ph||!Array.isArray(ph.depends_on)||!ph.depends_on.length)return '';
+  return ph.depends_on.map(function(id){
+    var dep=getPhaseById(id,phases);
+    return dep?dep.name:id;
+  }).join(', ');
+}
+function getPhaseDependencyAlertMessages(changedPhase,oldPhase,allPhases){
+  if(!changedPhase)return [];
+  var dependents=getDependentPhases(changedPhase.id,allPhases);
+  if(!dependents.length)return [];
+  var depNames=dependents.map(function(d){return d.name;}).join(', ');
+  var endChanged=oldPhase&&formatPhaseDateForInput(oldPhase.end)!==formatPhaseDateForInput(changedPhase.end);
+  var nowDelayed=isPhaseDelayed(changedPhase);
+  var wasNotDelayed=oldPhase&&!isPhaseDelayed(oldPhase);
+  var becameDelayed=nowDelayed&&wasNotDelayed;
+  var statusChanged=oldPhase&&oldPhase.status!==changedPhase.status;
+  if(endChanged||becameDelayed||(nowDelayed&&statusChanged)){
+    var verb=nowDelayed?'התעכב':'עודכן';
+    return ['שלב "'+changedPhase.name+'" '+verb+' — שים לב לשלבים הבאים שתלויים בו: '+depNames];
+  }
+  return [];
+}
+function renderTimelineDependencyAlertsHtml(phases){
+  var alerts=[];
+  (phases||[]).forEach(function(ph){
+    if(!isPhaseDelayed(ph))return;
+    var dependents=getDependentPhases(ph.id,phases);
+    if(!dependents.length)return;
+    alerts.push('<div class="timeline-dep-alert" role="alert"><strong>⚠️ שלב "'+escHtml(ph.name)+'" התעכב</strong> — שים לב לשלבים הבאים שתלויים בו: '+escHtml(dependents.map(function(d){return d.name;}).join(', '))+'</div>');
+  });
+  return alerts.join('');
+}
+function populatePhaseDependsOnChecklist(phases,currentPhaseId,selectedIds){
+  var list=document.getElementById('phase-depends-on-list');
+  if(!list)return;
+  var others=(phases||[]).filter(function(p){return p.id!==currentPhaseId;});
+  if(!others.length){
+    list.innerHTML='<p style="font-size:13px;color:var(--text-muted);margin:0">אין שלבים אחרים בפרויקט</p>';
+    return;
+  }
+  list.innerHTML=others.map(function(p){
+    var checked=(selectedIds||[]).indexOf(p.id)>=0?' checked':'';
+    return '<label class="phase-dep-check"><input type="checkbox" class="phase-dep-cb" value="'+escHtml(p.id)+'"'+checked+'/> '+escHtml(p.name)+'</label>';
+  }).join('');
+}
+function readPhaseDependsOnFromForm(){
+  return Array.from(document.querySelectorAll('.phase-dep-cb:checked')).map(function(cb){return cb.value;});
+}
+function removePhaseIdFromAllDepends(proj,removedId){
+  if(!proj||!removedId)return;
+  proj.phases.forEach(function(ph){
+    if(Array.isArray(ph.depends_on))ph.depends_on=ph.depends_on.filter(function(id){return id!==removedId;});
+  });
+}
+function initGanttDependencyArrows(){
+  var body=document.querySelector('.gantt-body');
+  if(!body)return;
+  var old=document.getElementById('gantt-dep-overlay');
+  if(old)old.remove();
+  var rows=body.querySelectorAll('.gantt-row[data-phase-id]');
+  if(!rows.length)return;
+  var bodyW=body.clientWidth;
+  var bodyH=body.scrollHeight;
+  if(bodyW<1||bodyH<1)return;
+  var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.id='gantt-dep-overlay';
+  svg.classList.add('gantt-dep-overlay');
+  svg.setAttribute('viewBox','0 0 '+bodyW+' '+bodyH);
+  svg.setAttribute('preserveAspectRatio','none');
+  var bodyRect=body.getBoundingClientRect();
+  var barInfo={};
+  rows.forEach(function(row){
+    var id=row.getAttribute('data-phase-id');
+    var bar=row.querySelector('.gantt-bar');
+    if(!id||!bar)return;
+    var barRect=bar.getBoundingClientRect();
+    barInfo[id]={
+      endX:barRect.left-bodyRect.left,
+      startX:barRect.right-bodyRect.left,
+      y:row.offsetTop+row.offsetHeight/2
+    };
+  });
+  var paths='';
+  rows.forEach(function(row){
+    var deps;
+    try{deps=JSON.parse(decodeURIComponent(row.getAttribute('data-depends-on')||'%5B%5D'));}catch(e){deps=[];}
+    if(!Array.isArray(deps)||!deps.length)return;
+    var toId=row.getAttribute('data-phase-id');
+    var to=barInfo[toId];
+    if(!to)return;
+    deps.forEach(function(fromId){
+      var from=barInfo[fromId];
+      if(!from)return;
+      var x1=from.endX,y1=from.y,x2=to.startX,y2=to.y;
+      var midY=(y1+y2)/2;
+      var d='M '+x1+' '+y1+' C '+x1+' '+midY+', '+x2+' '+midY+', '+x2+' '+y2;
+      paths+='<path class="gantt-dep-arrow" d="'+d+'"/>';
+      var dir=y2>=y1?1:-1;
+      paths+='<polygon class="gantt-dep-arrow-head" points="'+x2+','+y2+' '+(x2-5)+','+(y2-6*dir)+' '+(x2+5)+','+(y2-6*dir)+'"/>';
+    });
+  });
+  if(!paths)return;
+  svg.innerHTML=paths;
+  body.appendChild(svg);
+}
 function phaseProgressPct(progress){
   return Math.min(100,Math.max(0,Number(progress)||0));
 }
@@ -2706,15 +2852,19 @@ function renderGanttChartHtml(phases){
   var rowsHtml=items.map(function(item){
     var ph=item.ph;
     var status=ph.status==='done'?'done':ph.status==='active'?'active':'pending';
+    var delayed=isPhaseDelayed(ph);
+    var depNames=formatPhaseDependsOnLabel(ph,phases);
+    var depLabelHtml=depNames?'<div class="gantt-label-deps">⬅ תלוי ב: <span class="gantt-label-dep-link">'+escHtml(depNames)+'</span></div>':'';
     if(!item.start||!item.end){
-      return '<div class="gantt-row"><div class="gantt-label">'+escHtml(ph.name)+'</div>'+
+      return '<div class="gantt-row'+(delayed?' delayed':'')+'" data-phase-id="'+escHtml(ph.id)+'" data-depends-on="'+encodeURIComponent(JSON.stringify(ph.depends_on||[]))+'">'+
+        '<div class="gantt-label">'+escHtml(ph.name)+depLabelHtml+'</div>'+
         '<div class="gantt-track-wrap"><div class="gantt-meta" style="padding:8px 0">חסרים תאריכים · '+item.pct+'%</div></div></div>';
     }
     var rightPct=((item.start.getTime()-minT)/range)*100;
     var widthPct=Math.max(((item.end.getTime()-item.start.getTime())/range)*100,1.5);
     if(rightPct+widthPct>100){widthPct=100-rightPct;}
-    return '<div class="gantt-row">'+
-      '<div class="gantt-label">'+escHtml(ph.name)+'</div>'+
+    return '<div class="gantt-row'+(delayed?' delayed':'')+'" data-phase-id="'+escHtml(ph.id)+'" data-depends-on="'+encodeURIComponent(JSON.stringify(ph.depends_on||[]))+'">'+
+      '<div class="gantt-label">'+escHtml(ph.name)+depLabelHtml+'</div>'+
       '<div class="gantt-track-wrap">'+
       '<div class="gantt-track">'+
       '<div class="gantt-bar '+status+'" style="right:'+rightPct+'%;width:'+widthPct+'%" title="'+escHtml(ph.name)+'">'+
@@ -2979,6 +3129,7 @@ async function refreshAppData(){
     };
     appDataCache.projects.forEach(normalizeProjectGallery);
     appDataCache.projects.forEach(normalizeProjectClientVisibility);
+    appDataCache.projects.forEach(normalizeProjectPhases);
     if(needsSpecialtySeed&&isAdmin())await persistSpecialtiesOnly();
     return {ok:true};
   }
@@ -6370,17 +6521,20 @@ function renderProjectDetail(el){
 
   // TIMELINE TAB
   html+='<div id="tab-timeline" class="tab-content '+(currentTab==='timeline'?'active':'')+'">'+
+    renderTimelineDependencyAlertsHtml(p.phases)+
     renderGanttChartHtml(p.phases)+
     '<div class="section-actions"><div class="section-title">'+ic('layout-grid')+' פירוט שלבים</div>'+
     '<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddPhaseModal()">'+ic('plus')+' שלב חדש</button>'+
     '</div><div class="timeline-phases">'+
     p.phases.map(function(ph){
       var phPct=phaseProgressPct(ph.progress);
-      return '<div class="phase-card '+ph.status+'">'+
+      var depNames=formatPhaseDependsOnLabel(ph,p.phases);
+      return '<div class="phase-card '+ph.status+(isPhaseDelayed(ph)?' delayed':'')+'">'+
         '<div class="phase-header"><div class="phase-name">'+ph.name+'</div>'+
         '<span class="phase-status '+ph.status+'">'+(ph.status==='done'?ic('circle-check')+' הושלם':ph.status==='active'?ic('hammer')+' בביצוע':ic('clock')+' ממתין')+'</span></div>'+
         '<div class="phase-progress-row"><div class="phase-progress-track"><div class="phase-progress-fill" style="width:'+phPct+'%"></div></div><span class="phase-progress-pct">'+phPct+'%</span></div>'+
         '<div class="phase-end-date">'+ph.end+'</div>'+
+        (depNames?'<div class="phase-card-deps"><strong>תלוי ב:</strong> '+escHtml(depNames)+'</div>':'')+
         (ph.notes?'<p style="font-size:12px;color:var(--text-muted);margin-top:8px">'+ph.notes+'</p>':'')+
         phaseSubcontractorInsuranceWarningHtml(ph)+
         '<div class="phase-actions admin-only-action">'+
@@ -6518,6 +6672,7 @@ function renderProjectDetail(el){
     if(currentTab==='punch')initPunchListTab();
     if(currentTab==='daily-log')initDailyLogTab();
     if(currentTab==='finish-selections')initFinishSelectionsTab();
+    if(currentTab==='timeline')setTimeout(initGanttDependencyArrows,80);
   },50);
 }
 
@@ -6634,6 +6789,7 @@ async function switchTab(t){
     if(t==='punch')initPunchListTab();
     if(t==='daily-log')initDailyLogTab();
     if(t==='finish-selections')initFinishSelectionsTab();
+    if(t==='timeline')setTimeout(initGanttDependencyArrows,80);
     var ml=document.getElementById('messages-list');
     if(ml)setTimeout(function(){ml.scrollTop=ml.scrollHeight;},50);
     return;
@@ -7358,7 +7514,8 @@ async function savePayment(){
 }
 
 function openAddPhaseModal(){
-  if(!requireAdmin())return;
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var proj=getCurrentProject();if(!proj)return;
   editingPhaseId=null;
   clearFormErrors('modal-phase');
   document.getElementById('modal-phase-title').textContent='שלב חדש';
@@ -7367,7 +7524,10 @@ function openAddPhaseModal(){
   ['phase-name','phase-start','phase-end','phase-notes','phase-planned-cost'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('phase-prog').value=0;document.getElementById('phase-pv').textContent='0%';
   document.getElementById('phase-status').value='pending';
-  refreshSubcontractors().then(function(){populatePhaseSubcontractorSelect('');});
+  refreshSubcontractors().then(function(){
+    populatePhaseSubcontractorSelect('');
+    populatePhaseDependsOnChecklist(proj.phases,null,[]);
+  });
   openModal('modal-phase');
 }
 function openEditPhaseModal(phId){
@@ -7386,7 +7546,11 @@ function openEditPhaseModal(phId){
   document.getElementById('phase-status').value=ph.status;document.getElementById('phase-notes').value=ph.notes||'';
   document.getElementById('phase-planned-cost').value=ph.planned_cost!=null&&ph.planned_cost!==''?ph.planned_cost:(ph.plannedCost!=null?ph.plannedCost:'');
   var subId=ph.subcontractor_id||'';
-  refreshSubcontractors().then(function(){populatePhaseSubcontractorSelect(subId);});
+  var depOn=Array.isArray(ph.depends_on)?ph.depends_on.slice():[];
+  refreshSubcontractors().then(function(){
+    populatePhaseSubcontractorSelect(subId);
+    populatePhaseDependsOnChecklist(proj.phases,phId,depOn);
+  });
   openModal('modal-phase');
   refreshIcons();
 }
@@ -7402,6 +7566,7 @@ async function deletePhase(id){
   if(!confirm('למחוק את השלב "'+removed.name+'"?'))return;
   var data=getData();
   proj.phases=proj.phases.filter(function(x){return x.id!==id;});
+  removePhaseIdFromAllDepends(proj,id);
   logActivity('מחיקת שלב','פרויקט: '+proj.name+' · '+removed.name);
   if(editingPhaseId===id){editingPhaseId=null;closeModal('modal-phase');}
   if(!await saveData(data))return;
@@ -7416,8 +7581,9 @@ async function savePhase(){
   var plannedCostRaw=document.getElementById('phase-planned-cost').value;
   var planned_cost=plannedCostRaw===''?null:Number(plannedCostRaw);
   if(planned_cost!=null&&isNaN(planned_cost))planned_cost=null;
-  var ph={id:editingPhaseId||('ph'+Date.now()),name:document.getElementById('phase-name').value.trim(),start:document.getElementById('phase-start').value,end:document.getElementById('phase-end').value,progress:Number(document.getElementById('phase-prog').value),status:document.getElementById('phase-status').value,notes:document.getElementById('phase-notes').value,subcontractor_id:subId,planned_cost:planned_cost};
+  var ph={id:editingPhaseId||('ph'+Date.now()),name:document.getElementById('phase-name').value.trim(),start:document.getElementById('phase-start').value,end:document.getElementById('phase-end').value,progress:Number(document.getElementById('phase-prog').value),status:document.getElementById('phase-status').value,notes:document.getElementById('phase-notes').value,subcontractor_id:subId,planned_cost:planned_cost,depends_on:readPhaseDependsOnFromForm()};
   var oldPh=editingPhaseId?proj.phases.find(function(x){return x.id===editingPhaseId;}):null;
+  normalizePhaseDependsOn(ph);
   if(editingPhaseId){
     var idx=proj.phases.findIndex(function(x){return x.id===editingPhaseId;});
     if(idx<0){alert('השלב לא נמצא — רענן את העמוד ונסה שוב');return;}
@@ -7433,10 +7599,12 @@ async function savePhase(){
     logActivity('הוספת שלב','פרויקט: '+proj.name+' · שלב "'+ph.name+'" ('+phaseStatusLabel(ph.status)+')');
   }
   if(!await saveData(data))return;
+  var depAlerts=getPhaseDependencyAlertMessages(ph,oldPh,proj.phases);
   var wasEditing=!!editingPhaseId;
   editingPhaseId=null;
   closeModal('modal-phase');
   showToast(wasEditing?'השלב עודכן בהצלחה':'השלב נשמר בהצלחה');
+  if(depAlerts.length)depAlerts.forEach(function(msg){showToast(msg,'error');});
   renderProjectDetail(document.getElementById('main-content'));
 }
 async function saveOverallProgress(){
