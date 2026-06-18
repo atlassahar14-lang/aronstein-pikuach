@@ -1,0 +1,28 @@
+-- =============================================================================
+-- הגדרות תצוגה ללקוח — client_visibility (per project)
+-- פרויקט Supabase: knbbbrnwzbkywkrcponi
+-- =============================================================================
+--
+-- ► איך להריץ:
+--   1. היכנס ל-Supabase Dashboard → SQL Editor
+--   2. העתק והדבק את כל הקובץ הזה
+--   3. לחץ Run
+--
+-- השדה client_visibility נשמר בתוך כל אובייקט פרויקט במערך app_data.projects (JSONB).
+-- אין צורך בעמודה נפרדת — האתר ממלא ברירת מחדל אוטומטית לפרויקטים קיימים.
+--
+-- ברירת מחדל:
+-- {
+--   "budget": true,
+--   "timeline": true,
+--   "milestones": true,
+--   "gallery": true,
+--   "defects": false,
+--   "subcontractors": false,
+--   "daily_logs": false,
+--   "documents": true
+-- }
+-- =============================================================================
+
+-- אופציונלי: סימון שהמיגרציה רצה (האתר מטפל ב-backfill בטעינה)
+select 'client_visibility is stored on each project in app_data.projects[]' as note;

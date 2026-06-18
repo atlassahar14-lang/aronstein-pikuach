@@ -273,6 +273,17 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .milestone-meta strong{color:var(--text);font-weight:600}
 .milestone-desc{font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5}
 .milestone-actions{display:flex;flex-wrap:wrap;gap:8px}
+.client-visibility-card{margin-top:20px}
+.client-visibility-list{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.client-visibility-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;background:var(--bg);border-radius:12px;border:1px solid var(--border)}
+.client-visibility-row span{font-size:14px;font-weight:600;color:var(--primary)}
+.client-visibility-switch{position:relative;width:48px;height:28px;flex-shrink:0}
+.client-visibility-switch input{opacity:0;width:0;height:0;position:absolute}
+.client-visibility-slider{position:absolute;inset:0;background:var(--border);border-radius:999px;cursor:pointer;transition:background .2s}
+.client-visibility-slider::before{content:'';position:absolute;height:22px;width:22px;right:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.client-visibility-switch input:checked+.client-visibility-slider{background:var(--success)}
+.client-visibility-switch input:checked+.client-visibility-slider::before{transform:translateX(-20px)}
+.client-visibility-hint{font-size:12px;color:var(--text-muted);margin-top:12px;line-height:1.5}
 .fin-analysis-table{width:100%;border-collapse:collapse;margin-top:8px;table-layout:fixed}
 .fin-analysis-table th,.fin-analysis-table td{padding:12px 14px;text-align:right;border-bottom:1px solid var(--border);font-size:14px}
 .fin-analysis-table th{font-size:12px;font-weight:700;color:var(--text-muted);background:var(--bg)}
@@ -2212,6 +2223,34 @@ const GALLERY_STAGES=['כללי','חפירות ויסודות','שלד ובטו�
 // שלב גלריה: app_data.projects[].galleryPosts[].stage (JSON — אין טבלה נפרדת)
 const GALLERY_DEFAULT_STAGE='כללי';
 const VAT_RATE=0.17;
+const DEFAULT_CLIENT_VISIBILITY={
+  budget:true,
+  timeline:true,
+  milestones:true,
+  gallery:true,
+  defects:false,
+  subcontractors:false,
+  daily_logs:false,
+  documents:true
+};
+const CLIENT_VISIBILITY_LABELS=[
+  ['budget','תקציב'],
+  ['timeline','לוח זמנים'],
+  ['milestones','אבני דרך'],
+  ['gallery','גלריה'],
+  ['defects','ליקויים'],
+  ['subcontractors','קבלני משנה'],
+  ['daily_logs','יומן עבודה'],
+  ['documents','מסמכים']
+];
+const CLIENT_TAB_TO_VISIBILITY={
+  budget:'budget',
+  timeline:'timeline',
+  gallery:'gallery',
+  punch:'defects',
+  'daily-log':'daily_logs',
+  docs:'documents'
+};
 const DEFAULT_PROJECT_MILESTONES=[
   {title:'סגירת ספק אלומיניום (חלונות)',priority:'high'},
   {title:'בחירת ספק מטבח',priority:'high'},
@@ -2351,15 +2390,41 @@ function getDefaultProjects(){
       ],
       messages:[
         {id:'m1',sender:'admin',text:'ברוך הבא למערכת! כאן תוכל לפנות אלינו בכל שאלה.',date:'01/01/2025'}
-      ]
+      ],
+      client_visibility:Object.assign({},DEFAULT_CLIENT_VISIBILITY)
     }];
 }
 
 function isAdmin(){return !!(currentUser&&currentUser.role==='admin');}
-var CLIENT_HIDDEN_TABS=['budget-analysis','financial','docs'];
+var CLIENT_HIDDEN_TABS=['budget-analysis','financial'];
+function getProjectClientVisibility(p){
+  var cv=p&&p.client_visibility;
+  var out={};
+  Object.keys(DEFAULT_CLIENT_VISIBILITY).forEach(function(k){
+    out[k]=cv&&cv[k]!==undefined?!!cv[k]:DEFAULT_CLIENT_VISIBILITY[k];
+  });
+  return out;
+}
+function normalizeProjectClientVisibility(proj){
+  if(!proj)return;
+  proj.client_visibility=getProjectClientVisibility(proj);
+}
+function isClientVisibilityEnabled(p,key){
+  if(isAdmin())return true;
+  if(!p)return DEFAULT_CLIENT_VISIBILITY[key]!==false;
+  return getProjectClientVisibility(p)[key]!==false;
+}
+function isClientTabVisible(p,tabId){
+  if(isAdmin())return true;
+  var visKey=CLIENT_TAB_TO_VISIBILITY[tabId];
+  if(!visKey)return true;
+  return isClientVisibilityEnabled(p,visKey);
+}
 function normalizeClientTab(tab){
   if(isAdmin())return tab;
   if(CLIENT_HIDDEN_TABS.indexOf(tab)>=0)return 'overview';
+  var proj=getCurrentProject();
+  if(proj&&!isClientTabVisible(proj,tab))return 'overview';
   return tab;
 }
 function getProjectTabDefs(messagesTabBadge){
@@ -2377,7 +2442,42 @@ function getProjectTabDefs(messagesTabBadge){
     ['messages','שאלות','message-circle',messagesTabBadge]
   ];
   if(isAdmin())return tabDefs;
-  return tabDefs.filter(function(td){return CLIENT_HIDDEN_TABS.indexOf(td[0])===-1;});
+  var proj=getCurrentProject();
+  return tabDefs.filter(function(td){
+    if(CLIENT_HIDDEN_TABS.indexOf(td[0])>=0)return false;
+    return isClientTabVisible(proj,td[0]);
+  });
+}
+function renderClientVisibilitySettingsCardHtml(p){
+  var cv=getProjectClientVisibility(p);
+  var rows=CLIENT_VISIBILITY_LABELS.map(function(item){
+    var key=item[0],label=item[1],on=cv[key];
+    return '<label class="client-visibility-row">'+
+      '<span>'+label+'</span>'+
+      '<span class="client-visibility-switch">'+
+      '<input type="checkbox" id="client-vis-'+key+'"'+(on?' checked':'')+' onchange="onClientVisibilityToggle(\''+p.id+'\',\''+key+'\',this.checked)"/>'+
+      '<span class="client-visibility-slider"></span></span></label>';
+  }).join('');
+  return '<div class="card client-visibility-card admin-only-action" id="client-visibility-card">'+
+    '<div class="card-title">'+ic('eye')+' מה הלקוח רואה</div>'+
+    '<p class="client-visibility-hint">הגדרות תצוגה ללקוח — נשמרות אוטומטית ב-Supabase. מסכים כבויים לא יופיעו בתפריט ובטאבים של הלקוח.</p>'+
+    '<div class="client-visibility-list">'+rows+'</div></div>';
+}
+async function onClientVisibilityToggle(projectId,key,enabled){
+  if(!requireAdmin())return;
+  var proj=appDataCache.projects.find(function(p){return p.id===projectId;});
+  if(!proj)return;
+  var cv=getProjectClientVisibility(proj);
+  cv[key]=!!enabled;
+  proj.client_visibility=cv;
+  var saved=await persistAppData();
+  if(!saved.ok){
+    showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(saved.error),'error');
+    var input=document.getElementById('client-vis-'+key);
+    if(input)input.checked=!enabled;
+    return;
+  }
+  showToast('הגדרות התצוגה נשמרו');
 }
 function paymentIsClientVisible(pay){
   if(!pay)return false;
@@ -2824,6 +2924,7 @@ async function refreshAppData(){
       specialties:needsSpecialtySeed?DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice():normalizeSpecialtiesList(res.data.specialties)
     };
     appDataCache.projects.forEach(normalizeProjectGallery);
+    appDataCache.projects.forEach(normalizeProjectClientVisibility);
     if(needsSpecialtySeed&&isAdmin())await persistSpecialtiesOnly();
     return {ok:true};
   }
@@ -5245,9 +5346,14 @@ function renderSidebar(){
       '<div class="nav-item '+(currentView==='activity-log'?'active':'')+'" onclick="showView(\'activity-log\')"><span class="nav-icon">'+ic('scroll-text')+'</span> לוג פעולות</div>'+
       '<div class="nav-item '+(currentView==='settings'?'active':'')+'" onclick="showView(\'settings\')"><span class="nav-icon">'+ic('settings')+'</span> הגדרות</div>';
   } else {
-    nav.innerHTML='<div class="nav-section-title">הפרויקט שלי</div>'+
-      '<div class="nav-item '+(currentView==='project'?'active':'')+'" onclick="showView(\'project\',\''+currentUser.projectId+'\')"><span class="nav-icon">'+ic('house')+'</span> הפרויקט שלי</div>'+
-      '<div class="nav-item '+(currentView==='milestones'?'active':'')+'" onclick="showView(\'milestones\',\''+currentUser.projectId+'\')"><span class="nav-icon">🚩</span> אבני דרך</div>';
+    var clientProj=currentUser.projectId?appDataCache.projects.find(function(p){return p.id===currentUser.projectId;}):null;
+    var clientVis=clientProj?getProjectClientVisibility(clientProj):DEFAULT_CLIENT_VISIBILITY;
+    var clientNav='<div class="nav-section-title">הפרויקט שלי</div>'+
+      '<div class="nav-item '+(currentView==='project'?'active':'')+'" onclick="showView(\'project\',\''+currentUser.projectId+'\')"><span class="nav-icon">'+ic('house')+'</span> הפרויקט שלי</div>';
+    if(clientVis.milestones){
+      clientNav+='<div class="nav-item '+(currentView==='milestones'?'active':'')+'" onclick="showView(\'milestones\',\''+currentUser.projectId+'\')"><span class="nav-icon">🚩</span> אבני דרך</div>';
+    }
+    nav.innerHTML=clientNav;
   }
   refreshIcons(nav);
 }
@@ -5505,6 +5611,11 @@ function showView(view,pid){
   var el=document.getElementById('main-content');
   if(!isAdmin()){
     if(!currentUser.projectId){renderClientNoProject(el);return;}
+    var clientProj=appDataCache.projects.find(function(p){return p.id===currentUser.projectId;});
+    if(view==='milestones'&&!isClientVisibilityEnabled(clientProj,'milestones')){
+      view='project';
+      pid=currentUser.projectId;
+    }
     if(view!=='project'&&view!=='milestones'){
       view='project';
       pid=currentUser.projectId;
@@ -5934,7 +6045,8 @@ function renderProjectDetail(el){
     '<div style="margin-bottom:14px"><div class="flex-between" style="margin-bottom:6px;font-size:13px"><span style="color:var(--text-muted)">שולם</span><span style="font-weight:600;color:var(--success)">'+fmtMoney(paid)+'</span></div>'+
     '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+budgetUtilPct+'%;background:var(--success)"></div></div></div>'+
     '<div class="flex-between" style="font-size:13px"><span style="color:var(--text-muted)">נותר:</span><span style="font-weight:700;color:var(--warning)">'+fmtMoney(remaining)+'</span></div>'+
-    '</div></div></div>';
+    '</div></div></div>'+
+    (isAdminUser?renderClientVisibilitySettingsCardHtml(p):'');
 
   // TIMELINE TAB
   html+='<div id="tab-timeline" class="tab-content '+(currentTab==='timeline'?'active':'')+'">'+
@@ -6644,7 +6756,7 @@ async function saveProject(){
     var perCat=proj.budget?Math.round(Number(proj.budget)/FIN_CATEGORIES.length):0;
     var budgetPlan={};FIN_CATEGORIES.forEach(function(c){budgetPlan[c]=perCat;});
     newProjectId='proj'+Date.now();
-    data.projects.push(Object.assign({},proj,{id:newProjectId,progress:0,budgetPlan:budgetPlan,phases:[],payments:[],documents:[],galleryPosts:[],updates:[],messages:[]}));
+    data.projects.push(Object.assign({},proj,{id:newProjectId,progress:0,budgetPlan:budgetPlan,phases:[],payments:[],documents:[],galleryPosts:[],updates:[],messages:[],client_visibility:Object.assign({},DEFAULT_CLIENT_VISIBILITY)}));
     logActivity('יצירת פרויקט','פרויקט חדש: '+proj.name);
   }
   if(!await saveData(data))return;
@@ -7228,6 +7340,7 @@ Object.assign(window,{
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,onPaymentFilterChange,exportPaymentsCsv,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
   openAddMilestoneModal,openEditMilestoneModal,saveMilestone,deleteMilestone,markMilestoneDone,goToMilestonesView,
+  onClientVisibilityToggle,
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,exportDailyLogsCsv,
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,
   openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,setGalleryStageFilter,
