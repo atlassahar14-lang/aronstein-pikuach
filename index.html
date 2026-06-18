@@ -273,7 +273,8 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .milestone-meta strong{color:var(--text);font-weight:600}
 .milestone-desc{font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5}
 .milestone-actions{display:flex;flex-wrap:wrap;gap:8px}
-.client-visibility-card{margin-top:20px}
+.client-visibility-modal-section{margin-top:24px;padding-top:20px;border-top:2px solid var(--border)}
+.client-visibility-section-title{font-size:16px;font-weight:700;color:var(--primary);margin-bottom:8px;display:flex;align-items:center;gap:8px}
 .client-visibility-list{display:flex;flex-direction:column;gap:10px;margin-top:8px}
 .client-visibility-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;background:var(--bg);border-radius:12px;border:1px solid var(--border)}
 .client-visibility-row span{font-size:14px;font-weight:600;color:var(--primary)}
@@ -969,6 +970,11 @@ img,svg,video,canvas{max-width:100%;height:auto}
     </div>
     <div class="form-group"><label>תקציב כולל (₪)</label><input type="number" id="proj-budget" placeholder="0"/></div>
     <div class="form-group"><label>סטטוס</label><select id="proj-status"><option value="pending">טרם התחיל</option><option value="active">בביצוע</option><option value="paused">מושהה</option><option value="done">הושלם</option></select></div>
+    <div class="client-visibility-modal-section" id="proj-client-visibility-wrap">
+      <div class="client-visibility-section-title"><i data-lucide="eye"></i> הגדרות תצוגה ללקוח</div>
+      <p class="client-visibility-hint">בחר אילו מסכים יוצגו ללקוח בפרויקט זה. השינויים נשמרים עם לחיצה על "שמור פרויקט".</p>
+      <div class="client-visibility-list" id="proj-client-visibility-list"></div>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-project')">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="saveProject()">שמור פרויקט</button>
@@ -2448,36 +2454,29 @@ function getProjectTabDefs(messagesTabBadge){
     return isClientTabVisible(proj,td[0]);
   });
 }
-function renderClientVisibilitySettingsCardHtml(p){
-  var cv=getProjectClientVisibility(p);
-  var rows=CLIENT_VISIBILITY_LABELS.map(function(item){
+function renderClientVisibilityFormRows(cv){
+  return CLIENT_VISIBILITY_LABELS.map(function(item){
     var key=item[0],label=item[1],on=cv[key];
     return '<label class="client-visibility-row">'+
       '<span>'+label+'</span>'+
       '<span class="client-visibility-switch">'+
-      '<input type="checkbox" id="client-vis-'+key+'"'+(on?' checked':'')+' onchange="onClientVisibilityToggle(\''+p.id+'\',\''+key+'\',this.checked)"/>'+
+      '<input type="checkbox" class="proj-client-vis" data-vis-key="'+key+'"'+(on?' checked':'')+'/>'+
       '<span class="client-visibility-slider"></span></span></label>';
   }).join('');
-  return '<div class="card client-visibility-card admin-only-action" id="client-visibility-card">'+
-    '<div class="card-title">'+ic('eye')+' מה הלקוח רואה</div>'+
-    '<p class="client-visibility-hint">הגדרות תצוגה ללקוח — נשמרות אוטומטית ב-Supabase. מסכים כבויים לא יופיעו בתפריט ובטאבים של הלקוח.</p>'+
-    '<div class="client-visibility-list">'+rows+'</div></div>';
 }
-async function onClientVisibilityToggle(projectId,key,enabled){
-  if(!requireAdmin())return;
-  var proj=appDataCache.projects.find(function(p){return p.id===projectId;});
-  if(!proj)return;
-  var cv=getProjectClientVisibility(proj);
-  cv[key]=!!enabled;
-  proj.client_visibility=cv;
-  var saved=await persistAppData();
-  if(!saved.ok){
-    showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(saved.error),'error');
-    var input=document.getElementById('client-vis-'+key);
-    if(input)input.checked=!enabled;
-    return;
-  }
-  showToast('הגדרות התצוגה נשמרו');
+function populateProjectClientVisibilityForm(cv){
+  var list=document.getElementById('proj-client-visibility-list');
+  if(!list)return;
+  list.innerHTML=renderClientVisibilityFormRows(cv||DEFAULT_CLIENT_VISIBILITY);
+  refreshIcons(document.getElementById('proj-client-visibility-wrap'));
+}
+function readProjectClientVisibilityFromForm(){
+  var cv={};
+  Object.keys(DEFAULT_CLIENT_VISIBILITY).forEach(function(k){
+    var inp=document.querySelector('.proj-client-vis[data-vis-key="'+k+'"]');
+    cv[k]=inp?!!inp.checked:DEFAULT_CLIENT_VISIBILITY[k];
+  });
+  return cv;
 }
 function paymentIsClientVisible(pay){
   if(!pay)return false;
@@ -6045,8 +6044,7 @@ function renderProjectDetail(el){
     '<div style="margin-bottom:14px"><div class="flex-between" style="margin-bottom:6px;font-size:13px"><span style="color:var(--text-muted)">שולם</span><span style="font-weight:600;color:var(--success)">'+fmtMoney(paid)+'</span></div>'+
     '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+budgetUtilPct+'%;background:var(--success)"></div></div></div>'+
     '<div class="flex-between" style="font-size:13px"><span style="color:var(--text-muted)">נותר:</span><span style="font-weight:700;color:var(--warning)">'+fmtMoney(remaining)+'</span></div>'+
-    '</div></div></div>'+
-    (isAdminUser?renderClientVisibilitySettingsCardHtml(p):'');
+    '</div></div></div>';
 
   // TIMELINE TAB
   html+='<div id="tab-timeline" class="tab-content '+(currentTab==='timeline'?'active':'')+'">'+
@@ -6696,7 +6694,9 @@ function openNewProjectModal(){
   document.getElementById('modal-proj-title').textContent='פרויקט חדש';
   ['proj-name','proj-addr','proj-house','proj-client-name','proj-client-phone','proj-desc','proj-start','proj-end','proj-built','proj-property','proj-budget'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('proj-status').value='active';
+  populateProjectClientVisibilityForm(DEFAULT_CLIENT_VISIBILITY);
   openModal('modal-project');
+  refreshIcons(document.getElementById('modal-project'));
 }
 async function openEditProjectModal(id){
   if(!requireAdmin())return;
@@ -6725,7 +6725,9 @@ async function openEditProjectModal(id){
     document.getElementById('proj-client-name').value=p.clientName||'';
     document.getElementById('proj-client-phone').value=p.clientPhone||'';
   }
+  populateProjectClientVisibilityForm(getProjectClientVisibility(p));
   openModal('modal-project');
+  refreshIcons(document.getElementById('modal-project'));
 }
 async function saveProject(){
   if(!requireAdmin())return;
@@ -6740,11 +6742,12 @@ async function saveProject(){
   var clientPhone=document.getElementById('proj-client-phone').value.trim();
   var data=getData();
   var proj={name:document.getElementById('proj-name').value.trim(),address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:Number(document.getElementById('proj-budget').value)||0,status:document.getElementById('proj-status').value,clientName:clientName,clientPhone:clientPhone};
+  var clientVisibility=readProjectClientVisibilityFromForm();
   var newProjectId=null;
   if(editingProjectId){
     var idx=data.projects.findIndex(function(p){return p.id===editingProjectId;});
     if(idx<0){showToast('שגיאה: הפרויקט לא נמצא — רענן את העמוד','error');return;}
-    data.projects[idx]=Object.assign({},data.projects[idx],proj);
+    data.projects[idx]=Object.assign({},data.projects[idx],proj,{client_visibility:clientVisibility});
     var linked=getProjectLinkedClient(editingProjectId);
     if(linked){
       var profileRes=await supabase.from('profiles').update({name:clientName||linked.name,phone:clientPhone||null}).eq('id',linked.id);
@@ -6756,7 +6759,7 @@ async function saveProject(){
     var perCat=proj.budget?Math.round(Number(proj.budget)/FIN_CATEGORIES.length):0;
     var budgetPlan={};FIN_CATEGORIES.forEach(function(c){budgetPlan[c]=perCat;});
     newProjectId='proj'+Date.now();
-    data.projects.push(Object.assign({},proj,{id:newProjectId,progress:0,budgetPlan:budgetPlan,phases:[],payments:[],documents:[],galleryPosts:[],updates:[],messages:[],client_visibility:Object.assign({},DEFAULT_CLIENT_VISIBILITY)}));
+    data.projects.push(Object.assign({},proj,{id:newProjectId,progress:0,budgetPlan:budgetPlan,phases:[],payments:[],documents:[],galleryPosts:[],updates:[],messages:[],client_visibility:clientVisibility}));
     logActivity('יצירת פרויקט','פרויקט חדש: '+proj.name);
   }
   if(!await saveData(data))return;
@@ -7340,7 +7343,6 @@ Object.assign(window,{
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,onPaymentFilterChange,exportPaymentsCsv,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
   openAddMilestoneModal,openEditMilestoneModal,saveMilestone,deleteMilestone,markMilestoneDone,goToMilestonesView,
-  onClientVisibilityToggle,
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,exportDailyLogsCsv,
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,
   openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,setGalleryStageFilter,
