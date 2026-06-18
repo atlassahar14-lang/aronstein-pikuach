@@ -249,6 +249,30 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .gantt-meta-pct{font-weight:700;color:var(--primary)}
 .gantt-empty{padding:32px 16px}
 .gantt-today-line{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--danger);opacity:.6;z-index:2;pointer-events:none}
+.milestone-alert-banner{display:none;background:linear-gradient(90deg,#b91c1c,#dc2626);color:#fff;padding:12px 20px;font-size:14px;line-height:1.5;box-shadow:0 2px 12px rgba(185,28,28,.35);border-bottom:2px solid rgba(0,0,0,.12)}
+.milestone-alert-banner.show{display:block}
+.milestone-alert-inner{max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;justify-content:space-between}
+.milestone-alert-text{flex:1;min-width:200px;font-weight:500}
+.milestone-alert-text strong{font-weight:800}
+.milestone-alert-items{display:flex;flex-direction:column;gap:4px;margin-top:4px;font-size:13px}
+.milestone-alert-btn{flex-shrink:0;background:#fff;color:#b91c1c;border:none;border-radius:10px;padding:10px 16px;font-family:'Heebo',sans-serif;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
+.milestone-alert-btn:hover{background:#fef2f2}
+.milestones-list{display:flex;flex-direction:column;gap:12px}
+.milestone-item{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.milestone-item.alerting{border-color:#fca5a5;background:#fff5f5}
+.milestone-item.done-item{opacity:.88}
+.milestone-item-head{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px 12px;margin-bottom:10px}
+.milestone-item-title{font-size:16px;font-weight:700;color:var(--primary);flex:1;min-width:0}
+.milestone-priority{display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap}
+.milestone-priority.high{background:#fee2e2;color:#b91c1c}
+.milestone-priority.medium{background:#ffedd5;color:#c2410c}
+.milestone-status{display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.milestone-status.pending{background:var(--bg);color:var(--text-muted)}
+.milestone-status.done{background:#dcfce7;color:#166534}
+.milestone-meta{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px;color:var(--text-muted);margin-bottom:12px}
+.milestone-meta strong{color:var(--text);font-weight:600}
+.milestone-desc{font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5}
+.milestone-actions{display:flex;flex-wrap:wrap;gap:8px}
 .fin-analysis-table{width:100%;border-collapse:collapse;margin-top:8px;table-layout:fixed}
 .fin-analysis-table th,.fin-analysis-table td{padding:12px 14px;text-align:right;border-bottom:1px solid var(--border);font-size:14px}
 .fin-analysis-table th{font-size:12px;font-weight:700;color:var(--text-muted);background:var(--bg)}
@@ -711,7 +735,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .login-footer{font-size:13px}
   .main-content{padding:calc(56px + env(safe-area-inset-top,0px) + 16px) max(12px,env(safe-area-inset-right,0px)) max(20px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
   .card{padding:16px}
-  .stats-grid{grid-template-columns:1fr}
+  .milestone-alert-inner{flex-direction:column;align-items:stretch}
+  .milestone-alert-btn{width:100%;text-align:center}
+  .milestone-actions .btn{flex:1;justify-content:center;min-width:calc(50% - 4px)}
   .dash-metrics{grid-template-columns:1fr}
   .dash-metric-value{font-size:26px}
   .budget-summary{grid-template-columns:1fr}
@@ -902,6 +928,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
       </div>
     </aside>
     <div class="main-shell">
+      <div id="milestone-alert-banner" class="milestone-alert-banner" role="alert" aria-live="polite"></div>
       <main class="main-content" id="main-content"></main>
     </div>
   </div>
@@ -1003,6 +1030,27 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeBudgetQuickSubcontractorModal()">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="saveBudgetQuickSubcontractor()">שמור</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Milestone -->
+<div class="modal-overlay" id="modal-milestone">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="modal-milestone-title">אבן דרך חדשה</div><button class="modal-close" onclick="closeModal('modal-milestone')"><i data-lucide="x"></i></button></div>
+    <div class="form-group"><label>שם אבן הדרך</label><input type="text" id="milestone-title" placeholder="לדוגמה: בחירת ספק מטבח"/></div>
+    <div class="form-group"><label>תיאור (אופציונלי)</label><textarea id="milestone-desc" placeholder="פרטים נוספים"></textarea></div>
+    <div class="grid-2">
+      <div class="form-group"><label>תאריך יעד</label><input type="date" id="milestone-due"/></div>
+      <div class="form-group"><label>עדיפות</label><select id="milestone-priority"><option value="high">גבוהה</option><option value="medium">בינונית</option></select></div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label>סטטוס</label><select id="milestone-status"><option value="pending">ממתין</option><option value="done">הושלם</option></select></div>
+      <div class="form-group"><label>התראה מראש (ימים)</label><input type="number" id="milestone-alert-days" min="0" max="365" value="14"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-milestone')">ביטול</button>
+      <button class="btn btn-primary admin-only-action" style="width:auto" onclick="saveMilestone()">שמור</button>
     </div>
   </div>
 </div>
@@ -2141,12 +2189,12 @@ function bindModalValidationClear(modalId){
   modal.addEventListener('input',clearGroup);
   modal.addEventListener('change',clearGroup);
 }
-['modal-project','modal-user','modal-payment','modal-phase','modal-subcontractor','modal-budget-subcontractor','modal-update','modal-gallery-post','modal-punch-item'].forEach(bindModalValidationClear);
+['modal-project','modal-user','modal-payment','modal-phase','modal-milestone','modal-subcontractor','modal-budget-subcontractor','modal-update','modal-gallery-post','modal-punch-item'].forEach(bindModalValidationClear);
 
-var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
+var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null,editingMilestoneId=null;
 var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
-var appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()},appUsers=[],subcontractorsCache=[],punchItemsCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
+var appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()},appUsers=[],subcontractorsCache=[],punchItemsCache=[],milestonesCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
 const OFFLINE_PUNCH_STORAGE_KEY='offline_punch_items';
 const PUNCH_FORM_DRAFT_PREFIX='punch_form_draft_';
 var punchDraftAutosaveTimer=null,punchPendingPhotoUpload=null;
@@ -2164,6 +2212,16 @@ const GALLERY_STAGES=['כללי','חפירות ויסודות','שלד ובטו�
 // שלב גלריה: app_data.projects[].galleryPosts[].stage (JSON — אין טבלה נפרדת)
 const GALLERY_DEFAULT_STAGE='כללי';
 const VAT_RATE=0.17;
+const DEFAULT_PROJECT_MILESTONES=[
+  {title:'סגירת ספק אלומיניום (חלונות)',priority:'high'},
+  {title:'בחירת ספק מטבח',priority:'high'},
+  {title:'התקנת ספי חלונות',priority:'high'},
+  {title:'מדידות נגרות',priority:'high'},
+  {title:'בחירת ריצוף',priority:'medium'},
+  {title:'בחירת סניטריה',priority:'medium'},
+  {title:'בחירת תאורה',priority:'medium'},
+  {title:'חתימת ביטוח עבודות קבלניות',priority:'high'}
+];
 function resetListFilters(){
   paymentStatusFilter='';
   paymentSortOrder='desc';
@@ -2177,6 +2235,7 @@ function resetAppSessionState(){
   appUsers=[];
   subcontractorsCache=[];
   punchItemsCache=[];
+  milestonesCache=[];
   dailyLogsCache=[];
   budgetsCache=[];
   budgetItemsByBudget={};
@@ -2802,6 +2861,7 @@ function formatSupabaseErrorHint(errMsg){
   if(m.includes('budget_items')||m.includes('subcontractor_id'))return 'שגיאה בפריטי תקציב — הרץ את supabase-budget-items-subcontractor-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('profiles')&&m.includes('phone')||m.includes('column')&&m.includes('phone'))return 'חסרה עמודת phone בטבלת profiles — הרץ את supabase-profiles-phone-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('punch_items')&&(m.includes('location')||m.includes('photo_url')))return 'חסרות עמודות location / photo_url בטבלת punch_items — הרץ את supabase-punch-items-location-photo-migration.sql ב-Supabase SQL Editor.';
+  if(m.includes('milestones'))return 'חסרה טבלת milestones — הרץ את supabase-milestones-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('specialties'))return 'חסרה עמודת specialties בטבלת app_data — הרץ את supabase-specialties-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('fetch')||m.includes('network')||m.includes('522')||m.includes('timeout'))return 'בעיית רשת או Supabase לא זמין.';
   return errMsg||'שגיאה לא ידועה';
@@ -2980,6 +3040,272 @@ async function refreshPunchItems(projectId){
   }
   punchItemsCache=(res.data||[]).map(mapPunchItemRow);
   return {ok:true};
+}
+function mapMilestoneRow(r){
+  return {
+    id:r.id,
+    projectId:r.project_id,
+    title:r.title,
+    description:r.description||'',
+    dueDate:r.due_date,
+    status:r.status||'pending',
+    priority:r.priority||'medium',
+    alertDaysBefore:r.alert_days_before!=null?Number(r.alert_days_before):14
+  };
+}
+async function refreshMilestonesCache(){
+  if(!currentUser){milestonesCache=[];return {ok:false};}
+  var res;
+  if(isAdmin()){
+    res=await supabase.from('milestones').select('*').order('due_date',{ascending:true});
+  }else if(currentUser.projectId){
+    res=await supabase.from('milestones').select('*').eq('project_id',currentUser.projectId).order('due_date',{ascending:true});
+  }else{
+    milestonesCache=[];
+    return {ok:true};
+  }
+  if(res.error){
+    console.error('refreshMilestonesCache',res.error);
+    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
+    milestonesCache=[];
+    return {ok:false,error:res.error.message};
+  }
+  milestonesCache=(res.data||[]).map(mapMilestoneRow);
+  return {ok:true};
+}
+function getMilestonesForProject(projectId){
+  return milestonesCache.filter(function(m){return m.projectId===projectId;});
+}
+function milestoneDaysUntilDue(dueDate){
+  var due=parsePhaseDate(dueDate);
+  if(!due)return null;
+  var today=new Date();today.setHours(12,0,0,0);
+  due.setHours(12,0,0,0);
+  return Math.ceil((due.getTime()-today.getTime())/86400000);
+}
+function isMilestoneAlerting(m){
+  if(!m||m.status==='done')return false;
+  var days=milestoneDaysUntilDue(m.dueDate);
+  if(days===null)return false;
+  var alertDays=m.alertDaysBefore!=null?m.alertDaysBefore:14;
+  return days<0||days<=alertDays;
+}
+function getAccessibleAlertingMilestones(){
+  var list=milestonesCache.filter(isMilestoneAlerting);
+  if(isAdmin())return list;
+  if(currentUser&&currentUser.projectId)return list.filter(function(m){return m.projectId===currentUser.projectId;});
+  return [];
+}
+function milestonePriorityLabel(priority){
+  return priority==='high'?'עדיפות גבוהה':'עדיפות בינונית';
+}
+function milestoneStatusLabel(status){
+  return status==='done'?'הושלם':'ממתין';
+}
+function formatMilestoneDueLabel(m){
+  var days=milestoneDaysUntilDue(m.dueDate);
+  var dateStr=m.dueDate?formatPhaseDateForInput(m.dueDate):'—';
+  if(days===null)return dateStr;
+  if(days<0)return dateStr+' (באיחור של '+Math.abs(days)+' ימים)';
+  if(days===0)return dateStr+' (היום!)';
+  return dateStr+' (עוד '+days+' ימים)';
+}
+function updateMilestoneAlertBanner(){
+  var el=document.getElementById('milestone-alert-banner');
+  if(!el)return;
+  var alerts=getAccessibleAlertingMilestones();
+  if(!alerts.length){
+    el.classList.remove('show');
+    el.innerHTML='';
+    return;
+  }
+  var itemsHtml=alerts.slice(0,5).map(function(m){
+    var proj=isAdmin()?appDataCache.projects.find(function(p){return p.id===m.projectId;}):null;
+    var prefix=proj?('<strong>'+escHtml(proj.name)+':</strong> '):'';
+    return '<span>🚩 '+prefix+escHtml(m.title)+' — '+escHtml(formatMilestoneDueLabel(m))+'</span>';
+  }).join('');
+  if(alerts.length>5)itemsHtml+='<span>… ועוד '+(alerts.length-5)+'</span>';
+  el.innerHTML='<div class="milestone-alert-inner">'+
+    '<div class="milestone-alert-text"><strong>התראת אבני דרך קריטיות</strong>'+
+    '<div class="milestone-alert-items">'+itemsHtml+'</div></div>'+
+    '<button type="button" class="milestone-alert-btn" onclick="goToMilestonesView()">עבור לאבני דרך</button></div>';
+  el.classList.add('show');
+}
+function goToMilestonesView(){
+  var alerts=getAccessibleAlertingMilestones();
+  if(isAdmin()){
+    if(currentProjectId)showView('milestones',currentProjectId);
+    else if(alerts.length)showView('milestones',alerts[0].projectId);
+    else showView('milestones');
+  }else showView('milestones',currentUser.projectId);
+}
+function computeDefaultMilestoneDueDates(startDate,endDate,count){
+  var start=parsePhaseDate(startDate)||new Date();
+  var end=parsePhaseDate(endDate);
+  if(!end||end.getTime()<=start.getTime())end=new Date(start.getTime()+180*86400000);
+  var span=end.getTime()-start.getTime();
+  var dates=[];
+  for(var i=0;i<count;i++){
+    var t=start.getTime()+span*((i+1)/(count+1));
+    dates.push(formatPhaseDateForInput(new Date(t)));
+  }
+  return dates;
+}
+async function seedDefaultMilestones(projectId,startDate,endDate){
+  if(!projectId)return {ok:false,error:'no project'};
+  var dueDates=computeDefaultMilestoneDueDates(startDate,endDate,DEFAULT_PROJECT_MILESTONES.length);
+  var rows=DEFAULT_PROJECT_MILESTONES.map(function(m,i){
+    return {
+      project_id:projectId,
+      title:m.title,
+      description:'',
+      due_date:dueDates[i],
+      status:'pending',
+      priority:m.priority,
+      alert_days_before:14
+    };
+  });
+  var res=await supabase.from('milestones').insert(rows);
+  if(res.error)return {ok:false,error:res.error.message};
+  return {ok:true};
+}
+function renderMilestoneItemHtml(m){
+  var alerting=isMilestoneAlerting(m);
+  var done=m.status==='done';
+  var priCls=m.priority==='high'?'high':'medium';
+  return '<div class="milestone-item'+(alerting?' alerting':'')+(done?' done-item':'')+'">'+
+    '<div class="milestone-item-head">'+
+    '<div class="milestone-item-title">'+escHtml(m.title)+'</div>'+
+    '<span class="milestone-priority '+priCls+'">'+milestonePriorityLabel(m.priority)+'</span>'+
+    '<span class="milestone-status '+m.status+'">'+milestoneStatusLabel(m.status)+'</span>'+
+    '</div>'+
+    (m.description?'<div class="milestone-desc">'+escHtml(m.description)+'</div>':'')+
+    '<div class="milestone-meta">'+
+    '<span><strong>תאריך יעד:</strong> '+escHtml(formatMilestoneDueLabel(m))+'</span>'+
+    '<span><strong>התראה:</strong> '+m.alertDaysBefore+' ימים לפני</span>'+
+    '</div>'+
+    '<div class="milestone-actions">'+
+    (!done?'<button type="button" class="btn btn-accent btn-sm" onclick="markMilestoneDone(\''+m.id+'\')">'+ic('circle-check')+' סמן כהושלם</button>':'')+
+    (isAdmin()?'<button type="button" class="btn btn-outline btn-sm admin-only-action" onclick="openEditMilestoneModal(\''+m.id+'\')">'+ic('pencil')+' עריכה</button>'+
+    '<button type="button" class="btn btn-danger btn-sm admin-only-action" onclick="deleteMilestone(\''+m.id+'\')">'+ic('trash-2')+' מחיקה</button>':'')+
+    '</div></div>';
+}
+async function renderMilestonesScreen(el){
+  if(!el)return;
+  var proj=getCurrentProject();
+  if(!proj&&!isAdmin()){
+    if(currentUser&&currentUser.projectId){
+      currentProjectId=currentUser.projectId;
+      proj=getCurrentProject();
+    }
+  }
+  if(!proj){
+    el.innerHTML='<div class="page-header"><h1>🚩 אבני דרך</h1><p>בחר פרויקט כדי לצפות באבני דרך</p></div>'+
+      '<div class="empty-state card"><div class="empty-icon">'+ic('flag')+'</div><p>אין פרויקט פעיל</p>'+
+      (isAdmin()?'<button type="button" class="btn btn-primary" style="margin-top:16px" onclick="showView(\'projects\')">'+ic('construction')+' לרשימת פרויקטים</button>':'')+
+      '</div>';
+    refreshIcons(el);
+    updateMilestoneAlertBanner();
+    return;
+  }
+  el.innerHTML='<div class="page-header"><h1>🚩 אבני דרך — '+escHtml(proj.name)+'</h1><p>אבני דרך קריטיות לפרויקט</p></div>'+
+    '<div class="card" style="padding:40px;text-align:center;color:var(--text-muted)">טוען אבני דרך...</div>';
+  var loaded=await refreshMilestonesCache();
+  var list=getMilestonesForProject(proj.id);
+  var pending=list.filter(function(m){return m.status==='pending';});
+  var done=list.filter(function(m){return m.status==='done';});
+  var addBtn=isAdmin()?'<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddMilestoneModal()">'+ic('plus')+' אבן דרך חדשה</button>':'';
+  el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>🚩 אבני דרך — '+escHtml(proj.name)+'</h1><p>'+pending.length+' ממתינות · '+done.length+' הושלמו</p></div>'+
+    (addBtn?'<div class="flex-gap">'+addBtn+'</div>':'')+
+    '</div>'+
+    (isAdmin()?'<button type="button" class="back-btn admin-only-action" onclick="showView(\'project\',\''+proj.id+'\')">← חזרה לפרויקט</button>':'')+
+    (!loaded.ok?'<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינה: '+escHtml(formatSupabaseErrorHint(loaded.error||'שגיאה'))+'</div>':'')+
+    (list.length?'<div class="milestones-list">'+list.map(renderMilestoneItemHtml).join('')+'</div>':
+    '<div class="empty-state card"><div class="empty-icon">'+ic('flag')+'</div><p>אין אבני דרך לפרויקט זה</p>'+
+    (isAdmin()?'<button type="button" class="btn btn-primary admin-only-action" style="margin-top:16px" onclick="openAddMilestoneModal()">'+ic('plus')+' הוסף אבן דרך</button>':'')+
+    '</div>');
+  refreshIcons(el);
+  updateMilestoneAlertBanner();
+}
+function openAddMilestoneModal(){
+  if(!requireAdmin()||!requireProjectAccess())return;
+  editingMilestoneId=null;
+  document.getElementById('modal-milestone-title').textContent='אבן דרך חדשה';
+  document.getElementById('milestone-title').value='';
+  document.getElementById('milestone-desc').value='';
+  document.getElementById('milestone-due').value='';
+  document.getElementById('milestone-priority').value='high';
+  document.getElementById('milestone-status').value='pending';
+  document.getElementById('milestone-alert-days').value='14';
+  openModal('modal-milestone');
+}
+function openEditMilestoneModal(id){
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var m=milestonesCache.find(function(x){return x.id===id;});
+  if(!m)return;
+  editingMilestoneId=id;
+  document.getElementById('modal-milestone-title').textContent='עריכת אבן דרך';
+  document.getElementById('milestone-title').value=m.title||'';
+  document.getElementById('milestone-desc').value=m.description||'';
+  document.getElementById('milestone-due').value=formatPhaseDateForInput(m.dueDate);
+  document.getElementById('milestone-priority').value=m.priority||'medium';
+  document.getElementById('milestone-status').value=m.status||'pending';
+  document.getElementById('milestone-alert-days').value=String(m.alertDaysBefore!=null?m.alertDaysBefore:14);
+  openModal('modal-milestone');
+}
+async function saveMilestone(){
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var proj=getCurrentProject();if(!proj)return;
+  var title=document.getElementById('milestone-title').value.trim();
+  var due=document.getElementById('milestone-due').value;
+  if(!title||!due){alert('נא למלא שם ותאריך יעד');return;}
+  var row={
+    project_id:proj.id,
+    title:title,
+    description:document.getElementById('milestone-desc').value.trim(),
+    due_date:due,
+    status:document.getElementById('milestone-status').value||'pending',
+    priority:document.getElementById('milestone-priority').value||'medium',
+    alert_days_before:Math.max(0,Number(document.getElementById('milestone-alert-days').value)||14)
+  };
+  var res;
+  if(editingMilestoneId)res=await supabase.from('milestones').update(row).eq('id',editingMilestoneId);
+  else res=await supabase.from('milestones').insert(row);
+  if(res.error){showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
+  await refreshMilestonesCache();
+  closeModal('modal-milestone');
+  editingMilestoneId=null;
+  if(currentView==='milestones'){
+    var el=document.getElementById('main-content');
+    if(el)await renderMilestonesScreen(el);
+  }else updateMilestoneAlertBanner();
+  showToast('אבן הדרך נשמרה');
+}
+async function markMilestoneDone(id){
+  if(!requireProjectAccess())return;
+  var m=milestonesCache.find(function(x){return x.id===id;});
+  if(!m||m.status==='done')return;
+  if(!clientCanAccessProject(m.projectId))return;
+  var res=await supabase.from('milestones').update({status:'done'}).eq('id',id);
+  if(res.error){showToast('שגיאה בעדכון: '+formatSupabaseErrorHint(res.error.message),'error');return;}
+  await refreshMilestonesCache();
+  if(currentView==='milestones'){
+    var el=document.getElementById('main-content');
+    if(el)await renderMilestonesScreen(el);
+  }else updateMilestoneAlertBanner();
+  showToast('אבן הדרך סומנה כהושלמה');
+}
+async function deleteMilestone(id){
+  if(!requireAdmin()||!requireProjectAccess())return;
+  if(!confirm('למחוק את אבן הדרך?'))return;
+  var res=await supabase.from('milestones').delete().eq('id',id);
+  if(res.error){showToast('שגיאה במחיקה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
+  await refreshMilestonesCache();
+  if(currentView==='milestones'){
+    var el=document.getElementById('main-content');
+    if(el)await renderMilestonesScreen(el);
+  }else updateMilestoneAlertBanner();
+  showToast('אבן הדרך נמחקה');
 }
 async function getBlueprintSignedUrl(path){
   if(!path)return null;
@@ -4721,6 +5047,7 @@ async function startApp(user){
   }
   await refreshAppUsers();
   await refreshSubcontractors();
+  await refreshMilestonesCache();
   if(isAdmin()&&appDataCache.projects.some(projectHasBase64Media)){
     var mig=await migrateBase64MediaToStorage();
     if(!mig.ok){
@@ -4732,6 +5059,7 @@ async function startApp(user){
   document.getElementById('login-error').classList.remove('show');
   showLoginForm();
   renderSidebar();
+  updateMilestoneAlertBanner();
   if(isAdmin()){showView('dashboard');}
   else if(!user.projectId){renderClientNoProject(document.getElementById('main-content'));}
   else{currentProjectId=user.projectId;currentTab=normalizeClientTab('overview');showView('project',user.projectId);}
@@ -4909,6 +5237,7 @@ function renderSidebar(){
     nav.innerHTML='<div class="nav-section-title">ניהול</div>'+
       '<div class="nav-item '+(currentView==='dashboard'?'active':'')+'" onclick="showView(\'dashboard\')"><span class="nav-icon">'+ic('layout-dashboard')+'</span> דשבורד</div>'+
       '<div class="nav-item '+(currentView==='projects'?'active':'')+'" onclick="showView(\'projects\')"><span class="nav-icon">'+ic('construction')+'</span> פרויקטים</div>'+
+      '<div class="nav-item '+(currentView==='milestones'?'active':'')+'" onclick="showView(\'milestones\')"><span class="nav-icon">🚩</span> אבני דרך</div>'+
       '<div class="nav-item '+(currentView==='budget-builder'?'active':'')+'" onclick="showView(\'budget-builder\')"><span class="nav-icon">'+ic('calculator')+'</span> בניית תקציב</div>'+
       '<div class="nav-section-title">מערכת</div>'+
       '<div class="nav-item '+(currentView==='clients'?'active':'')+'" onclick="showView(\'clients\')"><span class="nav-icon">'+ic('users')+'</span> לקוחות</div>'+
@@ -4916,13 +5245,15 @@ function renderSidebar(){
       '<div class="nav-item '+(currentView==='activity-log'?'active':'')+'" onclick="showView(\'activity-log\')"><span class="nav-icon">'+ic('scroll-text')+'</span> לוג פעולות</div>'+
       '<div class="nav-item '+(currentView==='settings'?'active':'')+'" onclick="showView(\'settings\')"><span class="nav-icon">'+ic('settings')+'</span> הגדרות</div>';
   } else {
-    nav.innerHTML='<div class="nav-section-title">הפרויקט שלי</div><div class="nav-item active"><span class="nav-icon">'+ic('house')+'</span> הפרויקט שלי</div>';
+    nav.innerHTML='<div class="nav-section-title">הפרויקט שלי</div>'+
+      '<div class="nav-item '+(currentView==='project'?'active':'')+'" onclick="showView(\'project\',\''+currentUser.projectId+'\')"><span class="nav-icon">'+ic('house')+'</span> הפרויקט שלי</div>'+
+      '<div class="nav-item '+(currentView==='milestones'?'active':'')+'" onclick="showView(\'milestones\',\''+currentUser.projectId+'\')"><span class="nav-icon">🚩</span> אבני דרך</div>';
   }
   refreshIcons(nav);
 }
 
 var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-builder':'בניית תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה',punch:'ליקויים','daily-log':'יומן עבודה',updates:'עדכונים',messages:'שאלות'};
-var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים','budget-builder':'בניית תקציב',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
+var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',milestones:'אבני דרך','budget-builder':'בניית תקציב',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
   if(el)el.textContent=text||'ארונשטיין פיקוח וניהול';
@@ -5174,8 +5505,10 @@ function showView(view,pid){
   var el=document.getElementById('main-content');
   if(!isAdmin()){
     if(!currentUser.projectId){renderClientNoProject(el);return;}
-    view='project';
-    pid=currentUser.projectId;
+    if(view!=='project'&&view!=='milestones'){
+      view='project';
+      pid=currentUser.projectId;
+    }
   }
   if(view==='project'&&pid&&!clientCanAccessProject(pid))pid=currentUser.projectId;
   if(view==='project'&&pid&&pid!==currentProjectId)resetListFilters();
@@ -5194,6 +5527,7 @@ function showView(view,pid){
   else if(view==='clients')renderClients(el);
   else if(view==='subcontractors')renderSubcontractors(el);
   else if(view==='budget-builder')renderBudgetBuilder(el);
+  else if(view==='milestones')renderMilestonesScreen(el);
   else if(view==='activity-log')renderActivityLog(el);
   else if(view==='settings')renderSettings(el);
   if(view!=='project'){
@@ -5205,10 +5539,14 @@ function showView(view,pid){
   if(view==='project'){
     var proj=getCurrentProject();
     updateMobileHeaderTitle(proj?proj.name:MOBILE_VIEW_TITLES.project);
+  }else if(view==='milestones'){
+    var mProj=getCurrentProject();
+    updateMobileHeaderTitle(mProj?(MOBILE_VIEW_TITLES.milestones+' — '+mProj.name):MOBILE_VIEW_TITLES.milestones);
   }else{
     updateMobileHeaderTitle(MOBILE_VIEW_TITLES[view]||'ארונשטיין פיקוח וניהול');
   }
   refreshIcons(el);
+  updateMilestoneAlertBanner();
 }
 
 function fmtMoney(n){return '₪'+Number(n).toLocaleString('he-IL');}
@@ -6290,6 +6628,7 @@ async function saveProject(){
   var clientPhone=document.getElementById('proj-client-phone').value.trim();
   var data=getData();
   var proj={name:document.getElementById('proj-name').value.trim(),address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:Number(document.getElementById('proj-budget').value)||0,status:document.getElementById('proj-status').value,clientName:clientName,clientPhone:clientPhone};
+  var newProjectId=null;
   if(editingProjectId){
     var idx=data.projects.findIndex(function(p){return p.id===editingProjectId;});
     if(idx<0){showToast('שגיאה: הפרויקט לא נמצא — רענן את העמוד','error');return;}
@@ -6304,10 +6643,17 @@ async function saveProject(){
   }else{
     var perCat=proj.budget?Math.round(Number(proj.budget)/FIN_CATEGORIES.length):0;
     var budgetPlan={};FIN_CATEGORIES.forEach(function(c){budgetPlan[c]=perCat;});
-    data.projects.push(Object.assign({},proj,{id:'proj'+Date.now(),progress:0,budgetPlan:budgetPlan,phases:[],payments:[],documents:[],galleryPosts:[],updates:[],messages:[]}));
+    newProjectId='proj'+Date.now();
+    data.projects.push(Object.assign({},proj,{id:newProjectId,progress:0,budgetPlan:budgetPlan,phases:[],payments:[],documents:[],galleryPosts:[],updates:[],messages:[]}));
     logActivity('יצירת פרויקט','פרויקט חדש: '+proj.name);
   }
   if(!await saveData(data))return;
+  if(newProjectId){
+    var seed=await seedDefaultMilestones(newProjectId,proj.start,proj.end);
+    if(!seed.ok)showToast('הפרויקט נוצר אך יצירת אבני דרך נכשלה: '+formatSupabaseErrorHint(seed.error),'error');
+    await refreshMilestonesCache();
+    updateMilestoneAlertBanner();
+  }
   closeModal('modal-project');
   showToast(editingProjectId?'הפרויקט עודכן בהצלחה':'הפרויקט נוצר בהצלחה');
   showView(currentView);
@@ -6881,6 +7227,7 @@ Object.assign(window,{
   addSpecialtySetting,removeSpecialtySetting,
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,onPaymentFilterChange,exportPaymentsCsv,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
+  openAddMilestoneModal,openEditMilestoneModal,saveMilestone,deleteMilestone,markMilestoneDone,goToMilestonesView,
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,exportDailyLogsCsv,
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,
   openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,setGalleryStageFilter,
