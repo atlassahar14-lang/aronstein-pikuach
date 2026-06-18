@@ -1544,6 +1544,38 @@ function openDocInAutodeskViewer(docId){
   }
   window.open(getAutodeskViewerUrl(doc.url),'_blank','noopener,noreferrer');
 }
+function renderProjectDocsTabHtml(p){
+  return '<div class="section-title" style="margin-bottom:16px">'+ic('folder')+' מסמכים ותוכניות</div>'+
+    '<div class="doc-categories">'+
+    DOC_CATEGORIES.map(function(cat){
+      var catIcon=DOC_CATEGORY_ICONS;
+      var docs=(p.documents||[]).filter(function(d){return d.category===cat;});
+      return '<div class="doc-category"><div class="doc-category-title">'+ic(catIcon[cat]||'file-text')+' '+cat+'</div>'+
+        (docs.length===0?'<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px">אין מסמכים</p>':'')+
+        docs.map(function(d){
+          var hasUrl=d.url&&d.url!=='#';
+          var isHttp=hasUrl&&/^https?:\/\//i.test(d.url);
+          var isData=hasUrl&&String(d.url).indexOf('data:')===0;
+          var isDwg=isDwgDoc(d);
+          return '<div class="doc-item">'+
+            '<div style="display:flex;align-items:center;gap:6px;font-size:13px">'+
+            renderDocFileIcon(d)+' <span>'+escHtml(d.name)+'</span></div>'+
+            '<div class="doc-item-actions">'+
+            (isHttp&&!isDwg?'<a href="'+escHtml(d.url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">פתח</a>':'')+
+            (isHttp&&isDwg?'<button type="button" class="btn btn-outline btn-sm" onclick="openDocInAutodeskViewer(\''+d.id+'\')">פתח ב-Autodesk Viewer</button>'+
+            '<a href="'+escHtml(d.url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" download="'+escHtml(d.name)+'">'+ic('download')+'</a>':'')+
+            (isData?'<a href="'+escHtml(d.url)+'" download="'+escHtml(d.name)+'" class="btn btn-outline btn-sm">'+ic('download')+'</a>':'')+
+            '<button class="btn btn-danger btn-sm admin-only-action" onclick="deleteDoc(\''+d.id+'\')">'+ic('trash-2')+'</button>'+
+            '</div></div>';
+        }).join('')+
+        '<div class="admin-only-action" style="display:flex;gap:6px;margin-top:12px">'+
+        '<label class="btn btn-outline btn-sm" style="cursor:pointer;flex:1;justify-content:center">'+ic('paperclip')+' העלה קובץ<input type="file" style="display:none" accept="'+getDocUploadAccept(cat)+'" onchange="uploadDocFile(event,\''+cat.replace(/'/g,'\\\'')+'\')"/></label>'+
+        '<button class="btn btn-outline btn-sm" style="flex:1" onclick="addDocLink(\''+cat.replace(/'/g,'\\\'')+'\')">'+ic('link')+' הוסף לינק</button>'+
+        '</div>'+
+        '</div>';
+    }).join('')+
+    '</div>';
+}
 function revokePreviewUrl(key){
   if(filePreviewUrls[key]){URL.revokeObjectURL(filePreviewUrls[key]);delete filePreviewUrls[key];}
 }
@@ -1557,6 +1589,7 @@ function clearFilePreview(inputId,previewId){
 function renderFilePreviewContent(file,objectUrl){
   if(file.type.startsWith('image/'))return '<img src="'+objectUrl+'" alt="תצוגה מקדימה"/>';
   if(file.type.startsWith('video/'))return '<video controls src="'+objectUrl+'"></video>';
+  if(isDwgType(file.type,file.name))return '<div class="file-preview-pdf"><span class="doc-file-icon" aria-hidden="true">📐</span> <span>'+escHtml(file.name)+'</span></div>';
   if(isPdfType(file.type,file.name))return '<div class="file-preview-pdf">'+ic('file-text')+' <span>'+escHtml(file.name)+'</span></div>';
   return '<div class="file-preview-pdf">'+ic('paperclip')+' <span>'+escHtml(file.name)+'</span></div>';
 }
@@ -7210,37 +7243,8 @@ function renderProjectDetail(el){
     '</div></div>';
   }
 
-  // DOCS TAB (admin)
-  if(isAdminUser)html+='<div id="tab-docs" class="tab-content '+(currentTab==='docs'?'active':'')+'">'+
-    '<div class="section-title" style="margin-bottom:16px">'+ic('folder')+' מסמכים ותוכניות</div>'+
-    '<div class="doc-categories">'+
-    DOC_CATEGORIES.map(function(cat){
-      var catIcon=DOC_CATEGORY_ICONS;
-      var docs=p.documents.filter(function(d){return d.category===cat;});
-      return '<div class="doc-category"><div class="doc-category-title">'+ic(catIcon[cat]||'file-text')+' '+cat+'</div>'+
-        (docs.length===0?'<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px">אין מסמכים</p>':'')+
-        docs.map(function(d){
-          var hasUrl=d.url&&d.url!=='#';
-          var isHttp=hasUrl&&/^https?:\/\//i.test(d.url);
-          var isData=hasUrl&&String(d.url).indexOf('data:')===0;
-          var isDwg=isDwgDoc(d);
-          return '<div class="doc-item">'+
-            '<div style="display:flex;align-items:center;gap:6px;font-size:13px">'+
-            renderDocFileIcon(d)+' <span>'+escHtml(d.name)+'</span></div>'+
-            '<div class="doc-item-actions">'+
-            (isHttp&&!isDwg?'<a href="'+escHtml(d.url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">פתח</a>':'')+
-            (isHttp&&isDwg?'<button type="button" class="btn btn-outline btn-sm" onclick="openDocInAutodeskViewer(\''+d.id+'\')">פתח ב-Autodesk Viewer</button>'+
-            '<a href="'+escHtml(d.url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" download="'+escHtml(d.name)+'">'+ic('download')+'</a>':'')+
-            (isData?'<a href="'+escHtml(d.url)+'" download="'+escHtml(d.name)+'" class="btn btn-outline btn-sm">'+ic('download')+'</a>':'')+
-            '<button class="btn btn-danger btn-sm admin-only-action" onclick="deleteDoc(\''+d.id+'\')">'+ic('trash-2')+'</button>'+
-            '</div></div>';
-        }).join('')+
-          '<div class="admin-only-action" style="display:flex;gap:6px;margin-top:12px">'+
-          '<label class="btn btn-outline btn-sm" style="cursor:pointer;flex:1;justify-content:center">'+ic('paperclip')+' העלה קובץ<input type="file" style="display:none" accept="'+getDocUploadAccept(cat)+'" onchange="uploadDocFile(event,\''+cat.replace(/'/g,'\\\'')+'\')"/></label>'+
-          '<button class="btn btn-outline btn-sm" style="flex:1" onclick="addDocLink(\''+cat.replace(/'/g,'\\\'')+'\')">'+ic('link')+' הוסף לינק</button>'+
-          '</div>'+
-        '</div>';
-    }).join('')+'</div></div>';
+  // DOCS TAB
+  if(isAdminUser||isClientTabVisible(p,'docs'))html+='<div id="tab-docs" class="tab-content '+(currentTab==='docs'?'active':'')+'">'+renderProjectDocsTabHtml(p)+'</div>';
 
   // GALLERY TAB
   html+='<div id="tab-gallery" class="tab-content '+(currentTab==='gallery'?'active':'')+'">'+renderGalleryTabInnerHtml(p)+'</div>';
