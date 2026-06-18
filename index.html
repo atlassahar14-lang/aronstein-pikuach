@@ -227,9 +227,6 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .gantt-legend-item{display:inline-flex;align-items:center;gap:6px}
 .gantt-legend-dot{width:12px;height:12px;border-radius:4px;flex-shrink:0}
 .gantt-legend-dot.done{background:var(--success)}
-.gantt-legend-dot.in_progress{background:#3b82f6}
-.gantt-legend-dot.delayed{background:var(--warning)}
-.gantt-legend-dot.planned{background:var(--steel)}
 .gantt-legend-dot.active{background:var(--accent)}
 .gantt-legend-dot.pending{background:var(--steel)}
 .gantt-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:4px}
@@ -245,14 +242,8 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .gantt-track{position:relative;height:28px;background:var(--bg);border-radius:8px;border:1px solid var(--border);overflow:visible}
 .gantt-bar{position:absolute;top:3px;bottom:3px;border-radius:6px;min-width:4px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.12);transition:width .3s,right .3s}
 .gantt-bar.done{background:var(--success)}
-.gantt-bar.in_progress{background:#3b82f6}
-.gantt-bar.delayed{background:var(--warning)}
-.gantt-bar.planned{background:var(--steel);opacity:.9}
 .gantt-bar.active{background:var(--accent)}
 .gantt-bar.pending{background:var(--steel);opacity:.85}
-.gantt-bar-clickable{cursor:pointer}
-.gantt-bar-clickable:hover{filter:brightness(1.06);box-shadow:0 2px 8px rgba(0,0,0,.18)}
-.gantt-bar-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45);pointer-events:none;white-space:nowrap;padding:0 6px;z-index:1}
 .gantt-bar-progress{position:absolute;right:0;top:0;bottom:0;background:rgba(255,255,255,.35);border-radius:0 6px 6px 0;max-width:100%}
 .gantt-meta{font-size:11px;color:var(--text-muted);line-height:1.4;display:flex;flex-wrap:wrap;gap:6px 12px;direction:rtl}
 .gantt-meta-pct{font-weight:700;color:var(--primary)}
@@ -1012,27 +1003,6 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeBudgetQuickSubcontractorModal()">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="saveBudgetQuickSubcontractor()">שמור</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: Gantt task -->
-<div class="modal-overlay" id="modal-gantt-task">
-  <div class="modal">
-    <div class="modal-header"><div class="modal-title" id="modal-gantt-task-title">שלב חדש</div><button class="modal-close" onclick="closeModal('modal-gantt-task')"><i data-lucide="x"></i></button></div>
-    <div class="form-group"><label>שם שלב</label><input type="text" id="gantt-task-name" placeholder="לדוגמה: יציקת יסודות"/></div>
-    <div class="grid-2">
-      <div class="form-group"><label>תאריך התחלה</label><input type="date" id="gantt-task-start"/></div>
-      <div class="form-group"><label>תאריך סיום</label><input type="date" id="gantt-task-end"/></div>
-    </div>
-    <div class="form-group"><label>סטטוס</label><select id="gantt-task-status"><option value="planned">מתוכנן</option><option value="in_progress">בביצוע</option><option value="delayed">באיחור</option><option value="done">הושלם</option></select></div>
-    <div class="form-group"><label>אחוז התקדמות: <span id="gantt-task-pv">0%</span></label><input type="range" id="gantt-task-progress" min="0" max="100" value="0" oninput="document.getElementById('gantt-task-pv').textContent=this.value+'%'" style="width:100%;margin-top:8px"/></div>
-    <div class="modal-footer phase-modal-footer">
-      <button class="btn btn-danger admin-only-action" id="gantt-task-delete-btn" style="display:none;width:auto" onclick="deleteGanttTaskFromModal()"><i data-lucide="trash-2"></i> מחק שלב</button>
-      <div class="modal-footer-actions">
-        <button class="btn btn-outline" onclick="closeModal('modal-gantt-task')">ביטול</button>
-        <button class="btn btn-primary admin-only-action" style="width:auto" onclick="saveGanttTask()">שמור</button>
-      </div>
     </div>
   </div>
 </div>
@@ -2171,12 +2141,12 @@ function bindModalValidationClear(modalId){
   modal.addEventListener('input',clearGroup);
   modal.addEventListener('change',clearGroup);
 }
-['modal-project','modal-user','modal-payment','modal-phase','modal-gantt-task','modal-subcontractor','modal-budget-subcontractor','modal-update','modal-gallery-post','modal-punch-item'].forEach(bindModalValidationClear);
+['modal-project','modal-user','modal-payment','modal-phase','modal-subcontractor','modal-budget-subcontractor','modal-update','modal-gallery-post','modal-punch-item'].forEach(bindModalValidationClear);
 
-var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null,editingGanttTaskId=null;
+var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null;
 var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
-var appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()},appUsers=[],subcontractorsCache=[],punchItemsCache=[],ganttTasksCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
+var appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()},appUsers=[],subcontractorsCache=[],punchItemsCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
 const OFFLINE_PUNCH_STORAGE_KEY='offline_punch_items';
 const PUNCH_FORM_DRAFT_PREFIX='punch_form_draft_';
 var punchDraftAutosaveTimer=null,punchPendingPhotoUpload=null;
@@ -2207,7 +2177,6 @@ function resetAppSessionState(){
   appUsers=[];
   subcontractorsCache=[];
   punchItemsCache=[];
-  ganttTasksCache=[];
   dailyLogsCache=[];
   budgetsCache=[];
   budgetItemsByBudget={};
@@ -2557,229 +2526,6 @@ function renderGanttChartHtml(phases){
     '<div class="gantt-header"><div class="gantt-header-label">שלב</div><div class="gantt-axis">'+axisHtml+'</div></div>'+
     '<div class="gantt-body">'+rowsHtml+'</div></div></div></div>';
 }
-function ganttTaskColorForStatus(status){
-  return {done:'#22c55e',in_progress:'#3b82f6',delayed:'#f59e0b',planned:'#6B7A8D'}[status]||'#6B7A8D';
-}
-function ganttTaskStatusClass(status){
-  return {done:'done',in_progress:'in_progress',delayed:'delayed',planned:'planned'}[status]||'planned';
-}
-function ganttTaskStatusLabel(status){
-  return {done:'הושלם',in_progress:'בביצוע',delayed:'באיחור',planned:'מתוכנן'}[status]||status;
-}
-function mapGanttTaskRow(r){
-  var st=r.status||'planned';
-  return {
-    id:r.id,
-    projectId:r.project_id,
-    taskName:r.task_name,
-    startDate:r.start_date,
-    endDate:r.end_date,
-    progress:r.progress!=null?Number(r.progress):0,
-    status:st,
-    color:r.color||ganttTaskColorForStatus(st),
-    orderIndex:r.order_index!=null?Number(r.order_index):0
-  };
-}
-async function refreshGanttTasks(projectId){
-  if(!projectId){ganttTasksCache=[];return {ok:false};}
-  var res=await supabase.from('gantt_tasks').select('*').eq('project_id',projectId).order('order_index',{ascending:true}).order('start_date',{ascending:true});
-  if(res.error){
-    console.error('refreshGanttTasks',res.error);
-    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
-    ganttTasksCache=[];
-    return {ok:false,error:res.error.message};
-  }
-  ganttTasksCache=(res.data||[]).map(mapGanttTaskRow);
-  return {ok:true};
-}
-function renderGanttTasksChartHtml(tasks,opts){
-  opts=opts||{};
-  var editable=!!opts.editable;
-  if(!tasks||!tasks.length){
-    return '<div class="card gantt-card"><div class="empty-state gantt-empty"><div class="empty-icon">'+ic('calendar')+'</div><p>אין שלבים להצגה — '+(editable?'לחץ על "הוסף שלב" להתחלה':'אין נתונים')+'</p></div></div>';
-  }
-  var items=tasks.map(function(t){
-    var start=parsePhaseDate(t.startDate);
-    var end=parsePhaseDate(t.endDate);
-    if(start&&end&&end.getTime()<start.getTime()){var tmp=start;start=end;end=tmp;}
-    var pct=Math.min(100,Math.max(0,Number(t.progress)||0));
-    return {task:t,start:start,end:end,pct:pct};
-  });
-  var dated=items.filter(function(x){return x.start&&x.end;});
-  if(!dated.length){
-    return '<div class="card gantt-card"><div class="empty-state gantt-empty"><div class="empty-icon">'+ic('calendar')+'</div><p>יש להגדיר תאריך התחלה וסיום לכל שלב</p></div></div>';
-  }
-  var minT=Math.min.apply(null,dated.map(function(x){return x.start.getTime();}));
-  var maxT=Math.max.apply(null,dated.map(function(x){return x.end.getTime();}));
-  var range=maxT-minT||86400000;
-  var pad=range*0.04;
-  minT-=pad;maxT+=pad;range=maxT-minT;
-  var today=new Date();today.setHours(12,0,0,0);
-  var todayLine='';
-  if(today.getTime()>=minT&&today.getTime()<=maxT){
-    var todayPct=((today.getTime()-minT)/range)*100;
-    todayLine='<span class="gantt-today-line" style="right:'+todayPct+'%" title="היום"></span>';
-  }
-  var ticks=ganttMonthTicks(minT,maxT);
-  var axisHtml=todayLine+ticks.map(function(t){
-    var pct=((t.getTime()-minT)/range)*100;
-    if(pct<0||pct>100)return '';
-    var lbl=t.toLocaleDateString('he-IL',{month:'short',year:'2-digit'});
-    return '<span class="gantt-axis-tick" style="right:'+pct+'%">'+escHtml(lbl)+'</span>';
-  }).join('');
-  var rowsHtml=items.map(function(item){
-    var task=item.task;
-    var statusCls=ganttTaskStatusClass(task.status);
-    var barColor=escHtml(task.color||ganttTaskColorForStatus(task.status));
-    var clickAttr=editable?' onclick="openEditGanttTaskModal(\''+task.id+'\')" role="button" tabindex="0"':'';
-    if(!item.start||!item.end){
-      return '<div class="gantt-row"><div class="gantt-label">'+escHtml(task.taskName)+'</div>'+
-        '<div class="gantt-track-wrap"><div class="gantt-meta" style="padding:8px 0">חסרים תאריכים · '+item.pct+'%</div></div></div>';
-    }
-    var rightPct=((item.start.getTime()-minT)/range)*100;
-    var widthPct=Math.max(((item.end.getTime()-item.start.getTime())/range)*100,1.5);
-    if(rightPct+widthPct>100){widthPct=100-rightPct;}
-    return '<div class="gantt-row">'+
-      '<div class="gantt-label">'+escHtml(task.taskName)+'</div>'+
-      '<div class="gantt-track-wrap">'+
-      '<div class="gantt-track">'+
-      '<div class="gantt-bar '+statusCls+(editable?' gantt-bar-clickable':'')+'" style="right:'+rightPct+'%;width:'+widthPct+'%;background:'+barColor+'" title="'+escHtml(task.taskName)+'"'+clickAttr+'>'+
-      '<div class="gantt-bar-progress" style="width:'+item.pct+'%"></div>'+
-      '<span class="gantt-bar-label">'+item.pct+'%</span></div></div>'+
-      '<div class="gantt-meta">'+
-      '<span>'+formatGanttDate(item.start)+' – '+formatGanttDate(item.end)+'</span>'+
-      '<span class="gantt-meta-pct">'+item.pct+'% הושלם</span>'+
-      '<span class="phase-status '+statusCls+'">'+ganttTaskStatusLabel(task.status)+'</span>'+
-      '</div></div></div>';
-  }).join('');
-  return '<div class="card gantt-card">'+
-    '<div class="gantt-legend">'+
-    '<span class="gantt-legend-item"><span class="gantt-legend-dot done"></span> הושלם</span>'+
-    '<span class="gantt-legend-item"><span class="gantt-legend-dot in_progress"></span> בביצוע</span>'+
-    '<span class="gantt-legend-item"><span class="gantt-legend-dot delayed"></span> באיחור</span>'+
-    '<span class="gantt-legend-item"><span class="gantt-legend-dot planned"></span> מתוכנן</span>'+
-    '</div>'+
-    '<div class="gantt-scroll"><div class="gantt-chart">'+
-    '<div class="gantt-header"><div class="gantt-header-label">שלב</div><div class="gantt-axis">'+axisHtml+'</div></div>'+
-    '<div class="gantt-body">'+rowsHtml+'</div></div></div></div>';
-}
-async function renderGanttScreen(el){
-  if(!el)return;
-  var proj=getCurrentProject();
-  if(!proj){
-    el.innerHTML='<div class="page-header"><h1>'+ic('calendar')+' גאנט</h1><p>בחר פרויקט מהרשימה כדי לצפות בלוח הזמנים</p></div>'+
-      '<div class="empty-state card"><div class="empty-icon">'+ic('construction')+'</div><p>אין פרויקט פעיל</p>'+
-      (isAdmin()?'<button type="button" class="btn btn-primary" style="margin-top:16px" onclick="showView(\'projects\')">'+ic('construction')+' לרשימת פרויקטים</button>':'')+
-      '</div>';
-    refreshIcons(el);
-    return;
-  }
-  el.innerHTML='<div class="page-header"><h1>'+ic('calendar')+' גאנט — '+escHtml(proj.name)+'</h1><p>לוח זמנים לפי חודשים · '+escHtml(projectAddressLine(proj,false))+'</p></div>'+
-    '<div class="card" style="padding:40px;text-align:center;color:var(--text-muted)">טוען שלבים...</div>';
-  var loaded=await refreshGanttTasks(proj.id);
-  if(!loaded.ok){
-    el.innerHTML='<div class="page-header"><h1>'+ic('calendar')+' גאנט — '+escHtml(proj.name)+'</h1></div>'+
-      '<div class="empty-state card"><div class="empty-icon">'+ic('alert-triangle')+'</div><p>שגיאה בטעינת שלבים: '+escHtml(formatSupabaseErrorHint(loaded.error||'שגיאה'))+'</p></div>';
-    refreshIcons(el);
-    return;
-  }
-  var addBtn=isAdmin()?'<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddGanttTaskModal()">'+ic('plus')+' הוסף שלב</button>':'';
-  el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('calendar')+' גאנט — '+escHtml(proj.name)+'</h1><p>לוח זמנים לפי חודשים · '+escHtml(projectAddressLine(proj,false))+'</p></div>'+
-    (addBtn?'<div class="flex-gap">'+addBtn+'</div>':'')+
-    '</div>'+
-    (isAdmin()?'<button type="button" class="back-btn admin-only-action" onclick="showView(\'project\',\''+proj.id+'\')">← חזרה לפרויקט</button>':'')+
-    renderGanttTasksChartHtml(ganttTasksCache,{editable:isAdmin()});
-  refreshIcons(el);
-}
-function openAddGanttTaskModal(){
-  if(!requireAdmin()||!requireProjectAccess())return;
-  editingGanttTaskId=null;
-  document.getElementById('modal-gantt-task-title').textContent='שלב חדש';
-  document.getElementById('gantt-task-name').value='';
-  document.getElementById('gantt-task-start').value='';
-  document.getElementById('gantt-task-end').value='';
-  document.getElementById('gantt-task-status').value='planned';
-  document.getElementById('gantt-task-progress').value=0;
-  document.getElementById('gantt-task-pv').textContent='0%';
-  var delBtn=document.getElementById('gantt-task-delete-btn');
-  if(delBtn)delBtn.style.display='none';
-  openModal('modal-gantt-task');
-}
-function openEditGanttTaskModal(id){
-  if(!requireAdmin()||!requireProjectAccess())return;
-  var task=ganttTasksCache.find(function(t){return t.id===id;});
-  if(!task)return;
-  editingGanttTaskId=id;
-  document.getElementById('modal-gantt-task-title').textContent='עריכת שלב';
-  document.getElementById('gantt-task-name').value=task.taskName||'';
-  document.getElementById('gantt-task-start').value=formatPhaseDateForInput(task.startDate);
-  document.getElementById('gantt-task-end').value=formatPhaseDateForInput(task.endDate);
-  document.getElementById('gantt-task-status').value=task.status||'planned';
-  var pct=Math.min(100,Math.max(0,Number(task.progress)||0));
-  document.getElementById('gantt-task-progress').value=pct;
-  document.getElementById('gantt-task-pv').textContent=pct+'%';
-  var delBtn=document.getElementById('gantt-task-delete-btn');
-  if(delBtn)delBtn.style.display='inline-flex';
-  openModal('modal-gantt-task');
-}
-async function saveGanttTask(){
-  if(!requireAdmin()||!requireProjectAccess())return;
-  var proj=getCurrentProject();if(!proj)return;
-  var name=document.getElementById('gantt-task-name').value.trim();
-  var start=document.getElementById('gantt-task-start').value;
-  var end=document.getElementById('gantt-task-end').value;
-  var status=document.getElementById('gantt-task-status').value||'planned';
-  var progress=Math.min(100,Math.max(0,Number(document.getElementById('gantt-task-progress').value)||0));
-  if(!name||!start||!end){alert('נא למלא שם שלב ותאריכים');return;}
-  if(start>end){alert('תאריך הסיום חייב להיות אחרי תאריך ההתחלה');return;}
-  var row={
-    project_id:proj.id,
-    task_name:name,
-    start_date:start,
-    end_date:end,
-    progress:progress,
-    status:status,
-    color:ganttTaskColorForStatus(status)
-  };
-  var res;
-  if(editingGanttTaskId){
-    res=await supabase.from('gantt_tasks').update(row).eq('id',editingGanttTaskId).select().single();
-  }else{
-    var maxOrder=ganttTasksCache.reduce(function(m,t){return Math.max(m,t.orderIndex||0);},-1);
-    row.order_index=maxOrder+1;
-    res=await supabase.from('gantt_tasks').insert(row).select().single();
-  }
-  if(res.error){
-    showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(res.error.message),'error');
-    return;
-  }
-  await refreshGanttTasks(proj.id);
-  closeModal('modal-gantt-task');
-  editingGanttTaskId=null;
-  if(currentView==='gantt'){
-    var el=document.getElementById('main-content');
-    if(el)await renderGanttScreen(el);
-  }
-  showToast('השלב נשמר בהצלחה');
-}
-async function deleteGanttTaskFromModal(){
-  if(!requireAdmin()||!requireProjectAccess()||!editingGanttTaskId)return;
-  if(!confirm('למחוק את השלב?'))return;
-  var proj=getCurrentProject();if(!proj)return;
-  var res=await supabase.from('gantt_tasks').delete().eq('id',editingGanttTaskId);
-  if(res.error){
-    showToast('שגיאה במחיקה: '+formatSupabaseErrorHint(res.error.message),'error');
-    return;
-  }
-  await refreshGanttTasks(proj.id);
-  closeModal('modal-gantt-task');
-  editingGanttTaskId=null;
-  if(currentView==='gantt'){
-    var el=document.getElementById('main-content');
-    if(el)await renderGanttScreen(el);
-  }
-  showToast('השלב נמחק');
-}
 function csvEscape(val){
   var s=String(val==null?'':val);
   if(/[",\n\r]/.test(s))return '"'+s.replace(/"/g,'""')+'"';
@@ -3056,7 +2802,6 @@ function formatSupabaseErrorHint(errMsg){
   if(m.includes('budget_items')||m.includes('subcontractor_id'))return 'שגיאה בפריטי תקציב — הרץ את supabase-budget-items-subcontractor-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('profiles')&&m.includes('phone')||m.includes('column')&&m.includes('phone'))return 'חסרה עמודת phone בטבלת profiles — הרץ את supabase-profiles-phone-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('punch_items')&&(m.includes('location')||m.includes('photo_url')))return 'חסרות עמודות location / photo_url בטבלת punch_items — הרץ את supabase-punch-items-location-photo-migration.sql ב-Supabase SQL Editor.';
-  if(m.includes('gantt_tasks'))return 'חסרה טבלת gantt_tasks — הרץ את supabase-gantt-tasks-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('specialties'))return 'חסרה עמודת specialties בטבלת app_data — הרץ את supabase-specialties-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('fetch')||m.includes('network')||m.includes('522')||m.includes('timeout'))return 'בעיית רשת או Supabase לא זמין.';
   return errMsg||'שגיאה לא ידועה';
@@ -5164,7 +4909,6 @@ function renderSidebar(){
     nav.innerHTML='<div class="nav-section-title">ניהול</div>'+
       '<div class="nav-item '+(currentView==='dashboard'?'active':'')+'" onclick="showView(\'dashboard\')"><span class="nav-icon">'+ic('layout-dashboard')+'</span> דשבורד</div>'+
       '<div class="nav-item '+(currentView==='projects'?'active':'')+'" onclick="showView(\'projects\')"><span class="nav-icon">'+ic('construction')+'</span> פרויקטים</div>'+
-      '<div class="nav-item '+(currentView==='gantt'?'active':'')+'" onclick="showView(\'gantt\')"><span class="nav-icon">📅</span> גאנט</div>'+
       '<div class="nav-item '+(currentView==='budget-builder'?'active':'')+'" onclick="showView(\'budget-builder\')"><span class="nav-icon">'+ic('calculator')+'</span> בניית תקציב</div>'+
       '<div class="nav-section-title">מערכת</div>'+
       '<div class="nav-item '+(currentView==='clients'?'active':'')+'" onclick="showView(\'clients\')"><span class="nav-icon">'+ic('users')+'</span> לקוחות</div>'+
@@ -5172,15 +4916,13 @@ function renderSidebar(){
       '<div class="nav-item '+(currentView==='activity-log'?'active':'')+'" onclick="showView(\'activity-log\')"><span class="nav-icon">'+ic('scroll-text')+'</span> לוג פעולות</div>'+
       '<div class="nav-item '+(currentView==='settings'?'active':'')+'" onclick="showView(\'settings\')"><span class="nav-icon">'+ic('settings')+'</span> הגדרות</div>';
   } else {
-    nav.innerHTML='<div class="nav-section-title">הפרויקט שלי</div>'+
-      '<div class="nav-item '+(currentView==='project'?'active':'')+'" onclick="showView(\'project\',\''+currentUser.projectId+'\')"><span class="nav-icon">'+ic('house')+'</span> הפרויקט שלי</div>'+
-      '<div class="nav-item '+(currentView==='gantt'?'active':'')+'" onclick="showView(\'gantt\',\''+currentUser.projectId+'\')"><span class="nav-icon">📅</span> גאנט</div>';
+    nav.innerHTML='<div class="nav-section-title">הפרויקט שלי</div><div class="nav-item active"><span class="nav-icon">'+ic('house')+'</span> הפרויקט שלי</div>';
   }
   refreshIcons(nav);
 }
 
 var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-builder':'בניית תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה',punch:'ליקויים','daily-log':'יומן עבודה',updates:'עדכונים',messages:'שאלות'};
-var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',gantt:'גאנט','budget-builder':'בניית תקציב',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
+var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים','budget-builder':'בניית תקציב',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
   if(el)el.textContent=text||'ארונשטיין פיקוח וניהול';
@@ -5432,10 +5174,8 @@ function showView(view,pid){
   var el=document.getElementById('main-content');
   if(!isAdmin()){
     if(!currentUser.projectId){renderClientNoProject(el);return;}
-    if(view!=='project'&&view!=='gantt'){
-      view='project';
-      pid=currentUser.projectId;
-    }
+    view='project';
+    pid=currentUser.projectId;
   }
   if(view==='project'&&pid&&!clientCanAccessProject(pid))pid=currentUser.projectId;
   if(view==='project'&&pid&&pid!==currentProjectId)resetListFilters();
@@ -5454,7 +5194,6 @@ function showView(view,pid){
   else if(view==='clients')renderClients(el);
   else if(view==='subcontractors')renderSubcontractors(el);
   else if(view==='budget-builder')renderBudgetBuilder(el);
-  else if(view==='gantt')renderGanttScreen(el);
   else if(view==='activity-log')renderActivityLog(el);
   else if(view==='settings')renderSettings(el);
   if(view!=='project'){
@@ -5466,9 +5205,6 @@ function showView(view,pid){
   if(view==='project'){
     var proj=getCurrentProject();
     updateMobileHeaderTitle(proj?proj.name:MOBILE_VIEW_TITLES.project);
-  }else if(view==='gantt'){
-    var gProj=getCurrentProject();
-    updateMobileHeaderTitle(gProj?(MOBILE_VIEW_TITLES.gantt+' — '+gProj.name):MOBILE_VIEW_TITLES.gantt);
   }else{
     updateMobileHeaderTitle(MOBILE_VIEW_TITLES[view]||'ארונשטיין פיקוח וניהול');
   }
@@ -7145,7 +6881,6 @@ Object.assign(window,{
   addSpecialtySetting,removeSpecialtySetting,
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,onPaymentFilterChange,exportPaymentsCsv,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
-  openAddGanttTaskModal,openEditGanttTaskModal,saveGanttTask,deleteGanttTaskFromModal,
   saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,exportDailyLogsCsv,
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,
   openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,setGalleryStageFilter,
