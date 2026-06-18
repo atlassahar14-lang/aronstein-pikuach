@@ -2371,7 +2371,7 @@ function bindModalValidationClear(modalId){
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null,editingMilestoneId=null,editingFinishSelectionId=null,editingPriceOfferId=null;
 var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
-var appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:DEFAULT_PRICE_CATEGORIES.slice()},appUsers=[],subcontractorsCache=[],punchItemsCache=[],milestonesCache=[],finishSelectionsCache=[],priceOffersCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
+var appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:[]},appUsers=[],subcontractorsCache=[],punchItemsCache=[],milestonesCache=[],finishSelectionsCache=[],priceOffersCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
 const OFFLINE_PUNCH_STORAGE_KEY='offline_punch_items';
 const PUNCH_FORM_DRAFT_PREFIX='punch_form_draft_';
 var punchDraftAutosaveTimer=null,punchPendingPhotoUpload=null;
@@ -2446,7 +2446,7 @@ function resetListFilters(){
   galleryStageFilter='';
 }
 function resetAppSessionState(){
-  appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:DEFAULT_PRICE_CATEGORIES.slice()};
+  appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:[]};
   appUsers=[];
   subcontractorsCache=[];
   punchItemsCache=[];
@@ -3133,7 +3133,7 @@ function getSpecialtiesList(){
   return normalizeSpecialtiesList(appDataCache.specialties);
 }
 function normalizePriceCategoriesList(raw){
-  if(!Array.isArray(raw)||!raw.length)return DEFAULT_PRICE_CATEGORIES.slice();
+  if(!Array.isArray(raw)||!raw.length)return [];
   var out=[],seen={};
   raw.forEach(function(item){
     var s=String(item||'').trim();
@@ -3141,7 +3141,18 @@ function normalizePriceCategoriesList(raw){
     seen[s]=true;
     out.push(s);
   });
-  return out.length?out:DEFAULT_PRICE_CATEGORIES.slice();
+  return out;
+}
+function isLegacyDefaultPriceCategories(raw){
+  if(!Array.isArray(raw)||raw.length!==DEFAULT_PRICE_CATEGORIES.length)return false;
+  var set={};
+  raw.forEach(function(c){set[String(c).trim()]=true;});
+  return DEFAULT_PRICE_CATEGORIES.every(function(c){return set[c];});
+}
+function parsePriceCategoriesFromDb(raw){
+  if(!Array.isArray(raw)||!raw.length)return [];
+  if(isLegacyDefaultPriceCategories(raw))return [];
+  return normalizePriceCategoriesList(raw);
 }
 function getPriceCategoriesList(){
   return normalizePriceCategoriesList(appDataCache.priceCategories);
@@ -3239,7 +3250,7 @@ async function persistSpecialtiesOnly(){
 async function persistPriceCategoriesOnly(){
   if(!isAdmin())return {ok:true};
   var priceCategories=sanitizeJsonForDb(getPriceCategoriesList());
-  if(!Array.isArray(priceCategories))priceCategories=DEFAULT_PRICE_CATEGORIES.slice();
+  if(!Array.isArray(priceCategories))priceCategories=[];
   appDataCache.priceCategories=priceCategories;
   var res=await supabase.from('app_data').update({
     price_categories:priceCategories,
@@ -3258,23 +3269,24 @@ async function refreshAppData(){
   if(res.error){
     console.error('refreshAppData',res.error);
     if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
-    if(!appDataCache.projects.length)appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:DEFAULT_PRICE_CATEGORIES.slice()};
+    if(!appDataCache.projects.length)appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:[]};
     return {ok:false,error:res.error.message||String(res.error)};
   }
   if(res.data&&Array.isArray(res.data.projects)){
     var needsSpecialtySeed=!res.data.specialties||!Array.isArray(res.data.specialties)||!res.data.specialties.length;
-    var needsPriceCatSeed=!res.data.price_categories||!Array.isArray(res.data.price_categories)||!res.data.price_categories.length;
+    var legacyPriceCats=isLegacyDefaultPriceCategories(res.data.price_categories);
+    var priceCategories=parsePriceCategoriesFromDb(res.data.price_categories);
     appDataCache={
       projects:res.data.projects,
       activityLog:normalizeActivityLog(res.data.activity_log),
       specialties:needsSpecialtySeed?DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice():normalizeSpecialtiesList(res.data.specialties),
-      priceCategories:needsPriceCatSeed?DEFAULT_PRICE_CATEGORIES.slice():normalizePriceCategoriesList(res.data.price_categories)
+      priceCategories:priceCategories
     };
     appDataCache.projects.forEach(normalizeProjectGallery);
     appDataCache.projects.forEach(normalizeProjectClientVisibility);
     appDataCache.projects.forEach(normalizeProjectPhases);
     if(needsSpecialtySeed&&isAdmin())await persistSpecialtiesOnly();
-    if(needsPriceCatSeed&&isAdmin())await persistPriceCategoriesOnly();
+    if(legacyPriceCats&&isAdmin())await persistPriceCategoriesOnly();
     return {ok:true};
   }
   if(res.data&&res.data.projects!=null&&!Array.isArray(res.data.projects)){
@@ -3283,18 +3295,19 @@ async function refreshAppData(){
   }
   if(res.data){
     var needsSeed=!res.data.specialties||!Array.isArray(res.data.specialties)||!res.data.specialties.length;
-    var needsPriceCatSeed=!res.data.price_categories||!Array.isArray(res.data.price_categories)||!res.data.price_categories.length;
+    var legacyPriceCats=isLegacyDefaultPriceCategories(res.data.price_categories);
+    var priceCategories=parsePriceCategoriesFromDb(res.data.price_categories);
     appDataCache={
       projects:[],
       activityLog:normalizeActivityLog(res.data.activity_log),
       specialties:needsSeed?DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice():normalizeSpecialtiesList(res.data.specialties),
-      priceCategories:needsPriceCatSeed?DEFAULT_PRICE_CATEGORIES.slice():normalizePriceCategoriesList(res.data.price_categories)
+      priceCategories:priceCategories
     };
     if(needsSeed&&isAdmin())await persistSpecialtiesOnly();
-    if(needsPriceCatSeed&&isAdmin())await persistPriceCategoriesOnly();
+    if(legacyPriceCats&&isAdmin())await persistPriceCategoriesOnly();
     return {ok:true};
   }
-  appDataCache={projects:getDefaultProjects(),activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:DEFAULT_PRICE_CATEGORIES.slice()};
+  appDataCache={projects:getDefaultProjects(),activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice(),priceCategories:[]};
   var seed=await persistAppData();
   if(!seed.ok){
     console.error('refreshAppData seed',seed.error);
@@ -4159,35 +4172,47 @@ async function refreshPriceOffersCacheLegacy(projectId){
   });
   return {ok:true};
 }
+function syncPriceComparisonCategoryFilter(){
+  var cats=getPriceCategoriesList();
+  if(!cats.length){
+    priceComparisonCategoryFilter='';
+    return;
+  }
+  if(!priceComparisonCategoryFilter||cats.indexOf(priceComparisonCategoryFilter)<0){
+    priceComparisonCategoryFilter=cats[0];
+  }
+}
 function renderPriceCategoryFiltersHtml(active){
-  var chips='<button type="button" class="finish-category-chip'+(active===''?' active':'')+'" onclick="onPriceCategoryFilterChange(\'\')">הכל</button>';
-  chips+=getPriceCategoriesList().map(function(c){
+  var cats=getPriceCategoriesList();
+  var addCatBtn=isAdmin()?'<button type="button" class="btn btn-outline btn-sm admin-only-action" onclick="openAddPriceCategoryModal()">'+ic('plus')+' הוסף קטגוריה</button>':'';
+  if(!cats.length){
+    return '<div class="empty-state card" style="margin-bottom:16px"><div class="empty-icon">⚖️</div><p>הוסף קטגוריה ראשונה</p>'+
+      (isAdmin()?'<button type="button" class="btn btn-primary admin-only-action" style="margin-top:16px" onclick="openAddPriceCategoryModal()">'+ic('plus')+' הוסף קטגוריה</button>':'')+
+      '</div>';
+  }
+  var chips=cats.map(function(c){
     return '<button type="button" class="finish-category-chip'+(active===c?' active':'')+'" onclick="onPriceCategoryFilterChange(\''+c.replace(/'/g,'\\\'')+'\')">'+escHtml(c)+'</button>';
   }).join('');
-  var addCatBtn=isAdmin()?'<button type="button" class="btn btn-outline btn-sm admin-only-action" style="margin-right:auto" onclick="openAddPriceCategoryModal()">'+ic('plus')+' הוסף קטגוריה</button>':'';
   return '<div class="finish-category-filters" role="toolbar" aria-label="סינון לפי קטגוריה" style="align-items:center">'+chips+addCatBtn+'</div>';
 }
 function onPriceCategoryFilterChange(cat){
   priceComparisonCategoryFilter=cat||'';
   refreshPriceComparisonsTab();
 }
-function renderPriceOffersTableHtml(offers,showCategory){
-  if(!offers.length)return '<div class="empty-state card" style="margin-top:16px"><div class="empty-icon">⚖️</div><p>אין הצעות'+(priceComparisonCategoryFilter?' בקטגוריה זו':'')+'</p>'+
+function renderPriceOffersTableHtml(offers){
+  if(!offers.length)return '<div class="empty-state card" style="margin-top:16px"><div class="empty-icon">⚖️</div><p>אין הצעות בקטגוריה זו</p>'+
     (isAdmin()?'<button type="button" class="btn btn-primary admin-only-action" style="margin-top:16px" onclick="openAddPriceOfferModal()">'+ic('plus')+' הוסף הצעה</button>':'')+
     '</div>';
-  var singleExtremes=priceComparisonCategoryFilter?getOfferPriceExtremes(offers):null;
-  var extremesByCategory=priceComparisonCategoryFilter?null:getOfferExtremesByCategory(offers);
-  var hasColorLegend=priceComparisonCategoryFilter?(offers.length>=2):(Object.keys(extremesByCategory).some(function(cat){var ex=extremesByCategory[cat];return ex.min!=null;}));
-  return (hasColorLegend?'<p style="font-size:12px;color:var(--text-muted);margin:0 0 12px"><span style="color:#166534;font-weight:700">ירוק</span> = הזולה ביותר · <span style="color:#b91c1c;font-weight:700">אדום</span> = היקרה ביותר (בתוך כל קטגוריה)</p>':'')+
+  var extremes=getOfferPriceExtremes(offers);
+  var hasColorLegend=offers.length>=2&&extremes.min!=null;
+  return (hasColorLegend?'<p style="font-size:12px;color:var(--text-muted);margin:0 0 12px"><span style="color:#166534;font-weight:700">ירוק</span> = הזולה ביותר · <span style="color:#b91c1c;font-weight:700">אדום</span> = היקרה ביותר</p>':'')+
     '<div class="table-scroll"><table class="price-offers-table"><thead><tr>'+
-    (showCategory?'<th>קטגוריה</th>':'')+
     '<th>קבלן</th><th>סוג חומר</th><th>עלות חומר</th><th>עלות עבודה</th><th>מע"מ</th><th>פינוי פסולת</th><th>הערות</th><th>סה"כ</th><th>PDF</th>'+
     (isAdmin()?'<th></th>':'')+
     '</tr></thead><tbody>'+
     offers.map(function(o){
-      var rowCls=getOfferRowPriceClass(o,singleExtremes,extremesByCategory);
+      var rowCls=getOfferRowPriceClass(o,extremes,null);
       return '<tr class="'+rowCls+'">'+
-        (showCategory?'<td><span class="price-comparison-card-category">'+escHtml(o.category||'אחר')+'</span></td>':'')+
         '<td><strong>'+escHtml(o.contractorName)+'</strong></td>'+
         '<td>'+escHtml(o.materialType||'—')+'</td>'+
         '<td>'+fmtMoney(o.materialCost)+'</td>'+
@@ -4205,17 +4230,20 @@ function renderPriceOffersTableHtml(offers,showCategory){
     '</tbody></table></div>';
 }
 function renderPriceComparisonsTabContentHtml(proj,loaded){
+  syncPriceComparisonCategoryFilter();
+  var cats=getPriceCategoriesList();
   var list=getPriceOffersForProject(proj.id);
-  if(priceComparisonCategoryFilter)list=list.filter(function(o){return (o.category||'אחר')===priceComparisonCategoryFilter;});
-  var addBtn=isAdmin()?'<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddPriceOfferModal()">'+ic('plus')+' הוסף הצעה</button>':'';
-  var catLabel=priceComparisonCategoryFilter?priceComparisonCategoryFilter:'כל הקטגוריות';
+  if(priceComparisonCategoryFilter)list=list.filter(function(o){return (o.category||'')===priceComparisonCategoryFilter;});
+  var addBtn=isAdmin()&&cats.length?'<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddPriceOfferModal()">'+ic('plus')+' הוסף הצעה</button>':'';
+  var catLabel=priceComparisonCategoryFilter||'';
+  var summary=cats.length?('<p style="font-size:13px;color:var(--text-muted);margin:-8px 0 16px">'+escHtml(catLabel)+' · '+list.length+' הצעות</p>'):'';
   return '<div class="section-actions"><div class="section-title">'+tabIc('scale-balance')+' השוואת מחירים</div>'+
     (addBtn?'<div class="flex-gap">'+addBtn+'</div>':'')+
     '</div>'+
-    '<p style="font-size:13px;color:var(--text-muted);margin:-8px 0 16px">'+escHtml(catLabel)+' · '+list.length+' הצעות</p>'+
+    summary+
     (!loaded.ok?'<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינה: '+escHtml(formatSupabaseErrorHint(loaded.error||'שגיאה'))+'</div>':'')+
     renderPriceCategoryFiltersHtml(priceComparisonCategoryFilter)+
-    renderPriceOffersTableHtml(list,!priceComparisonCategoryFilter);
+    (cats.length?renderPriceOffersTableHtml(list):'');
 }
 async function initPriceComparisonsTab(){
   var root=document.getElementById('price-comparisons-tab-root');
@@ -4247,15 +4275,18 @@ async function savePriceCategory(){
   var res=await persistPriceCategoriesOnly();
   if(!res.ok){showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(res.error),'error');return;}
   closeModal('modal-price-category');
+  priceComparisonCategoryFilter=name;
   refreshPriceComparisonsTab();
   showToast('הקטגוריה נוספה');
   logActivity('השוואת מחירים','הוספת קטגוריה: '+name);
 }
 function openAddPriceOfferModal(){
   if(!requireAdmin()||!requireProjectAccess())return;
+  var cats=getPriceCategoriesList();
+  if(!cats.length){showToast('הוסף קטגוריה ראשונה לפני הוספת הצעה','error');return;}
   editingPriceOfferId=null;
   document.getElementById('modal-price-offer-title').textContent='הוסף הצעה';
-  var defaultCat=priceComparisonCategoryFilter||getPriceCategoriesList()[0]||'אחר';
+  var defaultCat=priceComparisonCategoryFilter||cats[0];
   populatePriceOfferCategorySelect(defaultCat);
   document.getElementById('price-offer-contractor').value='';
   document.getElementById('price-offer-material-type').value='';
