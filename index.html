@@ -4054,7 +4054,7 @@ async function ensurePriceCategoriesFromOffers(projectId){
   var missing=[];
   priceOffersCache.filter(function(o){return o.projectId===projectId;}).forEach(function(o){
     var cat=String(o.category||'').trim();
-    if(cat&&!existing[cat]){existing[cat]=true;missing.push(cat);}
+    if(cat&&cat!=='אחר'&&!existing[cat]){existing[cat]=true;missing.push(cat);}
   });
   if(!missing.length)return {ok:true};
   var rows=missing.map(function(cat){
@@ -4150,56 +4150,80 @@ function getOfferRowPriceClass(offer,singleExtremes,extremesByCategory){
   if(singleExtremes.max!=null&&price===singleExtremes.max)return 'offer-expensive';
   return '';
 }
+async function fetchLegacyOffersForProject(projectId){
+  var compRes=await supabase.from('price_comparisons').select('id,project_id,category,title').eq('project_id',projectId);
+  if(compRes.error)return {ok:false,error:compRes.error.message,offers:[]};
+  var comps=compRes.data||[];
+  if(!comps.length)return {ok:true,offers:[]};
+  var compMeta={};
+  comps.forEach(function(c){compMeta[c.id]={projectId:c.project_id,category:c.category||'',title:c.title||''};});
+  var ids=comps.map(function(c){return c.id;});
+  var offRes=await supabase.from('price_offers').select('*').in('comparison_id',ids).order('created_at',{ascending:false});
+  if(offRes.error)return {ok:false,error:offRes.error.message,offers:[]};
+  var offers=(offRes.data||[]).map(function(r){
+    var o=mapPriceOfferRow(r);
+    var meta=compMeta[r.comparison_id];
+    if(meta){
+      if(!o.projectId)o.projectId=meta.projectId;
+      var compCat=String(meta.category||'').trim();
+      if(compCat&&(!o.category||o.category==='אחר'))o.category=compCat;
+    }
+    return o;
+  });
+  return {ok:true,offers:offers};
+}
+function mergePriceOffersById(primary,extra){
+  var byId={};
+  (primary||[]).forEach(function(o){if(o&&o.id)byId[o.id]=o;});
+  (extra||[]).forEach(function(o){
+    if(!o||!o.id)return;
+    if(!byId[o.id])byId[o.id]=o;
+    else{
+      if(!byId[o.id].projectId)byId[o.id].projectId=o.projectId;
+      if(!byId[o.id].category||byId[o.id].category==='אחר')byId[o.id].category=o.category;
+      if(!byId[o.id].offerPdfUrl&&o.offerPdfUrl)byId[o.id].offerPdfUrl=o.offerPdfUrl;
+    }
+  });
+  return Object.keys(byId).map(function(id){return byId[id];});
+}
 async function refreshPriceOffersCache(projectId){
   if(!currentUser){priceOffersCache=[];return {ok:false};}
   var pid=projectId||currentProjectId;
   if(!pid){priceOffersCache=[];return {ok:true};}
   if(isAdmin()||currentUser.projectId===pid){
+    var offers=[];
     var offRes=await supabase.from('price_offers').select('*').eq('project_id',pid).order('created_at',{ascending:false});
     if(offRes.error){
-      var legacyErr=await refreshPriceOffersCacheLegacy(pid);
-      if(legacyErr.sessionExpired)return legacyErr;
-      if(legacyErr.ok)return legacyErr;
-      console.error('refreshPriceOffersCache',offRes.error);
       if(await checkSupabaseSessionError(offRes.error))return {ok:false,sessionExpired:true};
-      priceOffersCache=[];
-      return {ok:false,error:offRes.error.message};
+      var legacyOnly=await fetchLegacyOffersForProject(pid);
+      if(!legacyOnly.ok){
+        console.error('refreshPriceOffersCache',offRes.error,legacyOnly.error);
+        priceOffersCache=[];
+        return {ok:false,error:offRes.error.message};
+      }
+      priceOffersCache=legacyOnly.offers;
+      return {ok:true};
     }
-    priceOffersCache=(offRes.data||[]).map(mapPriceOfferRow);
-    if(!priceOffersCache.length){
-      var legacyEmpty=await refreshPriceOffersCacheLegacy(pid);
-      if(legacyEmpty.ok&&priceOffersCache.length)return legacyEmpty;
+    offers=(offRes.data||[]).map(mapPriceOfferRow);
+    var legacy=await fetchLegacyOffersForProject(pid);
+    if(!legacy.ok){
+      console.error('refreshPriceOffersCache legacy',legacy.error);
+      priceOffersCache=offers;
+      return {ok:true};
     }
+    priceOffersCache=mergePriceOffersById(offers,legacy.offers);
     return {ok:true};
   }
   priceOffersCache=[];
   return {ok:true};
 }
 async function refreshPriceOffersCacheLegacy(projectId){
-  var compRes=await supabase.from('price_comparisons').select('id,project_id,category').eq('project_id',projectId);
-  if(compRes.error){
+  var legacy=await fetchLegacyOffersForProject(projectId);
+  if(!legacy.ok){
     priceOffersCache=[];
-    return {ok:false,error:compRes.error.message};
+    return {ok:false,error:legacy.error};
   }
-  var comps=compRes.data||[];
-  if(!comps.length){priceOffersCache=[];return {ok:true};}
-  var compMeta={};
-  comps.forEach(function(c){compMeta[c.id]={projectId:c.project_id,category:c.category||'אחר'};});
-  var ids=comps.map(function(c){return c.id;});
-  var offRes=await supabase.from('price_offers').select('*').in('comparison_id',ids).order('created_at',{ascending:false});
-  if(offRes.error){
-    priceOffersCache=[];
-    return {ok:false,error:offRes.error.message};
-  }
-  priceOffersCache=(offRes.data||[]).map(function(r){
-    var o=mapPriceOfferRow(r);
-    var meta=compMeta[r.comparison_id];
-    if(meta){
-      if(!o.projectId)o.projectId=meta.projectId;
-      if(!o.category||o.category==='אחר')o.category=meta.category||'אחר';
-    }
-    return o;
-  });
+  priceOffersCache=legacy.offers;
   return {ok:true};
 }
 function syncPriceComparisonCategoryFilter(){
