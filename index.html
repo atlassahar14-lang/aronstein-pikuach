@@ -1300,7 +1300,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="modal-overlay" id="modal-budget-excel-import">
   <div class="modal" style="max-width:min(95vw,720px)">
     <div class="modal-header"><div class="modal-title">ייבוא מאקסל</div><button class="modal-close" onclick="closeBudgetExcelImportModal()"><i data-lucide="x"></i></button></div>
-    <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px;line-height:1.5">העלה קובץ .xlsx — המערכת תקרא עמודות C (תיאור), E (כמות), F (מחיר יחידה), G (סכום).</p>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px;line-height:1.5">העלה קובץ .xlsx — המערכת סורקת את כל השורות: C (תיאור מעל 3 תווים), F (מחיר יחידה &gt; 0), E (כמות — ברירת מחדל 1), G (סכום — מחושב אוטומטית אם חסר).</p>
     <div class="form-group">
       <label>קובץ Excel (.xlsx)</label>
       <label class="upload-label"><i data-lucide="file-spreadsheet"></i> בחר קובץ<input type="file" id="budget-excel-file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/></label>
@@ -2504,6 +2504,7 @@ var budgetBuilderDraft=null,budgetPendingContactItemId=null;
 var budgetExcelImportRows=[];
 const BUDGET_EXCEL_MAX_BYTES=5*1024*1024;
 const BUDGET_EXCEL_HEADER_WORDS=['תיאור','description','פריט','מקט','כמות','quantity','מחיר','price','מחיר יחידה','unit','סכום','total','סה"כ','סהכ','סה״כ','#','מס','מס\'','item','sum','amount'];
+const BUDGET_EXCEL_SKIP_WORDS=['הערה','סה"כ','סהכ','סה״כ','סכום','כולל','לפני'];
 const BUDGET_BUILDER_CATEGORIES=['חפירות','שלד','חשמל','אינסטלציה','טיח','ריצוף','גמר','אחר'];
 const BUDGET_DONUT_COLORS=['#1B2B5E','#2a4078','#e8a020','#22c55e','#3b82f6','#8b5cf6','#ef4444','#14b8a6','#f97316','#6366f1','#0ea5e9','#a855f7'];
 const BUDGET_UNITS=['מ"ר','מ"ק','מ"ל','יחידה','טון','קג','שעה','ק"מ'];
@@ -5881,13 +5882,19 @@ function parseExcelCellNumber(val){
   var n=Number(s);
   return isNaN(n)?null:n;
 }
-function isBudgetExcelHeaderRow(desc,qty,unitPrice,total){
+function isBudgetExcelHeaderRow(desc){
   var d=String(desc||'').trim();
   if(!d)return true;
   var lower=d.toLowerCase();
-  if(BUDGET_EXCEL_HEADER_WORDS.some(function(w){return lower===w.toLowerCase()||lower.indexOf(w.toLowerCase())===0;}))return true;
-  if(qty==null&&unitPrice==null&&total==null&&/[א-תa-z]/i.test(d)&&!/\d/.test(d))return true;
-  return false;
+  return BUDGET_EXCEL_HEADER_WORDS.some(function(w){return lower===w.toLowerCase()||lower.indexOf(w.toLowerCase())===0;});
+}
+function isBudgetExcelSkipDescription(desc){
+  var d=String(desc||'').trim();
+  if(d.length<=3)return true;
+  return BUDGET_EXCEL_SKIP_WORDS.some(function(w){return d.indexOf(w)!==-1;});
+}
+function isBudgetExcelFormulaCell(cell){
+  return !!(cell&&cell.f);
 }
 function parseBudgetExcelWorkbook(arrayBuffer){
   if(typeof XLSX==='undefined')return {ok:false,message:'ספריית Excel לא נטענה — רענן את העמוד'};
@@ -5903,19 +5910,23 @@ function parseBudgetExcelWorkbook(arrayBuffer){
     var priceCell=sheet[XLSX.utils.encode_cell({r:r,c:5})];
     var totalCell=sheet[XLSX.utils.encode_cell({r:r,c:6})];
     var desc=descCell!=null&&descCell.v!=null?String(descCell.v).trim():'';
-    var qty=parseExcelCellNumber(qtyCell&&qtyCell.v);
-    var unitPrice=parseExcelCellNumber(priceCell&&priceCell.v);
-    var total=parseExcelCellNumber(totalCell&&totalCell.v);
-    if(!desc&&!qty&&!unitPrice&&!total)continue;
-    if(isBudgetExcelHeaderRow(desc,qty,unitPrice,total))continue;
     if(!desc)continue;
-    if(qty==null||qty<=0)continue;
-    if(unitPrice==null&&total!=null&&qty>0)unitPrice=Math.round(total/qty*100)/100;
-    if(unitPrice==null)unitPrice=0;
-    if(total==null)total=calcBudgetLineTotal(qty,unitPrice);
+    if(isBudgetExcelSkipDescription(desc))continue;
+    if(isBudgetExcelHeaderRow(desc))continue;
+    var unitPrice=parseExcelCellNumber(priceCell&&priceCell.v);
+    if(unitPrice==null||unitPrice<=0)continue;
+    var qty=parseExcelCellNumber(qtyCell&&qtyCell.v);
+    if(qty==null||qty<=0)qty=1;
+    var total;
+    if(isBudgetExcelFormulaCell(totalCell)||totalCell==null||totalCell.v==null||totalCell.v===''){
+      total=calcBudgetLineTotal(qty,unitPrice);
+    }else{
+      var parsedTotal=parseExcelCellNumber(totalCell.v);
+      total=parsedTotal!=null&&parsedTotal>0?parsedTotal:calcBudgetLineTotal(qty,unitPrice);
+    }
     rows.push({description:desc,quantity:qty,unitPrice:unitPrice,total:total});
   }
-  if(!rows.length)return {ok:false,message:'לא נמצאו שורות תקינות (עמודות C, E, F, G)'};
+  if(!rows.length)return {ok:false,message:'לא נמצאו שורות תקינות — נדרש תיאור (C) מעל 3 תווים ומחיר יחידה (F) גדול מ-0'};
   return {ok:true,rows:rows};
 }
 function populateBudgetExcelCategorySelect(){
