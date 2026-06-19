@@ -2507,7 +2507,7 @@ const BUDGET_EXCEL_HEADER_WORDS=['תיאור','description','פריט','מקט',
 const BUDGET_EXCEL_SKIP_WORDS=['הערה','סה"כ','סהכ','סה״כ','סכום','כולל','לפני'];
 const BUDGET_BUILDER_CATEGORIES=['חפירות','שלד','חשמל','אינסטלציה','טיח','ריצוף','גמר','אחר'];
 const BUDGET_DONUT_COLORS=['#1B2B5E','#2a4078','#e8a020','#22c55e','#3b82f6','#8b5cf6','#ef4444','#14b8a6','#f97316','#6366f1','#0ea5e9','#a855f7'];
-const BUDGET_UNITS=['מ"ר','מ"ק','מ"ל','יחידה','טון','קג','שעה','ק"מ'];
+const BUDGET_UNITS=['יחידה','קומפלט','מ"ר','מ"א','מ"ק','קומפ\'','טון','שעה','יום','אחר'];
 const BUDGET_DEFAULT_UNIT='יחידה';
 const GALLERY_STAGES=['כללי','חפירות ויסודות','שלד ובטון','טיח וריצוף','חשמל ואינסטלציה','גמר וסיום'];
 // שלב גלריה: app_data.projects[].galleryPosts[].stage (JSON — אין טבלה נפרדת)
@@ -5435,7 +5435,9 @@ function normalizeBudgetUnit(unit){
 }
 function renderBudgetUnitOptions(selected){
   var sel=normalizeBudgetUnit(selected);
-  return BUDGET_UNITS.map(function(u){
+  var units=BUDGET_UNITS.slice();
+  if(sel&&units.indexOf(sel)===-1)units.push(sel);
+  return units.map(function(u){
     return '<option value="'+escHtml(u)+'"'+(u===sel?' selected':'')+'>'+escHtml(u)+'</option>';
   }).join('');
 }
@@ -6176,8 +6178,8 @@ function renderBudgetItemEditorRow(it){
   return '<tr>'+
     '<td><input type="text" value="'+escHtml(it.description)+'" placeholder="תיאור פריט" oninput="onBudgetItemFieldChange(\''+it.id+'\',\'description\',this.value)"/></td>'+
     '<td style="width:200px;min-width:180px"><select onchange="onBudgetItemContactChange(\''+it.id+'\',this)">'+renderBudgetSubcontractorOptions(it.contactId||'')+'</select></td>'+
-    '<td style="width:88px"><input type="number" min="0" step="0.01" value="'+it.quantity+'" oninput="onBudgetItemFieldChange(\''+it.id+'\',\'quantity\',this.value)"/></td>'+
     '<td style="width:96px"><select onchange="onBudgetItemFieldChange(\''+it.id+'\',\'unit\',this.value)">'+renderBudgetUnitOptions(it.unit)+'</select></td>'+
+    '<td style="width:88px"><input type="number" min="0" step="0.01" value="'+it.quantity+'" oninput="onBudgetItemFieldChange(\''+it.id+'\',\'quantity\',this.value)"/></td>'+
     '<td style="width:120px"><input type="number" min="0" step="0.01" value="'+it.unitPrice+'" oninput="onBudgetItemFieldChange(\''+it.id+'\',\'unitPrice\',this.value)"/></td>'+
     '<td class="budget-item-total" data-budget-item-total="'+it.id+'">'+fmtMoney(calcBudgetLineTotal(it.quantity,it.unitPrice))+'</td>'+
     '<td style="width:52px"><button type="button" class="btn btn-danger btn-sm" onclick="removeBudgetItem(\''+it.id+'\')" title="מחק">'+ic('trash-2')+'</button></td></tr>';
@@ -6194,7 +6196,7 @@ function renderBudgetBuilderEditorHtml(){
       '<span class="budget-category-title">'+escHtml(cat)+'</span>'+
       '<span class="budget-category-subtotal" data-budget-cat-subtotal="'+escHtml(cat)+'">'+fmtMoney(catSum)+'</span></div>'+
       (rows.length?'<div class="budget-items-scroll"><table class="budget-items-table"><thead><tr>'+
-      '<th>תיאור</th><th>איש קשר</th><th>כמות</th><th>יחידה</th><th>מחיר ליחידה</th><th>סה"כ</th><th></th></tr></thead><tbody>'+
+      '<th>תיאור</th><th>איש קשר</th><th>יחידה</th><th>כמות</th><th>מחיר ליחידה</th><th>סה"כ</th><th></th></tr></thead><tbody>'+
       rows.map(renderBudgetItemEditorRow).join('')+'</tbody></table></div>':'')+
       '<div style="padding:12px 16px;border-top:1px solid var(--border)">'+
       '<button type="button" class="btn btn-outline btn-sm" onclick="addBudgetItemToCategory(\''+encodeURIComponent(cat)+'\')">'+ic('plus')+' הוסף פריט</button></div></div>';
@@ -6375,8 +6377,8 @@ function renderBudgetClientBodyHtml(budget,items){
     var catSum=catItems.reduce(function(s,it){return s+calcBudgetLineTotal(it.quantity,it.unitPrice);},0);
     tableRows+='<tr class="cat-row"><td colspan="5">'+escHtml(cat)+'</td><td class="num">'+fmtMoney(catSum)+'</td></tr>';
     catItems.forEach(function(it){
-      tableRows+='<tr><td>'+escHtml(it.description)+'</td><td>'+escHtml(budgetItemContactLabel(it))+'</td><td class="num">'+it.quantity+'</td>'+
-        '<td>'+escHtml(normalizeBudgetUnit(it.unit))+'</td>'+
+      tableRows+='<tr><td>'+escHtml(it.description)+'</td><td>'+escHtml(budgetItemContactLabel(it))+'</td><td>'+escHtml(normalizeBudgetUnit(it.unit))+'</td>'+
+        '<td class="num">'+it.quantity+'</td>'+
         '<td class="num">'+fmtMoney(it.unitPrice)+'</td><td class="num">'+fmtMoney(calcBudgetLineTotal(it.quantity,it.unitPrice))+'</td></tr>';
     });
   });
@@ -6390,7 +6392,7 @@ function renderBudgetClientBodyHtml(budget,items){
     '<span><strong>תאריך:</strong> '+formatSubcontractorDate(budget.budgetDate)+'</span>'+
     '</div></div>'+
     '<div class="table-scroll"><table class="budget-client-table"><thead><tr>'+
-    '<th>תיאור</th><th>איש קשר</th><th>כמות</th><th>יחידה</th><th>מחיר ליחידה</th><th>סה"כ</th></tr></thead><tbody>'+
+    '<th>תיאור</th><th>איש קשר</th><th>יחידה</th><th>כמות</th><th>מחיר ליחידה</th><th>סה"כ</th></tr></thead><tbody>'+
     (tableRows||'<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">אין פריטים</td></tr>')+
     '</tbody></table></div>'+
     '<div class="budget-client-totals">'+
