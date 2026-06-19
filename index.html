@@ -1303,8 +1303,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px;line-height:1.5">העלה קובץ .xlsx — המערכת סורקת את כל השורות: C (תיאור מעל 3 תווים), F (מחיר יחידה &gt; 0), E (כמות — ברירת מחדל 1), G (סכום — מחושב אוטומטית אם חסר).</p>
     <div class="form-group">
       <label>קובץ Excel (.xlsx)</label>
-      <label class="upload-label"><i data-lucide="file-spreadsheet"></i> בחר קובץ<input type="file" id="budget-excel-file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/></label>
+      <label class="upload-label"><i data-lucide="sheet"></i> בחר קובץ<input type="file" id="budget-excel-file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/></label>
       <p class="upload-hint">קובץ .xlsx בלבד · עד 5MB</p>
+      <div id="budget-excel-parse-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span>קורא קובץ...</span></div>
       <div id="budget-excel-file-error" class="upload-error"></div>
     </div>
     <div class="form-group">
@@ -2500,7 +2501,7 @@ var subcontractorSpecialtyFilter='',showDailyLogForm=false;
 var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='',activityLogTypeFilter='',galleryStageFilter='',finishSelectionsCategoryFilter='',priceComparisonCategoryFilter='';
 var toastTimer=null;
 var budgetsCache=[],budgetItemsByBudget={},budgetBuilderMode='list',editingBudgetId=null;
-var budgetBuilderDraft=null,budgetPendingContactItemId=null;
+var budgetBuilderDraft=null,budgetPendingContactItemId=null,budgetBuilderInitInflight=null;
 var budgetExcelImportRows=[];
 const BUDGET_EXCEL_MAX_BYTES=5*1024*1024;
 const BUDGET_EXCEL_HEADER_WORDS=['תיאור','description','פריט','מקט','כמות','quantity','מחיר','price','מחיר יחידה','unit','סכום','total','סה"כ','סהכ','סה״כ','#','מס','מס\'','item','sum','amount'];
@@ -5965,16 +5966,29 @@ function setBudgetExcelFileError(msg){
   if(msg){el.textContent=msg;el.classList.add('show');}
   else{el.textContent='';el.classList.remove('show');}
 }
+function setBudgetExcelLoading(loading){
+  var el=document.getElementById('budget-excel-parse-status');
+  if(el)el.classList.toggle('show',!!loading);
+}
 async function openBudgetExcelImportModal(){
   if(!requireAdmin())return;
   if(budgetBuilderMode!=='edit'||!budgetBuilderDraft){
-    startNewBudgetDraft();
-    await new Promise(function(r){setTimeout(r,60);});
+    budgetBuilderMode='edit';
+    editingBudgetId=null;
+    budgetBuilderDraft=createEmptyBudgetDraft();
+    if(currentView!=='budget-builder'){
+      showView('budget-builder');
+      if(budgetBuilderInitInflight)await budgetBuilderInitInflight;
+      else await initBudgetBuilderView();
+    }else{
+      await initBudgetBuilderView();
+    }
   }
   budgetExcelImportRows=[];
   var fileInput=document.getElementById('budget-excel-file');
   if(fileInput)fileInput.value='';
   setBudgetExcelFileError('');
+  setBudgetExcelLoading(false);
   populateBudgetExcelCategorySelect();
   renderBudgetExcelPreview();
   openModal('modal-budget-excel-import');
@@ -5991,6 +6005,7 @@ function onBudgetExcelFileSelected(event){
   var file=event.target.files&&event.target.files[0];
   budgetExcelImportRows=[];
   setBudgetExcelFileError('');
+  setBudgetExcelLoading(false);
   renderBudgetExcelPreview();
   if(!file)return;
   if(!/\.xlsx$/i.test(file.name)&&file.type!=='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'){
@@ -6003,8 +6018,10 @@ function onBudgetExcelFileSelected(event){
     event.target.value='';
     return;
   }
+  setBudgetExcelLoading(true);
   var reader=new FileReader();
   reader.onload=function(e){
+    setBudgetExcelLoading(false);
     try{
       var parsed=parseBudgetExcelWorkbook(e.target.result);
       if(!parsed.ok){
@@ -6019,7 +6036,10 @@ function onBudgetExcelFileSelected(event){
       setBudgetExcelFileError('שגיאה בקריאת הקובץ — ודא שזה קובץ Excel תקין');
     }
   };
-  reader.onerror=function(){setBudgetExcelFileError('שגיאה בקריאת הקובץ');};
+  reader.onerror=function(){
+    setBudgetExcelLoading(false);
+    setBudgetExcelFileError('שגיאה בקריאת הקובץ');
+  };
   reader.readAsArrayBuffer(file);
 }
 function confirmBudgetExcelImport(){
@@ -6283,7 +6303,9 @@ async function renderBudgetBuilder(el){
     '<button type="button" class="btn btn-outline btn-sm" onclick="openBudgetExcelImportModal()">📊 ייבוא מאקסל</button></div>'+
     '<div id="budget-builder-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div>';
   refreshIcons(el);
-  await initBudgetBuilderView();
+  var initP=initBudgetBuilderView();
+  budgetBuilderInitInflight=initP;
+  try{await initP;}finally{if(budgetBuilderInitInflight===initP)budgetBuilderInitInflight=null;}
 }
 async function saveBudgetBuilder(){
   if(!requireAdmin())return;

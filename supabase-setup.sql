@@ -230,3 +230,62 @@ with check (bucket_id = 'media' and public.is_admin());
 create policy "media_admin_delete"
 on storage.objects for delete to authenticated
 using (bucket_id = 'media' and public.is_admin());
+
+-- =============================================================================
+-- Storage: bucket "payment-receipts" (Private) — קבלות תשלום
+-- נתיב: {project_id}/{payment_id}-{timestamp}.{ext}
+-- =============================================================================
+
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('payment-receipts', 'payment-receipts', false, 20971520)
+on conflict (id) do update set
+  public = false,
+  file_size_limit = excluded.file_size_limit;
+
+create or replace function public.can_access_payment_receipt(object_name text)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select
+    public.is_admin()
+    or exists (
+      select 1
+      from public.profiles p
+      where p.id = auth.uid()
+        and p.project_id is not null
+        and p.project_id = split_part(object_name, '/', 1)
+    );
+$$;
+
+grant execute on function public.can_access_payment_receipt(text) to authenticated;
+
+drop policy if exists "payment_receipts_insert" on storage.objects;
+drop policy if exists "payment_receipts_select" on storage.objects;
+drop policy if exists "payment_receipts_update" on storage.objects;
+drop policy if exists "payment_receipts_delete" on storage.objects;
+
+create policy "payment_receipts_insert"
+on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'payment-receipts'
+  and public.can_access_payment_receipt(name)
+);
+
+create policy "payment_receipts_select"
+on storage.objects for select to authenticated
+using (
+  bucket_id = 'payment-receipts'
+  and public.can_access_payment_receipt(name)
+);
+
+create policy "payment_receipts_update"
+on storage.objects for update to authenticated
+using (bucket_id = 'payment-receipts' and public.is_admin())
+with check (bucket_id = 'payment-receipts' and public.is_admin());
+
+create policy "payment_receipts_delete"
+on storage.objects for delete to authenticated
+using (bucket_id = 'payment-receipts' and public.is_admin());
