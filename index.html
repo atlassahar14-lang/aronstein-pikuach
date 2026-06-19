@@ -1315,7 +1315,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div id="budget-excel-preview-wrap" style="display:none">
       <div class="section-title" style="margin-bottom:8px">תצוגה מקדימה — <span id="budget-excel-count">0</span> פריטים</div>
       <div class="budget-excel-preview table-scroll">
-        <table><thead><tr><th>#</th><th>תיאור</th><th>כמות</th><th>מחיר יחידה</th><th>סכום</th></tr></thead><tbody id="budget-excel-preview-body"></tbody></table>
+        <table><thead><tr><th>#</th><th>תיאור</th><th>יחידה</th><th>כמות</th><th>מחיר יחידה</th><th>סכום</th></tr></thead><tbody id="budget-excel-preview-body"></tbody></table>
       </div>
     </div>
     <div class="modal-footer">
@@ -3391,7 +3391,9 @@ async function refreshAppData(){
 function formatSupabaseErrorHint(errMsg){
   var m=(errMsg||'').toLowerCase();
   if(isSessionAuthError({message:errMsg}))return 'ה-session פג תוקף — התנתק והתחבר מחדש.';
-  if(m.includes('bucket')||m.includes('not found')&&m.includes('storage'))return 'חסר bucket בשם media ב-Supabase Storage (Public).';
+  if(m.includes('payment-receipts'))return 'חסר bucket payment-receipts ב-Storage — הרץ את supabase-payment-receipts-migration.sql או את supabase-setup.sql המעודכן ב-SQL Editor.';
+  if(m.includes('price-offers'))return 'חסר bucket price-offers ב-Storage — הרץ את supabase-price-offers-pdf-migration.sql או את supabase-setup.sql המעודכן ב-SQL Editor.';
+  if(m.includes('bucket')||m.includes('not found')&&m.includes('storage'))return 'חסר bucket ב-Supabase Storage — הרץ את supabase-setup.sql המעודכן ב-SQL Editor.';
   if(m.includes('payload')||m.includes('too large')||m.includes('413'))return 'נתוני הפרויקט גדולים מדי (למשל תמונות Base64 ישנות).';
   if(m.includes('500')||m.includes('internal server'))return 'שגיאת שרת בשמירה — הרץ את supabase-setup.sql המעודכן (פונקציית save_app_data), או בדוק אם נתוני הפרויקט גדולים מדי.';
   if(m.includes('save_app_data')||m.includes('42883')||m.includes('does not exist'))return 'חסרה פונקציית save_app_data — הרץ את supabase-setup.sql המעודכן ב-SQL Editor.';
@@ -5956,7 +5958,7 @@ function renderBudgetExcelPreview(){
   wrap.style.display='block';
   if(countEl)countEl.textContent=String(budgetExcelImportRows.length);
   body.innerHTML=budgetExcelImportRows.map(function(row,idx){
-    return '<tr><td>'+(idx+1)+'</td><td>'+escHtml(row.description)+'</td><td class="num">'+row.quantity+'</td><td class="num">'+fmtMoney(row.unitPrice)+'</td><td class="num">'+fmtMoney(row.total)+'</td></tr>';
+    return '<tr><td>'+(idx+1)+'</td><td>'+escHtml(row.description)+'</td><td>'+escHtml(BUDGET_DEFAULT_UNIT)+'</td><td class="num">'+row.quantity+'</td><td class="num">'+fmtMoney(row.unitPrice)+'</td><td class="num">'+fmtMoney(row.total)+'</td></tr>';
   }).join('');
   if(btn)btn.disabled=false;
 }
