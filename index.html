@@ -6735,7 +6735,7 @@ function renderSidebar(){
     nav.innerHTML='<div class="nav-section-title">ניהול</div>'+
       '<div class="nav-item '+(currentView==='dashboard'?'active':'')+'" onclick="showView(\'dashboard\')"><span class="nav-icon">'+ic('layout-dashboard')+'</span> דשבורד</div>'+
       '<div class="nav-item '+(currentView==='projects'?'active':'')+'" onclick="showView(\'projects\')"><span class="nav-icon">'+ic('construction')+'</span> פרויקטים</div>'+
-      '<div class="nav-item '+(currentView==='milestones'?'active':'')+'" onclick="showView(\'milestones\')"><span class="nav-icon">🚩</span> אבני דרך</div>'+
+      '<div class="nav-item '+(currentView==='milestones'?'active':'')+'" onclick="showView(\'milestones\')"><span class="nav-icon">'+ic('milestone')+'</span> אבני דרך</div>'+
       '<div class="nav-item '+(currentView==='budget-builder'?'active':'')+'" onclick="showView(\'budget-builder\')"><span class="nav-icon">'+ic('calculator')+'</span> בניית תקציב</div>'+
       '<div class="nav-section-title">מערכת</div>'+
       '<div class="nav-item '+(currentView==='clients'?'active':'')+'" onclick="showView(\'clients\')"><span class="nav-icon">'+ic('users')+'</span> לקוחות</div>'+
@@ -6748,7 +6748,7 @@ function renderSidebar(){
     var clientNav='<div class="nav-section-title">הפרויקט שלי</div>'+
       '<div class="nav-item '+(currentView==='project'?'active':'')+'" onclick="showView(\'project\',\''+currentUser.projectId+'\')"><span class="nav-icon">'+ic('house')+'</span> הפרויקט שלי</div>';
     if(clientVis.milestones){
-      clientNav+='<div class="nav-item '+(currentView==='milestones'?'active':'')+'" onclick="showView(\'milestones\',\''+currentUser.projectId+'\')"><span class="nav-icon">🚩</span> אבני דרך</div>';
+      clientNav+='<div class="nav-item '+(currentView==='milestones'?'active':'')+'" onclick="showView(\'milestones\',\''+currentUser.projectId+'\')"><span class="nav-icon">'+ic('milestone')+'</span> אבני דרך</div>';
     }
     nav.innerHTML=clientNav;
   }
