@@ -688,6 +688,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 }
 @media(max-width:1180px){
   .form-group input,.form-group select,.form-group textarea,.message-input-wrap input{font-size:16px;min-height:44px}
+  .form-group input[type=checkbox],.form-group input[type=radio]{min-height:0;width:20px;height:20px;flex:0 0 auto}
   .form-group textarea{min-height:88px}
   .btn{min-height:44px;touch-action:manipulation}
   .btn-sm{min-height:44px;min-width:44px;padding:10px 14px;justify-content:center}
@@ -782,7 +783,10 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .gantt-card-actions{width:100%}
   .gantt-card-actions .btn{flex:1;justify-content:center}
   .modal-overlay.open{display:flex!important;align-items:flex-start;justify-content:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
-  .modal-footer .btn-primary,.modal-footer .btn-accent,.modal-footer .btn-danger{width:100%!important;max-width:100%}
+  .modal-footer .btn-primary,.modal-footer .btn-accent,.modal-footer .btn-danger,.modal-footer .btn-success{width:100%!important;max-width:100%}
+  .budget-builder-card{flex-direction:column;align-items:stretch!important}
+  .budget-builder-card>.flex-gap{width:100%;flex-wrap:wrap}
+  .budget-builder-card>.flex-gap .btn{flex:1 1 auto;min-width:calc(50% - 6px);justify-content:center}
   .blueprint-viewer-wrap.clickable{cursor:pointer;touch-action:manipulation}
   .blueprint-viewer-wrap img{max-height:min(55vh,480px)}
   .blueprint-viewer-wrap iframe{min-height:360px;max-height:55vh}
