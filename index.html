@@ -1370,7 +1370,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="budget-client-overlay" id="budget-client-overlay" onclick="closeBudgetClientView(event)">
   <div class="budget-client-sheet" id="budget-print-root" onclick="event.stopPropagation()">
     <div class="budget-client-toolbar">
-      <button type="button" class="btn btn-primary btn-sm" onclick="printBudgetClientView()"><i data-lucide="printer"></i> ייצוא ל-PDF</button>
+      <button type="button" class="btn btn-primary btn-sm" onclick="printBudgetClientView()"><i data-lucide="file-text"></i> ייצוא ל-PDF</button>
       <button type="button" class="btn btn-outline btn-sm" onclick="closeBudgetClientView()"><i data-lucide="x"></i> סגור</button>
     </div>
     <div class="budget-client-body" id="budget-client-body"></div>
@@ -6621,22 +6621,16 @@ function closeBudgetClientView(ev){
 }
 var budgetDonutPrintRestore=null;
 async function printBudgetClientView(){
-  var root=document.getElementById('budget-print-root');
-  if(budgetDonutPrintRestore){budgetDonutPrintRestore();budgetDonutPrintRestore=null;}
-  if(root){
-    try{
-      budgetDonutPrintRestore=await prepareBudgetDonutChartsForPrint(root);
-    }catch(e){
-      console.warn('printBudgetClientView donut prep',e);
-      budgetDonutPrintRestore=null;
-    }
+  var body=document.getElementById('budget-client-body');
+  if(!body)return;
+  showToast('מייצר PDF...');
+  try{
+    await rasterizeElementToPdf(body,'הצעת-מחיר.pdf');
+    showToast('ה-PDF הורד בהצלחה');
+  }catch(err){
+    console.error('printBudgetClientView',err);
+    showToast('שגיאה ביצוא PDF','error');
   }
-  document.body.classList.add('budget-print-mode');
-  window.print();
-  setTimeout(function(){
-    document.body.classList.remove('budget-print-mode');
-    if(budgetDonutPrintRestore){budgetDonutPrintRestore();budgetDonutPrintRestore=null;}
-  },500);
 }
 
 async function ensureUserProfile(authUser){
@@ -7307,38 +7301,42 @@ function loadJsPdfLib(){
   }
   return jsPdfLoadPromise;
 }
-// Renders an HTML report string to a multi-page A4 PDF as a rasterized image.
+// Rasterizes an existing DOM element to a multi-page A4 PDF (image-based).
 // Rasterizing (html2canvas → image) is what makes Hebrew/RTL render correctly —
 // jsPDF's text engine has no Hebrew font and produces garbled output.
+async function rasterizeElementToPdf(el,fileName){
+  if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+  await new Promise(function(r){setTimeout(r,150);});
+  var libs=await loadJsPdfLib();
+  var canvas=await libs.html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
+  var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
+  var margin=10,pageW=210,pageH=297;
+  var imgW=pageW-margin*2;
+  var pxPerMm=canvas.width/imgW;
+  var pageChunkPx=Math.floor((pageH-margin*2)*pxPerMm);
+  var sY=0,pageNum=0;
+  while(sY<canvas.height){
+    var chunkPx=Math.min(pageChunkPx,canvas.height-sY);
+    var pageCanvas=document.createElement('canvas');
+    pageCanvas.width=canvas.width;
+    pageCanvas.height=chunkPx;
+    var ctx=pageCanvas.getContext('2d');
+    ctx.fillStyle='#ffffff';ctx.fillRect(0,0,pageCanvas.width,pageCanvas.height);
+    ctx.drawImage(canvas,0,sY,canvas.width,chunkPx,0,0,canvas.width,chunkPx);
+    if(pageNum>0)doc.addPage();
+    doc.addImage(pageCanvas.toDataURL('image/jpeg',0.92),'JPEG',margin,margin,imgW,chunkPx/pxPerMm);
+    sY+=chunkPx;pageNum++;
+  }
+  doc.save(fileName);
+}
+// Renders an HTML report string to PDF by rasterizing an off-screen element.
 async function renderReportHtmlToPdf(html,fileName){
   var wrap=document.createElement('div');
   wrap.style.cssText='position:fixed;left:-10000px;top:0;width:794px;background:#fff;z-index:-1';
   wrap.innerHTML=html;
   document.body.appendChild(wrap);
   try{
-    if(document.fonts&&document.fonts.ready)await document.fonts.ready;
-    await new Promise(function(r){setTimeout(r,150);});
-    var libs=await loadJsPdfLib();
-    var canvas=await libs.html2canvas(wrap.firstElementChild||wrap,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
-    var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
-    var margin=10,pageW=210,pageH=297;
-    var imgW=pageW-margin*2;
-    var pxPerMm=canvas.width/imgW;
-    var pageChunkPx=Math.floor((pageH-margin*2)*pxPerMm);
-    var sY=0,pageNum=0;
-    while(sY<canvas.height){
-      var chunkPx=Math.min(pageChunkPx,canvas.height-sY);
-      var pageCanvas=document.createElement('canvas');
-      pageCanvas.width=canvas.width;
-      pageCanvas.height=chunkPx;
-      var ctx=pageCanvas.getContext('2d');
-      ctx.fillStyle='#ffffff';ctx.fillRect(0,0,pageCanvas.width,pageCanvas.height);
-      ctx.drawImage(canvas,0,sY,canvas.width,chunkPx,0,0,canvas.width,chunkPx);
-      if(pageNum>0)doc.addPage();
-      doc.addImage(pageCanvas.toDataURL('image/jpeg',0.92),'JPEG',margin,margin,imgW,chunkPx/pxPerMm);
-      sY+=chunkPx;pageNum++;
-    }
-    doc.save(fileName);
+    await rasterizeElementToPdf(wrap.firstElementChild||wrap,fileName);
   }finally{
     if(wrap&&wrap.parentNode)wrap.parentNode.removeChild(wrap);
   }
