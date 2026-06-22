@@ -1111,7 +1111,8 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="modal-overlay" id="modal-suppliers">
   <div class="modal" style="max-width:min(94vw,620px)">
     <div class="modal-header"><div class="modal-title" id="modal-suppliers-title">ספקים</div><button class="modal-close" onclick="closeModal('modal-suppliers')"><i data-lucide="x"></i></button></div>
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:16px">
+    <div class="flex-gap" style="margin-bottom:14px"><button type="button" class="btn btn-outline btn-sm" onclick="exportSuppliersPdf()"><i data-lucide="file-text"></i> ייצוא ל-PDF</button></div>
+    <div class="admin-only-action" style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:16px">
       <div class="section-title" style="font-size:14px;margin:0 0 10px" id="supplier-form-title">קישור ספק לפרויקט</div>
       <div class="form-group"><label>בחר מתוך קבלני המשנה</label>
         <select id="supplier-subcontractor" onchange="onSupplierSubcontractorPick()">
@@ -2553,7 +2554,7 @@ var budgetExcelImportRows=[];
 const BUDGET_EXCEL_MAX_BYTES=5*1024*1024;
 const BUDGET_EXCEL_HEADER_WORDS=['תיאור','description','פריט','מקט','כמות','quantity','מחיר','price','מחיר יחידה','unit','סכום','total','סה"כ','סהכ','סה״כ','#','מס','מס\'','item','sum','amount'];
 const BUDGET_EXCEL_SKIP_WORDS=['הערה','סה"כ','סהכ','סה״כ','סכום','כולל','לפני'];
-const BUDGET_BUILDER_CATEGORIES=['חפירות','שלד','חשמל','אינסטלציה','טיח','ריצוף','גמר','אחר'];
+const BUDGET_BUILDER_CATEGORIES=['עבודות בנייה','עבודות פיתוח','עבודות טייח','עבודות אינסטלציה','עבודות חשמל','עבודות גבס','עבודות איטום','מטבח','נגרות','עבודות אלומיניום','עבודות צבע','קירור וחימום','עבודות ריצוף וחיפוי','עבודות גינון','עבודות מסגרות / עץ / זכוכית','אזעקה / מתח נמוך','בריכת שחיה','מסירה','חיבור לתשתיות','שונות','אחר'];
 const BUDGET_DONUT_COLORS=['#1B2B5E','#2a4078','#e8a020','#22c55e','#3b82f6','#8b5cf6','#ef4444','#14b8a6','#f97316','#6366f1','#0ea5e9','#a855f7'];
 const BUDGET_UNITS=['יחידה','קומפלט','מ"ר','מ"א','מ"ק','קומפ\'','טון','שעה','יום','אחר'];
 const BUDGET_DEFAULT_UNIT='יחידה';
@@ -2569,7 +2570,8 @@ const DEFAULT_CLIENT_VISIBILITY={
   defects:false,
   subcontractors:false,
   daily_logs:false,
-  documents:true
+  documents:true,
+  suppliers:true
 };
 const CLIENT_VISIBILITY_LABELS=[
   ['budget','תקציב'],
@@ -2579,7 +2581,8 @@ const CLIENT_VISIBILITY_LABELS=[
   ['defects','ליקויים'],
   ['subcontractors','קבלני משנה'],
   ['daily_logs','יומן עבודה'],
-  ['documents','מסמכים']
+  ['documents','מסמכים'],
+  ['suppliers','ספקים']
 ];
 const CLIENT_TAB_TO_VISIBILITY={
   budget:'budget',
@@ -7455,7 +7458,12 @@ function renderProjectDetail(el){
 
   var html='<button type="button" class="back-btn admin-only-action" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>';
   html+='<div class="flex-between responsive-stack mb-24"><div><h1 class="project-detail-title">'+p.name+'</h1><p class="project-detail-address">'+projectAddressLine(p,false)+'</p></div>';
-  html+='<div class="flex-gap admin-only-action"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-outline btn-sm" onclick="openSuppliersModal()">'+ic('users')+' ספקים</button><button class="btn btn-outline btn-sm" onclick="exportProjectOverviewPdf()">'+ic('file-text')+' ייצוא דוח PDF</button><button class="btn btn-accent btn-sm" onclick="openNewUpdateModal()">'+ic('bell')+' עדכון חדש</button></div>';
+  html+='<div class="flex-gap">';
+  html+='<button class="btn btn-outline btn-sm admin-only-action" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button>';
+  if(isAdminUser||isClientVisibilityEnabled(p,'suppliers'))html+='<button class="btn btn-outline btn-sm" onclick="openSuppliersModal()">'+ic('users')+' ספקים</button>';
+  html+='<button class="btn btn-outline btn-sm admin-only-action" onclick="exportProjectOverviewPdf()">'+ic('file-text')+' ייצוא דוח PDF</button>';
+  html+='<button class="btn btn-accent btn-sm admin-only-action" onclick="openNewUpdateModal()">'+ic('bell')+' עדכון חדש</button>';
+  html+='</div>';
   html+='</div>';
 
   var tabDefs=getProjectTabDefs(messagesTabBadge);
@@ -8011,8 +8019,8 @@ function renderManualSupplierCardHtml(sup){
       (sup.note?'<div style="font-size:12px;color:var(--text-muted);margin-top:6px">'+escHtml(sup.note)+'</div>':'')+
     '</div>'+
     '<div class="flex-gap">'+renderSubcontractorWhatsAppBtn(sup.phone)+
-      '<button class="btn btn-outline btn-sm" onclick="editSupplierInline(\''+sup.id+'\')" title="עריכה">'+ic('pencil')+'</button>'+
-      '<button class="btn btn-danger btn-sm" onclick="deleteSupplier(\''+sup.id+'\')" title="מחיקה">'+ic('trash-2')+'</button>'+
+      '<button class="btn btn-outline btn-sm admin-only-action" onclick="editSupplierInline(\''+sup.id+'\')" title="עריכה">'+ic('pencil')+'</button>'+
+      '<button class="btn btn-danger btn-sm admin-only-action" onclick="deleteSupplier(\''+sup.id+'\')" title="מחיקה">'+ic('trash-2')+'</button>'+
     '</div></div></div>';
 }
 function renderSuppliersModalBody(p){
@@ -8027,7 +8035,7 @@ function renderSuppliersModalBody(p){
   }else{
     html+='<div style="display:flex;flex-direction:column;gap:10px">'+manual.map(renderManualSupplierCardHtml).join('')+'</div>';
   }
-  if(linked.length){
+  if(linked.length&&isAdmin()){
     html+='<div class="section-title" style="font-size:14px;margin:22px 0 10px;color:var(--text-muted)">'+ic('link')+' מקושרים אוטומטית לפי שלבי לוח הזמנים</div>';
     html+='<div style="display:flex;flex-direction:column;gap:10px">'+linked.map(renderLinkedSupplierCardHtml).join('')+'</div>';
   }
@@ -8068,12 +8076,14 @@ function resetSupplierForm(){
   var cb=document.getElementById('supplier-cancel-edit-btn');if(cb)cb.style.display='none';
 }
 async function openSuppliersModal(){
-  if(!requireAdmin())return;
+  if(!requireProjectAccess())return;
   var p=getCurrentProject();
   if(!p)return;
   document.getElementById('modal-suppliers-title').textContent='ספקים — '+p.name;
-  await refreshSubcontractors();
-  populateSupplierSubcontractorSelect();
+  if(isAdmin()){
+    await refreshSubcontractors();
+    populateSupplierSubcontractorSelect();
+  }
   resetSupplierForm();
   rerenderSuppliersModal();
   openModal('modal-suppliers');
@@ -8114,6 +8124,18 @@ async function saveSupplier(){
   var proj=data.projects.find(function(x){return x.id===currentProjectId;});
   if(!proj){showToast('שגיאה: הפרויקט לא נמצא — רענן את העמוד','error');return;}
   if(!proj.suppliers)proj.suppliers=[];
+  // New manually-entered contact (not picked from the registry) → also add to קבלני משנה phone book
+  if(!editId&&!fields.subcontractorId){
+    var subRes=await supabase.from('subcontractors').insert({company_name:name,phone:fields.phone||null,specialty:fields.field||null}).select().single();
+    if(subRes.error){
+      showToast('הספק נוסף לפרויקט אך לא לקבלני המשנה: '+formatSupabaseErrorHint(subRes.error.message),'error');
+    }else{
+      fields.subcontractorId=subRes.data.id;
+      logActivity('הוספת קבלן משנה',name);
+      await refreshSubcontractors();
+      populateSupplierSubcontractorSelect();
+    }
+  }
   if(editId){
     var idx=proj.suppliers.findIndex(function(s){return s.id===editId;});
     if(idx<0){showToast('הספק לא נמצא','error');return;}
@@ -8143,6 +8165,70 @@ async function deleteSupplier(id){
   var m=document.getElementById('modal-suppliers');
   if(m.dataset.editId===id)resetSupplierForm();
   rerenderSuppliersModal();
+}
+function buildSuppliersReportHtml(p){
+  var generated=new Date().toLocaleString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  var manual=p.suppliers||[];
+  var linked=getProjectLinkedSubcontractors(p);
+  var manualRows=manual.length?manual.map(function(s){
+    return '<tr><td>'+escHtml(s.name||'—')+'</td><td>'+escHtml(s.field||'—')+'</td><td dir="ltr" style="text-align:right">'+escHtml(s.phone||'—')+'</td><td>'+escHtml(s.note||'')+'</td></tr>';
+  }).join(''):'<tr><td colspan="4" style="text-align:center;color:#6b7280">לא נוספו ספקים</td></tr>';
+  var linkedSection='';
+  if(linked.length){
+    var linkedRows=linked.map(function(it){
+      var s=it.sub;
+      return '<tr><td>'+escHtml(s?s.companyName:'קבלן לא נמצא')+'</td><td>'+escHtml(s&&s.specialty?s.specialty:'—')+'</td><td dir="ltr" style="text-align:right">'+escHtml(s?s.phone:'—')+'</td><td>'+escHtml(it.phases.join(' · '))+'</td></tr>';
+    }).join('');
+    linkedSection='<h2>מקושרים לפי שלבים</h2>'+
+      '<table><thead><tr><th>קבלן</th><th>התמחות</th><th>טלפון</th><th>שלבים</th></tr></thead><tbody>'+linkedRows+'</tbody></table>';
+  }
+  return '<div class="project-report-pdf" dir="rtl">'+
+    '<div class="report-brand">ארונשטיין פיקוח וניהול · ספקי הפרויקט · '+escHtml(generated)+'</div>'+
+    '<h1>'+escHtml(p.name||'פרויקט')+' — ספקים</h1>'+
+    '<div class="report-meta"><strong>כתובת:</strong> '+escHtml(formatProjectAddress(p)||'—')+'</div>'+
+    '<h2>ספקי הפרויקט</h2>'+
+    '<table><thead><tr><th>שם הספק</th><th>תפקיד</th><th>טלפון</th><th>הערות</th></tr></thead><tbody>'+manualRows+'</tbody></table>'+
+    linkedSection+
+    '</div>';
+}
+async function exportSuppliersPdf(){
+  if(!requireProjectAccess())return;
+  var p=getCurrentProject();
+  if(!p)return;
+  showToast('מייצר PDF...');
+  var wrap=null;
+  try{
+    wrap=document.createElement('div');
+    wrap.style.cssText='position:fixed;left:-10000px;top:0;width:794px;background:#fff;z-index:-1';
+    wrap.innerHTML=buildSuppliersReportHtml(p);
+    document.body.appendChild(wrap);
+    if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+    await new Promise(function(r){setTimeout(r,150);});
+    var libs=await loadJsPdfLib();
+    var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
+    await new Promise(function(resolve,reject){
+      doc.html(wrap.firstElementChild||wrap,{
+        margin:[10,10,10,10],
+        autoPaging:'text',
+        html2canvas:{scale:0.75,useCORS:true,logging:false,backgroundColor:'#ffffff'},
+        width:190,
+        windowWidth:794,
+        callback:function(pdf){
+          try{
+            var safeName=String(p.name||'project').replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,'-').slice(0,48);
+            pdf.save('ספקים-'+safeName+'.pdf');
+            resolve();
+          }catch(err){reject(err);}
+        }
+      });
+    });
+    showToast('ה-PDF הורד בהצלחה');
+  }catch(err){
+    console.error('exportSuppliersPdf',err);
+    showToast('שגיאה ביצוא PDF','error');
+  }finally{
+    if(wrap&&wrap.parentNode)wrap.parentNode.removeChild(wrap);
+  }
 }
 
 function renderActivityLogFilterBarHtml(){
@@ -9050,7 +9136,7 @@ Object.assign(window,{
   showView,switchTab,openModal,closeModal,toggleMobileSidebar,closeMobileSidebar,toggleMobileTabMenu,closeMobileTabMenu,exportProjectOverviewPdf,
   openNewProjectModal,openEditProjectModal,saveProject,confirmDeleteProject,closeDeleteProjectModal,executeDeleteProject,openAddUserModal,
   openAddSubcontractorModal,openEditSubcontractorModal,saveSubcontractor,deleteSubcontractor,openSubcontractorPdf,onSubcontractorSpecialtyFilterChange,
-  openSuppliersModal,onSupplierSubcontractorPick,saveSupplier,resetSupplierForm,editSupplierInline,deleteSupplier,
+  openSuppliersModal,onSupplierSubcontractorPick,saveSupplier,resetSupplierForm,editSupplierInline,deleteSupplier,exportSuppliersPdf,
   addSpecialtySetting,removeSpecialtySetting,
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,onPaymentFilterChange,exportPaymentsCsv,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
