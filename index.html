@@ -1095,9 +1095,31 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="form-group"><label>תוקף ביטוח</label><input type="date" id="sub-insurance"/></div>
       <div class="form-group"><label>תוקף אישור בטיחות</label><input type="date" id="sub-safety"/></div>
     </div>
+    <div class="form-group">
+      <label>אישור קבלן (PDF)</label>
+      <input type="file" id="sub-approval-pdf" accept="application/pdf,.pdf"/>
+      <div id="sub-approval-pdf-current" style="margin-top:8px;font-size:13px;display:none"></div>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-subcontractor')">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="saveSubcontractor()">שמור</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Project Supplier (manual) -->
+<div class="modal-overlay" id="modal-supplier">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="modal-supplier-title">ספק חדש</div><button class="modal-close" onclick="closeModal('modal-supplier')"><i data-lucide="x"></i></button></div>
+    <div class="form-group"><label>שם הספק <span class="req-mark">*</span></label><input type="text" id="supplier-name" placeholder="שם הספק / החברה"/></div>
+    <div class="grid-2">
+      <div class="form-group"><label>טלפון</label><input type="tel" id="supplier-phone" placeholder="050-0000000" dir="ltr" style="text-align:left"/></div>
+      <div class="form-group"><label>תחום</label><input type="text" id="supplier-field" placeholder="לדוגמה: חשמל, ריצוף"/></div>
+    </div>
+    <div class="form-group"><label>הערות</label><textarea id="supplier-note" placeholder="הערות (אופציונלי)"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-supplier')">ביטול</button>
+      <button class="btn btn-primary" style="width:auto" onclick="saveSupplier()">שמור</button>
     </div>
   </div>
 </div>
@@ -1363,6 +1385,7 @@ const STORAGE_BUCKET='media';
 const PAYMENT_RECEIPTS_BUCKET='payment-receipts';
 const PRICE_OFFERS_BUCKET='price-offers';
 const PROJECT_BLUEPRINTS_BUCKET='project-blueprints';
+const SUBCONTRACTOR_DOCS_BUCKET='subcontractor-docs';
 const COMPRESS_MAX_EDGE=1920;
 const COMPRESS_JPEG_QUALITY=0.8;
 const MEDIA_MAX_BYTES=10*1024*1024;
@@ -2705,7 +2728,7 @@ function getDefaultProjects(){
 }
 
 function isAdmin(){return !!(currentUser&&currentUser.role==='admin');}
-var CLIENT_HIDDEN_TABS=['budget-analysis','financial','finish-selections','price-comparisons'];
+var CLIENT_HIDDEN_TABS=['suppliers','budget-analysis','financial','finish-selections','price-comparisons'];
 function getProjectClientVisibility(p){
   var cv=p&&p.client_visibility;
   var out={};
@@ -2739,6 +2762,7 @@ function normalizeClientTab(tab){
 function getProjectTabDefs(messagesTabBadge){
   var tabDefs=[
     ['overview','סקירה','layout-dashboard',''],
+    ['suppliers','ספקים','users',''],
     ['timeline','לוח זמנים','calendar',''],
     ['budget','מעקב תשלומים','banknote',''],
     ['budget-analysis','ניתוח כספי','scale',''],
@@ -3396,6 +3420,7 @@ function formatSupabaseErrorHint(errMsg){
   if(isSessionAuthError({message:errMsg}))return 'ה-session פג תוקף — התנתק והתחבר מחדש.';
   if(m.includes('payment-receipts'))return 'חסר bucket payment-receipts ב-Storage — הרץ את supabase-payment-receipts-migration.sql או את supabase-setup.sql המעודכן ב-SQL Editor.';
   if(m.includes('price-offers'))return 'חסר bucket price-offers ב-Storage — הרץ את supabase-price-offers-pdf-migration.sql או את supabase-setup.sql המעודכן ב-SQL Editor.';
+  if(m.includes('subcontractor-docs')||m.includes('approval_pdf_url'))return 'חסר bucket subcontractor-docs או עמודת approval_pdf_url — הרץ את supabase-subcontractor-approval-pdf-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('bucket')||m.includes('not found')&&m.includes('storage'))return 'חסר bucket ב-Supabase Storage — הרץ את supabase-setup.sql המעודכן ב-SQL Editor.';
   if(m.includes('payload')||m.includes('too large')||m.includes('413'))return 'נתוני הפרויקט גדולים מדי (למשל תמונות Base64 ישנות).';
   if(m.includes('500')||m.includes('internal server'))return 'שגיאת שרת בשמירה — הרץ את supabase-setup.sql המעודכן (פונקציית save_app_data), או בדוק אם נתוני הפרויקט גדולים מדי.';
@@ -3496,6 +3521,7 @@ function mapSubcontractorRow(r){
     specialty:r.specialty||'',
     insuranceExpiry:r.insurance_expiry||'',
     safetyCertExpiry:r.safety_cert_expiry||'',
+    approvalPdfUrl:r.approval_pdf_url||'',
     createdAt:r.created_at
   };
 }
@@ -6759,7 +6785,7 @@ function renderSidebar(){
   refreshIcons(nav);
 }
 
-var TAB_LABELS={overview:'סקירה',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-builder':'בניית תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה','finish-selections':'בחירות גמרים','price-comparisons':'השוואת מחירים',punch:'ליקויים','daily-log':'יומן עבודה',updates:'עדכונים',messages:'שאלות'};
+var TAB_LABELS={overview:'סקירה',suppliers:'ספקים',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-builder':'בניית תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה','finish-selections':'בחירות גמרים','price-comparisons':'השוואת מחירים',punch:'ליקויים','daily-log':'יומן עבודה',updates:'עדכונים',messages:'שאלות'};
 var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',milestones:'אבני דרך','budget-builder':'בניית תקציב',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
@@ -7450,6 +7476,9 @@ function renderProjectDetail(el){
     '<div class="flex-between" style="font-size:13px"><span style="color:var(--text-muted)">נותר:</span><span style="font-weight:700;color:var(--warning)">'+fmtMoney(remaining)+'</span></div>'+
     '</div></div></div>';
 
+  // SUPPLIERS TAB
+  html+='<div id="tab-suppliers" class="tab-content '+(currentTab==='suppliers'?'active':'')+'"><div id="suppliers-tab-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div></div>';
+
   // TIMELINE TAB
   html+='<div id="tab-timeline" class="tab-content '+(currentTab==='timeline'?'active':'')+'">'+
     renderTimelineDependencyAlertsHtml(p.phases)+
@@ -7576,6 +7605,7 @@ function renderProjectDetail(el){
   setTimeout(function(){
     var ml=document.getElementById('messages-list');if(ml)ml.scrollTop=ml.scrollHeight;
     if(currentTab==='financial')renderFinancialCharts(p);
+    if(currentTab==='suppliers')initSuppliersTab();
     if(currentTab==='punch')initPunchListTab();
     if(currentTab==='daily-log')initDailyLogTab();
     if(currentTab==='finish-selections')initFinishSelectionsTab();
@@ -7694,6 +7724,7 @@ async function switchTab(t){
       var p=getCurrentProject();
       if(p)setTimeout(function(){renderFinancialCharts(p);},50);
     }
+    if(t==='suppliers')initSuppliersTab();
     if(t==='punch')initPunchListTab();
     if(t==='daily-log')initDailyLogTab();
     if(t==='finish-selections')initFinishSelectionsTab();
@@ -7765,6 +7796,7 @@ function renderSubcontractorTableRows(subs){
       '<td>'+renderExpiryDateCell(s.safetyCertExpiry)+'</td>'+
       '<td><div class="flex-gap">'+
         renderSubcontractorWhatsAppBtn(s.phone)+
+        (s.approvalPdfUrl?'<button class="btn btn-outline btn-sm admin-only-action" title="צפה באישור קבלן" onclick="openSubcontractorPdf(\''+s.id+'\')">'+ic('file-text')+'</button>':'')+
         '<button class="btn btn-outline btn-sm admin-only-action" onclick="openEditSubcontractorModal(\''+s.id+'\')">'+ic('pencil')+'</button>'+
         '<button class="btn btn-danger btn-sm admin-only-action" onclick="deleteSubcontractor(\''+s.id+'\')">'+ic('trash-2')+'</button>'+
       '</div></td></tr>';
@@ -7820,6 +7852,9 @@ function openAddSubcontractorModal(){
   populateSubcontractorSpecialtySelect('');
   document.getElementById('sub-insurance').value='';
   document.getElementById('sub-safety').value='';
+  document.getElementById('sub-approval-pdf').value='';
+  var curAdd=document.getElementById('sub-approval-pdf-current');
+  curAdd.style.display='none';curAdd.innerHTML='';
   openModal('modal-subcontractor');
 }
 function openEditSubcontractorModal(id){
@@ -7836,6 +7871,15 @@ function openEditSubcontractorModal(id){
   populateSubcontractorSpecialtySelect(s.specialty||'');
   document.getElementById('sub-insurance').value=s.insuranceExpiry?String(s.insuranceExpiry).slice(0,10):'';
   document.getElementById('sub-safety').value=s.safetyCertExpiry?String(s.safetyCertExpiry).slice(0,10):'';
+  document.getElementById('sub-approval-pdf').value='';
+  var curEdit=document.getElementById('sub-approval-pdf-current');
+  if(s.approvalPdfUrl){
+    curEdit.style.display='block';
+    curEdit.innerHTML='<a href="#" onclick="openSubcontractorPdf(\''+id+'\');return false;" style="color:var(--primary);font-weight:600">'+ic('file-text')+' צפה בקובץ הנוכחי</a> <span style="color:var(--text-muted)">— העלאת קובץ חדש תחליף אותו</span>';
+    refreshIcons(curEdit);
+  }else{
+    curEdit.style.display='none';curEdit.innerHTML='';
+  }
   openModal('modal-subcontractor');
 }
 async function saveSubcontractor(){
@@ -7843,6 +7887,12 @@ async function saveSubcontractor(){
   clearFormErrors('modal-subcontractor');
   if(!validateRequired('sub-company')){focusFirstFormError('modal-subcontractor');return;}
   var editId=document.getElementById('modal-subcontractor').dataset.editId;
+  var pdfInput=document.getElementById('sub-approval-pdf');
+  var pdfFile=pdfInput&&pdfInput.files&&pdfInput.files[0]?pdfInput.files[0]:null;
+  if(pdfFile){
+    var pdfVal=validatePriceOfferPdfFile(pdfFile);
+    if(!pdfVal.ok){showToast(pdfVal.message,'error');return;}
+  }
   var row={
     company_name:document.getElementById('sub-company').value.trim(),
     contact_name:document.getElementById('sub-contact').value.trim()||null,
@@ -7856,6 +7906,16 @@ async function saveSubcontractor(){
     ?await supabase.from('subcontractors').update(row).eq('id',editId).select().single()
     :await supabase.from('subcontractors').insert(row).select().single();
   if(res.error){showToast('שגיאה בשמירת הקבלן: '+formatSupabaseErrorHint(res.error.message),'error');return;}
+  var savedId=(res.data&&res.data.id)||editId;
+  if(pdfFile&&savedId){
+    var up=await uploadSubcontractorPdf(savedId,pdfFile);
+    if(!up.ok){
+      showToast('הקבלן נשמר, אך העלאת הקובץ נכשלה: '+formatSupabaseErrorHint(up.error),'error');
+    }else{
+      var pdfRes=await supabase.from('subcontractors').update({approval_pdf_url:up.path}).eq('id',savedId);
+      if(pdfRes.error)showToast('הקובץ הועלה אך שמירת הקישור נכשלה: '+formatSupabaseErrorHint(pdfRes.error.message),'error');
+    }
+  }
   logActivity(editId?'עריכת קבלן משנה':'הוספת קבלן משנה',row.company_name);
   await refreshSubcontractors();
   if(!await persistActivityLogOnly()){
@@ -7866,6 +7926,23 @@ async function saveSubcontractor(){
   closeModal('modal-subcontractor');
   if(currentView==='subcontractors')renderSubcontractors(document.getElementById('main-content'));
   else if(currentView==='project')renderProjectDetail(document.getElementById('main-content'));
+}
+async function uploadSubcontractorPdf(subId,file){
+  var path=subId+'-'+Date.now()+'.pdf';
+  var res=await supabase.storage.from(SUBCONTRACTOR_DOCS_BUCKET).upload(path,file,{cacheControl:'3600',upsert:false,contentType:'application/pdf'});
+  if(res.error)return {ok:false,error:res.error.message};
+  return {ok:true,path:path};
+}
+async function openSubcontractorPdf(id){
+  if(!requireAdmin())return;
+  var s=getSubcontractorById(id);
+  if(!s||!s.approvalPdfUrl){showToast('לא נמצא קובץ אישור לקבלן זה','error');return;}
+  var res=await supabase.storage.from(SUBCONTRACTOR_DOCS_BUCKET).createSignedUrl(s.approvalPdfUrl,3600);
+  if(res.error||!res.data||!res.data.signedUrl){
+    alert('שגיאה בפתיחת הקובץ:\n'+formatSupabaseErrorHint((res.error&&res.error.message)||'signed url failed'));
+    return;
+  }
+  window.open(res.data.signedUrl,'_blank','noopener,noreferrer');
 }
 async function deleteSubcontractor(id){
   if(!requireAdmin())return;
@@ -8784,7 +8861,7 @@ Object.assign(window,{
   saveUser,deleteUser,changeAdminPass,sendAdminResetEmail,resetData,
   showView,switchTab,openModal,closeModal,toggleMobileSidebar,closeMobileSidebar,toggleMobileTabMenu,closeMobileTabMenu,exportProjectOverviewPdf,
   openNewProjectModal,openEditProjectModal,saveProject,confirmDeleteProject,closeDeleteProjectModal,executeDeleteProject,openAddUserModal,
-  openAddSubcontractorModal,openEditSubcontractorModal,saveSubcontractor,deleteSubcontractor,onSubcontractorSpecialtyFilterChange,
+  openAddSubcontractorModal,openEditSubcontractorModal,saveSubcontractor,deleteSubcontractor,openSubcontractorPdf,onSubcontractorSpecialtyFilterChange,
   addSpecialtySetting,removeSpecialtySetting,
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,onPaymentFilterChange,exportPaymentsCsv,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
