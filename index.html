@@ -7957,6 +7957,157 @@ async function deleteSubcontractor(id){
   if(currentView==='subcontractors')renderSubcontractors(document.getElementById('main-content'));
 }
 
+// ===== Project Suppliers tab =====
+// Auto-derived: distinct subcontractors assigned to the project's phases.
+function getProjectLinkedSubcontractors(p){
+  var byId={};
+  (p&&p.phases||[]).forEach(function(ph){
+    var sid=ph&&ph.subcontractor_id;
+    if(!sid)return;
+    if(!byId[sid])byId[sid]={sub:getSubcontractorById(sid),phases:[]};
+    byId[sid].phases.push(ph.name||'שלב');
+  });
+  return Object.keys(byId).map(function(id){return byId[id];});
+}
+function renderLinkedSupplierCardHtml(item){
+  var s=item.sub;
+  var name=s?s.companyName:'קבלן לא נמצא';
+  var contact=s&&s.contactName?s.contactName:'';
+  var phone=s?s.phone:'';
+  var specialty=s&&s.specialty?s.specialty:'';
+  var phasesTxt=item.phases.join(' · ');
+  return '<div class="card" style="padding:14px 16px">'+
+    '<div class="flex-between responsive-stack" style="gap:10px">'+
+    '<div>'+
+      '<div style="font-size:15px;font-weight:700;color:var(--primary)">'+escHtml(name)+(specialty?' <span style="font-size:11px;font-weight:600;color:var(--text-muted)">· '+escHtml(specialty)+'</span>':'')+'</div>'+
+      (contact?'<div style="font-size:13px;color:var(--text-muted);margin-top:2px">'+escHtml(contact)+'</div>':'')+
+      (phone?'<div dir="ltr" style="font-size:13px;color:var(--text);margin-top:2px;text-align:right">'+escHtml(phone)+'</div>':'')+
+      '<div style="font-size:12px;color:var(--text-muted);margin-top:6px">'+ic('calendar')+' '+escHtml(phasesTxt)+'</div>'+
+    '</div>'+
+    '<div class="flex-gap">'+renderSubcontractorWhatsAppBtn(phone)+
+      (s?'<button class="btn btn-outline btn-sm admin-only-action" onclick="openEditSubcontractorModal(\''+s.id+'\')" title="עריכת קבלן">'+ic('pencil')+'</button>':'')+
+    '</div></div></div>';
+}
+function renderManualSupplierCardHtml(sup){
+  return '<div class="card" style="padding:14px 16px">'+
+    '<div class="flex-between responsive-stack" style="gap:10px">'+
+    '<div>'+
+      '<div style="font-size:15px;font-weight:700;color:var(--primary)">'+escHtml(sup.name)+(sup.field?' <span style="font-size:11px;font-weight:600;color:var(--text-muted)">· '+escHtml(sup.field)+'</span>':'')+'</div>'+
+      (sup.phone?'<div dir="ltr" style="font-size:13px;color:var(--text);margin-top:2px;text-align:right">'+escHtml(sup.phone)+'</div>':'')+
+      (sup.note?'<div style="font-size:12px;color:var(--text-muted);margin-top:6px">'+escHtml(sup.note)+'</div>':'')+
+    '</div>'+
+    '<div class="flex-gap">'+renderSubcontractorWhatsAppBtn(sup.phone)+
+      '<button class="btn btn-outline btn-sm admin-only-action" onclick="openEditSupplierModal(\''+sup.id+'\')" title="עריכה">'+ic('pencil')+'</button>'+
+      '<button class="btn btn-danger btn-sm admin-only-action" onclick="deleteSupplier(\''+sup.id+'\')" title="מחיקה">'+ic('trash-2')+'</button>'+
+    '</div></div></div>';
+}
+function renderSuppliersTabInner(p){
+  var linked=getProjectLinkedSubcontractors(p);
+  var manual=p.suppliers||[];
+  var html='';
+  html+='<div class="section-title mb-16">'+ic('users')+' ספקים בפרויקט</div>';
+  // Linked (auto) section
+  html+='<div class="section-title" style="font-size:15px;margin:8px 0 10px">'+ic('link')+' קבלני משנה מקושרים (לפי שלבים)</div>';
+  if(!linked.length){
+    html+='<div class="empty-state card"><div class="empty-icon">'+ic('link')+'</div><p>אין קבלני משנה משויכים לשלבי הפרויקט.<br>שייך קבלן לשלב בלשונית "לוח זמנים" והוא יופיע כאן אוטומטית.</p></div>';
+  }else{
+    html+='<div style="display:flex;flex-direction:column;gap:10px">'+linked.map(renderLinkedSupplierCardHtml).join('')+'</div>';
+  }
+  // Manual section
+  html+='<div class="section-actions" style="margin-top:22px"><div class="section-title" style="font-size:15px;margin:0">'+ic('user-plus')+' ספקים שנוספו ידנית</div>'+
+    '<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddSupplierModal()">'+ic('plus')+' הוסף ספק</button></div>';
+  if(!manual.length){
+    html+='<div class="empty-state card"><div class="empty-icon">'+ic('user-plus')+'</div><p>לא נוספו ספקים ידנית עדיין</p></div>';
+  }else{
+    html+='<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">'+manual.map(renderManualSupplierCardHtml).join('')+'</div>';
+  }
+  return html;
+}
+async function initSuppliersTab(){
+  var root=document.getElementById('suppliers-tab-root');
+  if(!root)return;
+  await refreshSubcontractors();
+  var p=getCurrentProject();
+  if(!p){root.innerHTML='<p>פרויקט לא נמצא</p>';return;}
+  root.innerHTML=renderSuppliersTabInner(p);
+  refreshIcons(root);
+}
+function rerenderSuppliersTab(){
+  var root=document.getElementById('suppliers-tab-root');
+  if(!root)return;
+  var p=getCurrentProject();
+  if(!p)return;
+  root.innerHTML=renderSuppliersTabInner(p);
+  refreshIcons(root);
+}
+function openAddSupplierModal(){
+  if(!requireAdmin())return;
+  var m=document.getElementById('modal-supplier');
+  delete m.dataset.editId;
+  document.getElementById('modal-supplier-title').textContent='ספק חדש';
+  ['supplier-name','supplier-phone','supplier-field','supplier-note'].forEach(function(id){document.getElementById(id).value='';});
+  openModal('modal-supplier');
+}
+function openEditSupplierModal(id){
+  if(!requireAdmin())return;
+  var p=getCurrentProject();
+  if(!p)return;
+  var sup=(p.suppliers||[]).find(function(s){return s.id===id;});
+  if(!sup)return;
+  var m=document.getElementById('modal-supplier');
+  m.dataset.editId=id;
+  document.getElementById('modal-supplier-title').textContent='עריכת ספק';
+  document.getElementById('supplier-name').value=sup.name||'';
+  document.getElementById('supplier-phone').value=sup.phone||'';
+  document.getElementById('supplier-field').value=sup.field||'';
+  document.getElementById('supplier-note').value=sup.note||'';
+  openModal('modal-supplier');
+}
+async function saveSupplier(){
+  if(!requireAdmin())return;
+  var name=document.getElementById('supplier-name').value.trim();
+  if(!name){alert('יש להזין שם ספק');return;}
+  var fields={
+    name:name,
+    phone:document.getElementById('supplier-phone').value.trim(),
+    field:document.getElementById('supplier-field').value.trim(),
+    note:document.getElementById('supplier-note').value.trim()
+  };
+  var m=document.getElementById('modal-supplier');
+  var editId=m.dataset.editId;
+  var data=getData();
+  var proj=data.projects.find(function(x){return x.id===currentProjectId;});
+  if(!proj){showToast('שגיאה: הפרויקט לא נמצא — רענן את העמוד','error');return;}
+  if(!proj.suppliers)proj.suppliers=[];
+  if(editId){
+    var idx=proj.suppliers.findIndex(function(s){return s.id===editId;});
+    if(idx<0){showToast('הספק לא נמצא','error');return;}
+    proj.suppliers[idx]=Object.assign({},proj.suppliers[idx],fields);
+    logActivity('עריכת ספק','פרויקט: '+proj.name+' · '+name);
+  }else{
+    proj.suppliers.push(Object.assign({id:'sup'+Date.now()},fields));
+    logActivity('הוספת ספק','פרויקט: '+proj.name+' · '+name);
+  }
+  if(!await saveData(data))return;
+  closeModal('modal-supplier');
+  showToast(editId?'הספק עודכן':'הספק נוסף');
+  rerenderSuppliersTab();
+}
+async function deleteSupplier(id){
+  if(!requireAdmin())return;
+  var data=getData();
+  var proj=data.projects.find(function(x){return x.id===currentProjectId;});
+  if(!proj||!proj.suppliers)return;
+  var sup=proj.suppliers.find(function(s){return s.id===id;});
+  if(!sup)return;
+  if(!confirm('למחוק את הספק "'+sup.name+'"?'))return;
+  proj.suppliers=proj.suppliers.filter(function(s){return s.id!==id;});
+  logActivity('מחיקת ספק','פרויקט: '+proj.name+' · '+sup.name);
+  if(!await saveData(data))return;
+  showToast('הספק נמחק');
+  rerenderSuppliersTab();
+}
+
 function renderActivityLogFilterBarHtml(){
   return '<div class="list-filter-bar" style="margin-bottom:0;border-bottom:1px solid var(--border);border-radius:12px 12px 0 0">'+
     '<label for="activity-log-type-filter">סוג פעולה:</label>'+
@@ -8862,6 +9013,7 @@ Object.assign(window,{
   showView,switchTab,openModal,closeModal,toggleMobileSidebar,closeMobileSidebar,toggleMobileTabMenu,closeMobileTabMenu,exportProjectOverviewPdf,
   openNewProjectModal,openEditProjectModal,saveProject,confirmDeleteProject,closeDeleteProjectModal,executeDeleteProject,openAddUserModal,
   openAddSubcontractorModal,openEditSubcontractorModal,saveSubcontractor,deleteSubcontractor,openSubcontractorPdf,onSubcontractorSpecialtyFilterChange,
+  openAddSupplierModal,openEditSupplierModal,saveSupplier,deleteSupplier,
   addSpecialtySetting,removeSpecialtySetting,
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,onPaymentFilterChange,exportPaymentsCsv,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
