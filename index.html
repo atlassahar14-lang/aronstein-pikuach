@@ -1337,7 +1337,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="modal-overlay" id="modal-budget-excel-import">
   <div class="modal" style="max-width:min(95vw,720px)">
     <div class="modal-header"><div class="modal-title">ייבוא מאקסל</div><button class="modal-close" onclick="closeBudgetExcelImportModal()"><i data-lucide="x"></i></button></div>
-    <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px;line-height:1.5">העלה קובץ .xlsx — המערכת סורקת את כל השורות: C (תיאור מעל 3 תווים), F (מחיר יחידה &gt; 0), E (כמות — ברירת מחדל 1), G (סכום — מחושב אוטומטית אם חסר).</p>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px;line-height:1.5">העלה קובץ .xlsx — המערכת מזהה אוטומטית את עמודות התיאור, היחידה, הכמות והמחיר, ומפצלת את הפריטים לפי כותרות הקטגוריות שבקובץ (למשל "עבודות טייח", "עבודות חשמל").</p>
     <div class="form-group">
       <label>קובץ Excel (.xlsx)</label>
       <label class="upload-label"><i data-lucide="sheet"></i> בחר קובץ<input type="file" id="budget-excel-file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/></label>
@@ -1345,14 +1345,18 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div id="budget-excel-parse-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span>קורא קובץ...</span></div>
       <div id="budget-excel-file-error" class="upload-error"></div>
     </div>
-    <div class="form-group">
+    <div class="form-group" id="budget-excel-use-file-cats-wrap" style="display:none;align-items:flex-start;gap:8px;flex-direction:row">
+      <input type="checkbox" id="budget-excel-use-file-cats" onchange="onBudgetExcelUseFileCatsToggle()" style="margin-top:3px"/>
+      <label for="budget-excel-use-file-cats" style="margin:0;cursor:pointer">שמור על הקטגוריות מהקובץ<br><span id="budget-excel-cats-hint" style="font-weight:400;font-size:12px;color:var(--text-muted)"></span></label>
+    </div>
+    <div class="form-group" id="budget-excel-category-wrap">
       <label>קטגוריה לייבוא <span class="req-mark">*</span></label>
       <select id="budget-excel-category"></select>
     </div>
     <div id="budget-excel-preview-wrap" style="display:none">
       <div class="section-title" style="margin-bottom:8px">תצוגה מקדימה — <span id="budget-excel-count">0</span> פריטים</div>
       <div class="budget-excel-preview table-scroll">
-        <table><thead><tr><th>#</th><th>תיאור</th><th>יחידה</th><th>כמות</th><th>מחיר יחידה</th><th>סכום</th></tr></thead><tbody id="budget-excel-preview-body"></tbody></table>
+        <table><thead><tr><th>#</th><th id="budget-excel-cat-th">קטגוריה</th><th>תיאור</th><th>יחידה</th><th>כמות</th><th>מחיר יחידה</th><th>סכום</th></tr></thead><tbody id="budget-excel-preview-body"></tbody></table>
       </div>
     </div>
     <div class="modal-footer">
@@ -2551,10 +2555,11 @@ var toastTimer=null;
 var budgetsCache=[],budgetItemsByBudget={},budgetBuilderMode='list',editingBudgetId=null;
 var budgetBuilderDraft=null,budgetPendingContactItemId=null,budgetBuilderInitInflight=null;
 var budgetExcelImportRows=[];
+var budgetExcelImportCategories=[];
 const BUDGET_EXCEL_MAX_BYTES=5*1024*1024;
 const BUDGET_EXCEL_HEADER_WORDS=['תיאור','description','פריט','מקט','כמות','quantity','מחיר','price','מחיר יחידה','unit','סכום','total','סה"כ','סהכ','סה״כ','#','מס','מס\'','item','sum','amount'];
 const BUDGET_EXCEL_SKIP_WORDS=['הערה','סה"כ','סהכ','סה״כ','סכום','כולל','לפני'];
-const BUDGET_BUILDER_CATEGORIES=['עבודות בנייה','עבודות פיתוח','עבודות טייח','עבודות אינסטלציה','עבודות חשמל','עבודות גבס','עבודות איטום','מטבח','נגרות','עבודות אלומיניום','עבודות צבע','קירור וחימום','עבודות ריצוף וחיפוי','עבודות גינון','עבודות מסגרות / עץ / זכוכית','אזעקה / מתח נמוך','בריכת שחיה','מסירה','חיבור לתשתיות','שונות','אחר'];
+const BUDGET_BUILDER_CATEGORIES=['עבודות בנייה','עבודות פיתוח','עבודות טייח','עבודות אינסטלציה','עבודות חשמל','עבודות גבס','עבודות איטום','מטבח','נגרות','עבודות אלומיניום','עבודות צבע','קירור וחימום','עבודות ריצוף וחיפוי','עבודות גינון','עבודות מסגרות \\ עץ \\ זכוכית','אזעקה / מתח נמוך','בריכת שחיה','מסירה','חיבור הבית לתשתיות ציבוריות \\ לרחוב','שונות','אחר'];
 const BUDGET_DONUT_COLORS=['#1B2B5E','#2a4078','#e8a020','#22c55e','#3b82f6','#8b5cf6','#ef4444','#14b8a6','#f97316','#6366f1','#0ea5e9','#a855f7'];
 const BUDGET_UNITS=['יחידה','קומפלט','מ"ר','מ"א','מ"ק','קומפ\'','טון','שעה','יום','אחר'];
 const BUDGET_DEFAULT_UNIT='יחידה';
@@ -5953,6 +5958,35 @@ function isBudgetExcelSkipDescription(desc){
 function isBudgetExcelFormulaCell(cell){
   return !!(cell&&cell.f);
 }
+// Auto-detect the description / unit / quantity / price columns by finding the
+// header row (the one containing the most of: כמות / מחיר / סכום / יח').
+function detectBudgetExcelColumns(sheet,range){
+  var KW={qty:['כמות'],price:['מחיר'],total:['סכום','סה"כ','סהכ','סה״כ'],unit:['יח']};
+  var best=null,bestScore=0;
+  var lastScan=Math.min(range.e.r,range.s.r+60);
+  for(var r=range.s.r;r<=lastScan;r++){
+    var found={};
+    for(var c=range.s.c;c<=range.e.c;c++){
+      var cell=sheet[XLSX.utils.encode_cell({r:r,c:c})];
+      var t=cell&&cell.v!=null?String(cell.v).trim():'';
+      if(!t)continue;
+      ['qty','price','total','unit'].forEach(function(k){
+        if(found[k]!=null)return;
+        if(KW[k].some(function(w){return t===w||t.indexOf(w)===0;}))found[k]=c;
+      });
+    }
+    var score=['qty','price','total'].filter(function(k){return found[k]!=null;}).length;
+    if(score>bestScore){bestScore=score;best={row:r,cols:found};}
+  }
+  if(!best||bestScore<2)return null;
+  var cols=best.cols,descCol;
+  if(cols.unit!=null)descCol=cols.unit-1;
+  else if(cols.qty!=null)descCol=cols.qty-2;
+  else descCol=range.s.c;
+  if(descCol<range.s.c)descCol=range.s.c;
+  return {headerRow:best.row,descCol:descCol,unitCol:cols.unit==null?null:cols.unit,
+    qtyCol:cols.qty==null?null:cols.qty,priceCol:cols.price==null?null:cols.price};
+}
 function parseBudgetExcelWorkbook(arrayBuffer){
   if(typeof XLSX==='undefined')return {ok:false,message:'ספריית Excel לא נטענה — רענן את העמוד'};
   var wb=XLSX.read(arrayBuffer,{type:'array',cellFormula:true,cellDates:false});
@@ -5960,31 +5994,39 @@ function parseBudgetExcelWorkbook(arrayBuffer){
   var sheet=wb.Sheets[wb.SheetNames[0]];
   if(!sheet||!sheet['!ref'])return {ok:false,message:'לא נמצאו נתונים בגיליון הראשון'};
   var range=XLSX.utils.decode_range(sheet['!ref']);
-  var rows=[];
-  for(var r=range.s.r;r<=range.e.r;r++){
-    var descCell=sheet[XLSX.utils.encode_cell({r:r,c:2})];
-    var qtyCell=sheet[XLSX.utils.encode_cell({r:r,c:4})];
-    var priceCell=sheet[XLSX.utils.encode_cell({r:r,c:5})];
-    var totalCell=sheet[XLSX.utils.encode_cell({r:r,c:6})];
-    var desc=descCell!=null&&descCell.v!=null?String(descCell.v).trim():'';
+  var det=detectBudgetExcelColumns(sheet,range);
+  var descCol,unitCol,qtyCol,priceCol,startRow;
+  if(det){descCol=det.descCol;unitCol=det.unitCol;qtyCol=det.qtyCol;priceCol=det.priceCol;startRow=det.headerRow;}
+  else{descCol=2;unitCol=null;qtyCol=4;priceCol=5;startRow=range.s.r;} // legacy fixed layout
+  function cellAt(r,c){return c==null?null:sheet[XLSX.utils.encode_cell({r:r,c:c})];}
+  var rows=[],currentCategory='כללי';
+  for(var r=startRow;r<=range.e.r;r++){
+    var descCell=cellAt(r,descCol);
+    var desc=descCell!=null&&descCell.v!=null?String(descCell.v).trim().replace(/\s+/g,' '):'';
     if(!desc)continue;
-    if(isBudgetExcelSkipDescription(desc))continue;
-    if(isBudgetExcelHeaderRow(desc))continue;
-    var unitPrice=parseExcelCellNumber(priceCell&&priceCell.v);
-    if(unitPrice==null||unitPrice<=0)continue;
+    var unitCell=cellAt(r,unitCol),qtyCell=cellAt(r,qtyCol),priceCell=cellAt(r,priceCol);
+    var unitVal=unitCell&&unitCell.v!=null?String(unitCell.v).trim():'';
     var qty=parseExcelCellNumber(qtyCell&&qtyCell.v);
-    if(qty==null||qty<=0)qty=1;
-    var total;
-    if(isBudgetExcelFormulaCell(totalCell)||totalCell==null||totalCell.v==null||totalCell.v===''){
-      total=calcBudgetLineTotal(qty,unitPrice);
-    }else{
-      var parsedTotal=parseExcelCellNumber(totalCell.v);
-      total=parsedTotal!=null&&parsedTotal>0?parsedTotal:calcBudgetLineTotal(qty,unitPrice);
+    var unitPrice=parseExcelCellNumber(priceCell&&priceCell.v);
+    // A "category header" is a text-only row: no unit value, no quantity, no price.
+    var isCategoryHeader=(unitVal===''||isBudgetExcelHeaderRow(unitVal))&&qty==null&&unitPrice==null;
+    if(r===startRow){
+      if(!isBudgetExcelHeaderRow(desc)&&desc.length>2)currentCategory=desc; // first category
+      continue;
     }
-    rows.push({description:desc,quantity:qty,unitPrice:unitPrice,total:total});
+    if(isCategoryHeader){
+      if(!isBudgetExcelHeaderRow(desc)&&desc.length>2)currentCategory=desc;
+      continue;
+    }
+    if(unitPrice==null||unitPrice<=0)continue; // a real line needs a unit price
+    if(qty==null||qty<0)qty=0;                 // optional/estimate rows keep their price, qty 0
+    rows.push({description:desc,category:currentCategory,
+      unit:normalizeBudgetUnit(unitVal||BUDGET_DEFAULT_UNIT),quantity:qty,unitPrice:unitPrice});
   }
-  if(!rows.length)return {ok:false,message:'לא נמצאו שורות תקינות — נדרש תיאור (C) מעל 3 תווים ומחיר יחידה (F) גדול מ-0'};
-  return {ok:true,rows:rows};
+  if(!rows.length)return {ok:false,message:'לא נמצאו שורות תקינות — ודא שיש עמודת תיאור, עמודת מחיר יחידה וכותרות (כמות / מחיר / סכום) בקובץ'};
+  var categories=[],seenCat={};
+  rows.forEach(function(x){if(x.category&&!seenCat[x.category]){seenCat[x.category]=1;categories.push(x.category);}});
+  return {ok:true,rows:rows,categories:categories};
 }
 function populateBudgetExcelCategorySelect(){
   var sel=document.getElementById('budget-excel-category');
@@ -6009,10 +6051,39 @@ function renderBudgetExcelPreview(){
   }
   wrap.style.display='block';
   if(countEl)countEl.textContent=String(budgetExcelImportRows.length);
+  var useFileCats=budgetExcelUseFileCategories();
   body.innerHTML=budgetExcelImportRows.map(function(row,idx){
-    return '<tr><td>'+(idx+1)+'</td><td>'+escHtml(row.description)+'</td><td>'+escHtml(BUDGET_DEFAULT_UNIT)+'</td><td class="num">'+row.quantity+'</td><td class="num">'+fmtMoney(row.unitPrice)+'</td><td class="num">'+fmtMoney(row.total)+'</td></tr>';
+    var cat=useFileCats?(row.category||'—'):'';
+    var lineTotal=calcBudgetLineTotal(row.quantity,row.unitPrice);
+    return '<tr><td>'+(idx+1)+'</td>'+(useFileCats?'<td>'+escHtml(cat)+'</td>':'')+'<td>'+escHtml(row.description)+'</td><td>'+escHtml(row.unit||BUDGET_DEFAULT_UNIT)+'</td><td class="num">'+row.quantity+'</td><td class="num">'+fmtMoney(row.unitPrice)+'</td><td class="num">'+fmtMoney(lineTotal)+'</td></tr>';
   }).join('');
   if(btn)btn.disabled=false;
+}
+function budgetExcelUseFileCategories(){
+  var cb=document.getElementById('budget-excel-use-file-cats');
+  return !!(cb&&!cb.disabled&&cb.checked&&budgetExcelImportCategories.length>1);
+}
+// Show the "use the file's own categories" option only when the file actually has several.
+function updateBudgetExcelCategoriesUI(){
+  var optWrap=document.getElementById('budget-excel-use-file-cats-wrap');
+  var cb=document.getElementById('budget-excel-use-file-cats');
+  var hint=document.getElementById('budget-excel-cats-hint');
+  var hasMany=budgetExcelImportCategories.length>1;
+  if(optWrap)optWrap.style.display=hasMany?'flex':'none';
+  if(cb){cb.disabled=!hasMany;cb.checked=hasMany;}
+  if(hint)hint.textContent=hasMany?('זוהו '+budgetExcelImportCategories.length+' קטגוריות בקובץ: '+budgetExcelImportCategories.join(' · ')):'';
+  onBudgetExcelUseFileCatsToggle();
+}
+function onBudgetExcelUseFileCatsToggle(){
+  var sel=document.getElementById('budget-excel-category');
+  var wrap=document.getElementById('budget-excel-category-wrap');
+  var useFile=budgetExcelUseFileCategories();
+  if(wrap)wrap.style.display=useFile?'none':'block';
+  if(sel)sel.disabled=useFile;
+  // toggle the preview's category column header
+  var catTh=document.getElementById('budget-excel-cat-th');
+  if(catTh)catTh.style.display=useFile?'':'none';
+  renderBudgetExcelPreview();
 }
 function setBudgetExcelFileError(msg){
   var el=document.getElementById('budget-excel-file-error');
@@ -6039,11 +6110,13 @@ async function openBudgetExcelImportModal(){
     }
   }
   budgetExcelImportRows=[];
+  budgetExcelImportCategories=[];
   var fileInput=document.getElementById('budget-excel-file');
   if(fileInput)fileInput.value='';
   setBudgetExcelFileError('');
   setBudgetExcelLoading(false);
   populateBudgetExcelCategorySelect();
+  updateBudgetExcelCategoriesUI();
   renderBudgetExcelPreview();
   openModal('modal-budget-excel-import');
   refreshIcons(document.getElementById('modal-budget-excel-import'));
@@ -6051,6 +6124,7 @@ async function openBudgetExcelImportModal(){
 function closeBudgetExcelImportModal(){
   closeModal('modal-budget-excel-import');
   budgetExcelImportRows=[];
+  budgetExcelImportCategories=[];
   var fileInput=document.getElementById('budget-excel-file');
   if(fileInput)fileInput.value='';
   setBudgetExcelFileError('');
@@ -6058,8 +6132,10 @@ function closeBudgetExcelImportModal(){
 function onBudgetExcelFileSelected(event){
   var file=event.target.files&&event.target.files[0];
   budgetExcelImportRows=[];
+  budgetExcelImportCategories=[];
   setBudgetExcelFileError('');
   setBudgetExcelLoading(false);
+  updateBudgetExcelCategoriesUI();
   renderBudgetExcelPreview();
   if(!file)return;
   if(!/\.xlsx$/i.test(file.name)&&file.type!=='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'){
@@ -6083,8 +6159,11 @@ function onBudgetExcelFileSelected(event){
         return;
       }
       budgetExcelImportRows=parsed.rows;
+      budgetExcelImportCategories=parsed.categories||[];
+      updateBudgetExcelCategoriesUI();
       renderBudgetExcelPreview();
-      showToast('נמצאו '+parsed.rows.length+' פריטים לייבוא','success');
+      var catMsg=budgetExcelImportCategories.length>1?(' · '+budgetExcelImportCategories.length+' קטגוריות'):'';
+      showToast('נמצאו '+parsed.rows.length+' פריטים לייבוא'+catMsg,'success');
     }catch(err){
       console.error('parseBudgetExcelWorkbook',err);
       setBudgetExcelFileError('שגיאה בקריאת הקובץ — ודא שזה קובץ Excel תקין');
@@ -6103,26 +6182,31 @@ function confirmBudgetExcelImport(){
     showToast('שגיאה: אין תקציב פתוח','error');
     return;
   }
+  var useFileCats=budgetExcelUseFileCategories();
   var catEl=document.getElementById('budget-excel-category');
   var category=catEl?catEl.value:'';
-  if(!category){setBudgetExcelFileError('יש לבחור קטגוריה');return;}
+  if(!useFileCats&&!category){setBudgetExcelFileError('יש לבחור קטגוריה');return;}
   budgetExcelImportRows.forEach(function(row){
     budgetBuilderDraft.items.push({
       id:newBudgetItemId(),
-      category:category,
+      category:useFileCats?(row.category||category||'אחר'):category,
       description:row.description,
       contactId:'',
       quantity:row.quantity,
-      unit:BUDGET_DEFAULT_UNIT,
+      unit:row.unit||BUDGET_DEFAULT_UNIT,
       unitPrice:row.unitPrice
     });
   });
+  if(useFileCats){
+    budgetBuilderDraft.extraCategories=deriveBudgetExtraCategories(budgetBuilderDraft.items);
+  }
   var count=budgetExcelImportRows.length;
+  var label=useFileCats?(budgetExcelImportCategories.length+' קטגוריות מהקובץ'):('קטגוריה "'+category+'"');
   closeBudgetExcelImportModal();
   if(budgetBuilderMode==='edit')renderBudgetBuilderEditorInPlace();
   else initBudgetBuilderView();
-  showToast(count+' פריטים יובאו לקטגוריה "'+category+'"');
-  logActivity('ייבוא מאקסל',count+' פריטים · קטגוריה: '+category);
+  showToast(count+' פריטים יובאו · '+label);
+  logActivity('ייבוא מאקסל',count+' פריטים · '+label);
 }
 function removeBudgetItem(itemId){
   if(!budgetBuilderDraft)return;
@@ -7219,49 +7303,59 @@ function loadJsPdfLib(){
   }
   return jsPdfLoadPromise;
 }
+// Renders an HTML report string to a multi-page A4 PDF as a rasterized image.
+// Rasterizing (html2canvas → image) is what makes Hebrew/RTL render correctly —
+// jsPDF's text engine has no Hebrew font and produces garbled output.
+async function renderReportHtmlToPdf(html,fileName){
+  var wrap=document.createElement('div');
+  wrap.style.cssText='position:fixed;left:-10000px;top:0;width:794px;background:#fff;z-index:-1';
+  wrap.innerHTML=html;
+  document.body.appendChild(wrap);
+  try{
+    if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+    await new Promise(function(r){setTimeout(r,150);});
+    var libs=await loadJsPdfLib();
+    var canvas=await libs.html2canvas(wrap.firstElementChild||wrap,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
+    var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
+    var margin=10,pageW=210,pageH=297;
+    var imgW=pageW-margin*2;
+    var pxPerMm=canvas.width/imgW;
+    var pageChunkPx=Math.floor((pageH-margin*2)*pxPerMm);
+    var sY=0,pageNum=0;
+    while(sY<canvas.height){
+      var chunkPx=Math.min(pageChunkPx,canvas.height-sY);
+      var pageCanvas=document.createElement('canvas');
+      pageCanvas.width=canvas.width;
+      pageCanvas.height=chunkPx;
+      var ctx=pageCanvas.getContext('2d');
+      ctx.fillStyle='#ffffff';ctx.fillRect(0,0,pageCanvas.width,pageCanvas.height);
+      ctx.drawImage(canvas,0,sY,canvas.width,chunkPx,0,0,canvas.width,chunkPx);
+      if(pageNum>0)doc.addPage();
+      doc.addImage(pageCanvas.toDataURL('image/jpeg',0.92),'JPEG',margin,margin,imgW,chunkPx/pxPerMm);
+      sY+=chunkPx;pageNum++;
+    }
+    doc.save(fileName);
+  }finally{
+    if(wrap&&wrap.parentNode)wrap.parentNode.removeChild(wrap);
+  }
+}
 async function exportProjectOverviewPdf(){
   if(!requireProjectAccess())return;
   var p=getCurrentProject();
   if(!p)return;
   showToast('מייצר דוח PDF...');
-  var wrap=null;
   try{
     await refreshPunchItems(p.id);
     var paid=sumProjectPaid(p);
     var budget=getProjectBudget(p);
     var remaining=budget-paid;
     var openPunch=punchItemsCache.filter(function(it){return it.status==='open';});
-    wrap=document.createElement('div');
-    wrap.id='project-report-pdf-root';
-    wrap.style.cssText='position:fixed;left:-10000px;top:0;width:794px;background:#fff;z-index:-1';
-    wrap.innerHTML=buildProjectOverviewReportHtml(p,paid,budget,remaining,openPunch);
-    document.body.appendChild(wrap);
-    if(document.fonts&&document.fonts.ready)await document.fonts.ready;
-    await new Promise(function(r){setTimeout(r,150);});
-    var libs=await loadJsPdfLib();
-    var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
-    await new Promise(function(resolve,reject){
-      doc.html(wrap.firstElementChild||wrap,{
-        margin:[10,10,10,10],
-        autoPaging:'text',
-        html2canvas:{scale:0.75,useCORS:true,logging:false,backgroundColor:'#ffffff'},
-        width:190,
-        windowWidth:794,
-        callback:function(pdf){
-          try{
-            var safeName=String(p.name||'project').replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,'-').slice(0,48);
-            pdf.save('דוח-'+safeName+'.pdf');
-            resolve();
-          }catch(err){reject(err);}
-        }
-      });
-    });
+    var safeName=String(p.name||'project').replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,'-').slice(0,48);
+    await renderReportHtmlToPdf(buildProjectOverviewReportHtml(p,paid,budget,remaining,openPunch),'דוח-'+safeName+'.pdf');
     showToast('הדוח הורד בהצלחה');
   }catch(err){
     console.error('exportProjectOverviewPdf',err);
     showToast('שגיאה ביצוא PDF','error');
-  }finally{
-    if(wrap&&wrap.parentNode)wrap.parentNode.removeChild(wrap);
   }
 }
 function getProjectNavUrl(p){
@@ -8196,38 +8290,13 @@ async function exportSuppliersPdf(){
   var p=getCurrentProject();
   if(!p)return;
   showToast('מייצר PDF...');
-  var wrap=null;
   try{
-    wrap=document.createElement('div');
-    wrap.style.cssText='position:fixed;left:-10000px;top:0;width:794px;background:#fff;z-index:-1';
-    wrap.innerHTML=buildSuppliersReportHtml(p);
-    document.body.appendChild(wrap);
-    if(document.fonts&&document.fonts.ready)await document.fonts.ready;
-    await new Promise(function(r){setTimeout(r,150);});
-    var libs=await loadJsPdfLib();
-    var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
-    await new Promise(function(resolve,reject){
-      doc.html(wrap.firstElementChild||wrap,{
-        margin:[10,10,10,10],
-        autoPaging:'text',
-        html2canvas:{scale:0.75,useCORS:true,logging:false,backgroundColor:'#ffffff'},
-        width:190,
-        windowWidth:794,
-        callback:function(pdf){
-          try{
-            var safeName=String(p.name||'project').replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,'-').slice(0,48);
-            pdf.save('ספקים-'+safeName+'.pdf');
-            resolve();
-          }catch(err){reject(err);}
-        }
-      });
-    });
+    var safeName=String(p.name||'project').replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,'-').slice(0,48);
+    await renderReportHtmlToPdf(buildSuppliersReportHtml(p),'ספקים-'+safeName+'.pdf');
     showToast('ה-PDF הורד בהצלחה');
   }catch(err){
     console.error('exportSuppliersPdf',err);
     showToast('שגיאה ביצוא PDF','error');
-  }finally{
-    if(wrap&&wrap.parentNode)wrap.parentNode.removeChild(wrap);
   }
 }
 
@@ -9152,7 +9221,7 @@ Object.assign(window,{
   handleBlueprintUpload,openNewPunchModal,openPunchItemView,onBlueprintImageClick,savePunchItem,retryPunchPhotoUpload,markPunchFixed,onPunchFilterChange,
   openDailyLogForm,cancelDailyLogForm,saveDailyLog,onDailyLogFilterChange,onActivityLogFilterChange,
   startNewBudgetDraft,openBudgetEdit,duplicateBudget,saveBudgetBuilder,deleteBudget,backToBudgetList,
-  openBudgetExcelImportModal,closeBudgetExcelImportModal,confirmBudgetExcelImport,onBudgetExcelFileSelected,
+  openBudgetExcelImportModal,closeBudgetExcelImportModal,confirmBudgetExcelImport,onBudgetExcelFileSelected,onBudgetExcelUseFileCatsToggle,
   addBudgetItemToCategory,removeBudgetItem,onBudgetDraftFieldChange,onBudgetItemFieldChange,
   onBudgetAddCategoryClick,addBudgetCustomCategory,onBudgetItemContactChange,
   openBudgetQuickSubcontractorModal,closeBudgetQuickSubcontractorModal,saveBudgetQuickSubcontractor,
