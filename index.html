@@ -7873,7 +7873,7 @@ async function deleteSubcontractor(id){
   if(!s)return;
   if(!confirm('למחוק את הקבלן "'+s.companyName+'"?'))return;
   var res=await supabase.from('subcontractors').delete().eq('id',id);
-  if(res.error){alert('שגיאה במחיקה:\n'+formatSupabaseErrorHint(res.error.message));return;}
+  if(res.error){alert('שגיאה במחיקה:\n'+formatSupabaseErrorHint(res.error.message)+'\n\n[פירוט טכני]: '+res.error.message);return;}
   logActivity('מחיקת קבלן משנה',s.companyName);
   await refreshSubcontractors();
   await persistActivityLogOnly();
