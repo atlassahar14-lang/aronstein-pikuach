@@ -1107,20 +1107,31 @@ img,svg,video,canvas{max-width:100%;height:auto}
   </div>
 </div>
 
-<!-- Modal: Project Supplier (manual) -->
-<div class="modal-overlay" id="modal-supplier">
-  <div class="modal">
-    <div class="modal-header"><div class="modal-title" id="modal-supplier-title">ספק חדש</div><button class="modal-close" onclick="closeModal('modal-supplier')"><i data-lucide="x"></i></button></div>
-    <div class="form-group"><label>שם הספק <span class="req-mark">*</span></label><input type="text" id="supplier-name" placeholder="שם הספק / החברה"/></div>
-    <div class="grid-2">
-      <div class="form-group"><label>טלפון</label><input type="tel" id="supplier-phone" placeholder="050-0000000" dir="ltr" style="text-align:left"/></div>
-      <div class="form-group"><label>תחום</label><input type="text" id="supplier-field" placeholder="לדוגמה: חשמל, ריצוף"/></div>
+<!-- Modal: Project Suppliers -->
+<div class="modal-overlay" id="modal-suppliers">
+  <div class="modal" style="max-width:min(94vw,620px)">
+    <div class="modal-header"><div class="modal-title" id="modal-suppliers-title">ספקים</div><button class="modal-close" onclick="closeModal('modal-suppliers')"><i data-lucide="x"></i></button></div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:16px">
+      <div class="section-title" style="font-size:14px;margin:0 0 10px" id="supplier-form-title">קישור ספק לפרויקט</div>
+      <div class="form-group"><label>בחר מתוך קבלני המשנה</label>
+        <select id="supplier-subcontractor" onchange="onSupplierSubcontractorPick()">
+          <option value="">— הזנה ידנית —</option>
+        </select>
+      </div>
+      <div class="grid-2">
+        <div class="form-group"><label>שם הספק <span class="req-mark">*</span></label><input type="text" id="supplier-name" placeholder="שם הספק / החברה"/></div>
+        <div class="form-group"><label>תפקיד</label><input type="text" id="supplier-field" placeholder="לדוגמה: חשמלאי, ריצוף"/></div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group"><label>טלפון</label><input type="tel" id="supplier-phone" placeholder="050-0000000" dir="ltr" style="text-align:left"/></div>
+        <div class="form-group"><label>הערות</label><input type="text" id="supplier-note" placeholder="הערות (אופציונלי)"/></div>
+      </div>
+      <div class="flex-gap">
+        <button type="button" class="btn btn-primary btn-sm" id="supplier-save-btn" onclick="saveSupplier()"><i data-lucide="plus"></i> הוסף ספק</button>
+        <button type="button" class="btn btn-outline btn-sm" id="supplier-cancel-edit-btn" style="display:none" onclick="resetSupplierForm()">ביטול עריכה</button>
+      </div>
     </div>
-    <div class="form-group"><label>הערות</label><textarea id="supplier-note" placeholder="הערות (אופציונלי)"></textarea></div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('modal-supplier')">ביטול</button>
-      <button class="btn btn-primary" style="width:auto" onclick="saveSupplier()">שמור</button>
-    </div>
+    <div id="suppliers-modal-list" style="margin-top:18px"></div>
   </div>
 </div>
 
@@ -2772,7 +2783,6 @@ function normalizeClientTab(tab){
 function getProjectTabDefs(messagesTabBadge){
   var tabDefs=[
     ['overview','סקירה','layout-dashboard',''],
-    ['suppliers','ספקים','users',''],
     ['timeline','לוח זמנים','calendar',''],
     ['budget','מעקב תשלומים','banknote',''],
     ['budget-analysis','ניתוח כספי','scale',''],
@@ -7445,7 +7455,7 @@ function renderProjectDetail(el){
 
   var html='<button type="button" class="back-btn admin-only-action" onclick="showView(\'projects\')">← חזרה לפרויקטים</button>';
   html+='<div class="flex-between responsive-stack mb-24"><div><h1 class="project-detail-title">'+p.name+'</h1><p class="project-detail-address">'+projectAddressLine(p,false)+'</p></div>';
-  html+='<div class="flex-gap admin-only-action"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-outline btn-sm" onclick="exportProjectOverviewPdf()">'+ic('file-text')+' ייצוא דוח PDF</button><button class="btn btn-accent btn-sm" onclick="openNewUpdateModal()">'+ic('bell')+' עדכון חדש</button></div>';
+  html+='<div class="flex-gap admin-only-action"><button class="btn btn-outline btn-sm" onclick="openEditProjectModal(\''+p.id+'\')">'+ic('pencil')+' עריכה</button><button class="btn btn-outline btn-sm" onclick="openSuppliersModal()">'+ic('users')+' ספקים</button><button class="btn btn-outline btn-sm" onclick="exportProjectOverviewPdf()">'+ic('file-text')+' ייצוא דוח PDF</button><button class="btn btn-accent btn-sm" onclick="openNewUpdateModal()">'+ic('bell')+' עדכון חדש</button></div>';
   html+='</div>';
 
   var tabDefs=getProjectTabDefs(messagesTabBadge);
@@ -7485,9 +7495,6 @@ function renderProjectDetail(el){
     '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+budgetUtilPct+'%;background:var(--success)"></div></div></div>'+
     '<div class="flex-between" style="font-size:13px"><span style="color:var(--text-muted)">נותר:</span><span style="font-weight:700;color:var(--warning)">'+fmtMoney(remaining)+'</span></div>'+
     '</div></div></div>';
-
-  // SUPPLIERS TAB
-  html+='<div id="tab-suppliers" class="tab-content '+(currentTab==='suppliers'?'active':'')+'"><div id="suppliers-tab-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div></div>';
 
   // TIMELINE TAB
   html+='<div id="tab-timeline" class="tab-content '+(currentTab==='timeline'?'active':'')+'">'+
@@ -7615,7 +7622,6 @@ function renderProjectDetail(el){
   setTimeout(function(){
     var ml=document.getElementById('messages-list');if(ml)ml.scrollTop=ml.scrollHeight;
     if(currentTab==='financial')renderFinancialCharts(p);
-    if(currentTab==='suppliers')initSuppliersTab();
     if(currentTab==='punch')initPunchListTab();
     if(currentTab==='daily-log')initDailyLogTab();
     if(currentTab==='finish-selections')initFinishSelectionsTab();
@@ -7734,7 +7740,6 @@ async function switchTab(t){
       var p=getCurrentProject();
       if(p)setTimeout(function(){renderFinancialCharts(p);},50);
     }
-    if(t==='suppliers')initSuppliersTab();
     if(t==='punch')initPunchListTab();
     if(t==='daily-log')initDailyLogTab();
     if(t==='finish-selections')initFinishSelectionsTab();
@@ -7967,7 +7972,7 @@ async function deleteSubcontractor(id){
   if(currentView==='subcontractors')renderSubcontractors(document.getElementById('main-content'));
 }
 
-// ===== Project Suppliers tab =====
+// ===== Project Suppliers (modal) =====
 // Auto-derived: distinct subcontractors assigned to the project's phases.
 function getProjectLinkedSubcontractors(p){
   var byId={};
@@ -7994,96 +7999,116 @@ function renderLinkedSupplierCardHtml(item){
       (phone?'<div dir="ltr" style="font-size:13px;color:var(--text);margin-top:2px;text-align:right">'+escHtml(phone)+'</div>':'')+
       '<div style="font-size:12px;color:var(--text-muted);margin-top:6px">'+ic('calendar')+' '+escHtml(phasesTxt)+'</div>'+
     '</div>'+
-    '<div class="flex-gap">'+renderSubcontractorWhatsAppBtn(phone)+
-      (s?'<button class="btn btn-outline btn-sm admin-only-action" onclick="openEditSubcontractorModal(\''+s.id+'\')" title="עריכת קבלן">'+ic('pencil')+'</button>':'')+
-    '</div></div></div>';
+    '<div class="flex-gap">'+renderSubcontractorWhatsAppBtn(phone)+'</div></div></div>';
 }
 function renderManualSupplierCardHtml(sup){
+  var linkedBadge=sup.subcontractorId?'<span style="font-size:10px;font-weight:700;color:var(--primary);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:2px 8px;margin-inline-start:6px">מקבלני המשנה</span>':'';
   return '<div class="card" style="padding:14px 16px">'+
     '<div class="flex-between responsive-stack" style="gap:10px">'+
     '<div>'+
-      '<div style="font-size:15px;font-weight:700;color:var(--primary)">'+escHtml(sup.name)+(sup.field?' <span style="font-size:11px;font-weight:600;color:var(--text-muted)">· '+escHtml(sup.field)+'</span>':'')+'</div>'+
+      '<div style="font-size:15px;font-weight:700;color:var(--primary)">'+escHtml(sup.name)+(sup.field?' <span style="font-size:11px;font-weight:600;color:var(--text-muted)">· '+escHtml(sup.field)+'</span>':'')+linkedBadge+'</div>'+
       (sup.phone?'<div dir="ltr" style="font-size:13px;color:var(--text);margin-top:2px;text-align:right">'+escHtml(sup.phone)+'</div>':'')+
       (sup.note?'<div style="font-size:12px;color:var(--text-muted);margin-top:6px">'+escHtml(sup.note)+'</div>':'')+
     '</div>'+
     '<div class="flex-gap">'+renderSubcontractorWhatsAppBtn(sup.phone)+
-      '<button class="btn btn-outline btn-sm admin-only-action" onclick="openEditSupplierModal(\''+sup.id+'\')" title="עריכה">'+ic('pencil')+'</button>'+
-      '<button class="btn btn-danger btn-sm admin-only-action" onclick="deleteSupplier(\''+sup.id+'\')" title="מחיקה">'+ic('trash-2')+'</button>'+
+      '<button class="btn btn-outline btn-sm" onclick="editSupplierInline(\''+sup.id+'\')" title="עריכה">'+ic('pencil')+'</button>'+
+      '<button class="btn btn-danger btn-sm" onclick="deleteSupplier(\''+sup.id+'\')" title="מחיקה">'+ic('trash-2')+'</button>'+
     '</div></div></div>';
 }
-function renderSuppliersTabInner(p){
+function renderSuppliersModalBody(p){
   var linked=getProjectLinkedSubcontractors(p);
   var manual=p.suppliers||[];
   var html='';
-  html+='<div class="section-title mb-16">'+ic('users')+' ספקים בפרויקט</div>';
-  // Linked (auto) section
-  html+='<div class="section-title" style="font-size:15px;margin:8px 0 10px">'+ic('link')+' קבלני משנה מקושרים (לפי שלבים)</div>';
-  if(!linked.length){
-    html+='<div class="empty-state card"><div class="empty-icon">'+ic('link')+'</div><p>אין קבלני משנה משויכים לשלבי הפרויקט.<br>שייך קבלן לשלב בלשונית "לוח זמנים" והוא יופיע כאן אוטומטית.</p></div>';
-  }else{
-    html+='<div style="display:flex;flex-direction:column;gap:10px">'+linked.map(renderLinkedSupplierCardHtml).join('')+'</div>';
-  }
-  // Manual section
-  html+='<div class="section-actions" style="margin-top:22px"><div class="section-title" style="font-size:15px;margin:0">'+ic('user-plus')+' ספקים שנוספו ידנית</div>'+
-    '<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddSupplierModal()">'+ic('plus')+' הוסף ספק</button></div>';
+  html+='<div class="section-title" style="font-size:15px;margin:0 0 10px">'+ic('list')+' ספקי הפרויקט';
+  html+=manual.length?' ('+manual.length+')':'';
+  html+='</div>';
   if(!manual.length){
-    html+='<div class="empty-state card"><div class="empty-icon">'+ic('user-plus')+'</div><p>לא נוספו ספקים ידנית עדיין</p></div>';
+    html+='<div class="empty-state card" style="padding:24px"><div class="empty-icon">'+ic('user-plus')+'</div><p>עדיין לא נוספו ספקים. בחר קבלן מהרשימה למעלה או הזן ידנית, הוסף תפקיד ולחץ "הוסף ספק".</p></div>';
   }else{
-    html+='<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">'+manual.map(renderManualSupplierCardHtml).join('')+'</div>';
+    html+='<div style="display:flex;flex-direction:column;gap:10px">'+manual.map(renderManualSupplierCardHtml).join('')+'</div>';
+  }
+  if(linked.length){
+    html+='<div class="section-title" style="font-size:14px;margin:22px 0 10px;color:var(--text-muted)">'+ic('link')+' מקושרים אוטומטית לפי שלבי לוח הזמנים</div>';
+    html+='<div style="display:flex;flex-direction:column;gap:10px">'+linked.map(renderLinkedSupplierCardHtml).join('')+'</div>';
   }
   return html;
 }
-async function initSuppliersTab(){
-  var root=document.getElementById('suppliers-tab-root');
-  if(!root)return;
-  await refreshSubcontractors();
+function populateSupplierSubcontractorSelect(){
+  var sel=document.getElementById('supplier-subcontractor');
+  if(!sel)return;
+  var subs=(subcontractorsCache||[]).slice().sort(compareSubcontractorCompanyName);
+  sel.innerHTML='<option value="">— הזנה ידנית —</option>'+subs.map(function(s){
+    var label=s.companyName+(s.specialty?' ('+s.specialty+')':'');
+    return '<option value="'+s.id+'">'+escHtml(label)+'</option>';
+  }).join('');
+}
+function onSupplierSubcontractorPick(){
+  var sel=document.getElementById('supplier-subcontractor');
+  if(!sel||!sel.value)return;
+  var s=getSubcontractorById(sel.value);
+  if(!s)return;
+  document.getElementById('supplier-name').value=s.companyName||'';
+  document.getElementById('supplier-phone').value=s.phone||'';
+  if(!document.getElementById('supplier-field').value.trim())document.getElementById('supplier-field').value=s.specialty||'';
+}
+function rerenderSuppliersModal(){
   var p=getCurrentProject();
-  if(!p){root.innerHTML='<p>פרויקט לא נמצא</p>';return;}
-  root.innerHTML=renderSuppliersTabInner(p);
+  var root=document.getElementById('suppliers-modal-list');
+  if(!p||!root)return;
+  root.innerHTML=renderSuppliersModalBody(p);
   refreshIcons(root);
 }
-function rerenderSuppliersTab(){
-  var root=document.getElementById('suppliers-tab-root');
-  if(!root)return;
+function resetSupplierForm(){
+  var m=document.getElementById('modal-suppliers');
+  if(m)delete m.dataset.editId;
+  ['supplier-name','supplier-phone','supplier-field','supplier-note'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  var sel=document.getElementById('supplier-subcontractor');if(sel)sel.value='';
+  var ft=document.getElementById('supplier-form-title');if(ft)ft.textContent='קישור ספק לפרויקט';
+  var sb=document.getElementById('supplier-save-btn');if(sb){sb.innerHTML='<i data-lucide="plus"></i> הוסף ספק';refreshIcons(sb);}
+  var cb=document.getElementById('supplier-cancel-edit-btn');if(cb)cb.style.display='none';
+}
+async function openSuppliersModal(){
+  if(!requireAdmin())return;
   var p=getCurrentProject();
   if(!p)return;
-  root.innerHTML=renderSuppliersTabInner(p);
-  refreshIcons(root);
+  document.getElementById('modal-suppliers-title').textContent='ספקים — '+p.name;
+  await refreshSubcontractors();
+  populateSupplierSubcontractorSelect();
+  resetSupplierForm();
+  rerenderSuppliersModal();
+  openModal('modal-suppliers');
+  refreshIcons(document.getElementById('modal-suppliers'));
 }
-function openAddSupplierModal(){
-  if(!requireAdmin())return;
-  var m=document.getElementById('modal-supplier');
-  delete m.dataset.editId;
-  document.getElementById('modal-supplier-title').textContent='ספק חדש';
-  ['supplier-name','supplier-phone','supplier-field','supplier-note'].forEach(function(id){document.getElementById(id).value='';});
-  openModal('modal-supplier');
-}
-function openEditSupplierModal(id){
+function editSupplierInline(id){
   if(!requireAdmin())return;
   var p=getCurrentProject();
   if(!p)return;
   var sup=(p.suppliers||[]).find(function(s){return s.id===id;});
   if(!sup)return;
-  var m=document.getElementById('modal-supplier');
+  var m=document.getElementById('modal-suppliers');
   m.dataset.editId=id;
-  document.getElementById('modal-supplier-title').textContent='עריכת ספק';
+  document.getElementById('supplier-subcontractor').value=sup.subcontractorId||'';
   document.getElementById('supplier-name').value=sup.name||'';
   document.getElementById('supplier-phone').value=sup.phone||'';
   document.getElementById('supplier-field').value=sup.field||'';
   document.getElementById('supplier-note').value=sup.note||'';
-  openModal('modal-supplier');
+  document.getElementById('supplier-form-title').textContent='עריכת ספק';
+  var sb=document.getElementById('supplier-save-btn');sb.innerHTML='<i data-lucide="check"></i> עדכן ספק';refreshIcons(sb);
+  document.getElementById('supplier-cancel-edit-btn').style.display='';
+  var box=document.getElementById('supplier-name');if(box)box.focus();
 }
 async function saveSupplier(){
   if(!requireAdmin())return;
   var name=document.getElementById('supplier-name').value.trim();
   if(!name){alert('יש להזין שם ספק');return;}
   var fields={
+    subcontractorId:document.getElementById('supplier-subcontractor').value||null,
     name:name,
     phone:document.getElementById('supplier-phone').value.trim(),
     field:document.getElementById('supplier-field').value.trim(),
     note:document.getElementById('supplier-note').value.trim()
   };
-  var m=document.getElementById('modal-supplier');
+  var m=document.getElementById('modal-suppliers');
   var editId=m.dataset.editId;
   var data=getData();
   var proj=data.projects.find(function(x){return x.id===currentProjectId;});
@@ -8099,9 +8124,9 @@ async function saveSupplier(){
     logActivity('הוספת ספק','פרויקט: '+proj.name+' · '+name);
   }
   if(!await saveData(data))return;
-  closeModal('modal-supplier');
   showToast(editId?'הספק עודכן':'הספק נוסף');
-  rerenderSuppliersTab();
+  resetSupplierForm();
+  rerenderSuppliersModal();
 }
 async function deleteSupplier(id){
   if(!requireAdmin())return;
@@ -8115,7 +8140,9 @@ async function deleteSupplier(id){
   logActivity('מחיקת ספק','פרויקט: '+proj.name+' · '+sup.name);
   if(!await saveData(data))return;
   showToast('הספק נמחק');
-  rerenderSuppliersTab();
+  var m=document.getElementById('modal-suppliers');
+  if(m.dataset.editId===id)resetSupplierForm();
+  rerenderSuppliersModal();
 }
 
 function renderActivityLogFilterBarHtml(){
@@ -9023,7 +9050,7 @@ Object.assign(window,{
   showView,switchTab,openModal,closeModal,toggleMobileSidebar,closeMobileSidebar,toggleMobileTabMenu,closeMobileTabMenu,exportProjectOverviewPdf,
   openNewProjectModal,openEditProjectModal,saveProject,confirmDeleteProject,closeDeleteProjectModal,executeDeleteProject,openAddUserModal,
   openAddSubcontractorModal,openEditSubcontractorModal,saveSubcontractor,deleteSubcontractor,openSubcontractorPdf,onSubcontractorSpecialtyFilterChange,
-  openAddSupplierModal,openEditSupplierModal,saveSupplier,deleteSupplier,
+  openSuppliersModal,onSupplierSubcontractorPick,saveSupplier,resetSupplierForm,editSupplierInline,deleteSupplier,
   addSpecialtySetting,removeSpecialtySetting,
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,onPaymentFilterChange,exportPaymentsCsv,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
