@@ -1471,6 +1471,16 @@ function refreshIcons(root){if(window.lucide)lucide.createIcons(root?{root:root}
 function sanitizeFileName(name){
   return String(name||'file').replace(/[^\w.\-()\u0590-\u05FF\s]/g,'_').replace(/\s+/g,'_').slice(0,120);
 }
+// Supabase Storage object keys must be ASCII \u2014 strip Hebrew/other non-ASCII chars.
+function storageSafeFileName(file){
+  var name=String(file&&file.name||'file');
+  var ext=resolveUploadFileExtension(file);
+  var dot=name.lastIndexOf('.');
+  var base=dot>0?name.slice(0,dot):name;
+  base=base.replace(/[^A-Za-z0-9._-]/g,'_').replace(/_+/g,'_').replace(/^_+|_+$/g,'').slice(0,60);
+  if(!base)base='file';
+  return ext?base+'.'+ext:base;
+}
 function getUploadFileExtension(file){
   var name=(file&&file.name||'').trim();
   var dot=name.lastIndexOf('.');
@@ -1688,7 +1698,7 @@ function renderUpdateMediaHtml(u){
   return '<div class="update-media-block"><a href="'+url+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">'+ic('paperclip')+' '+name+'</a></div>';
 }
 async function uploadMediaFile(folderPath,file){
-  var safeName=sanitizeFileName(file.name);
+  var safeName=storageSafeFileName(file);
   var path=folderPath+'/'+Date.now()+'_'+safeName;
   var res=await supabase.storage.from(STORAGE_BUCKET).upload(path,file,{cacheControl:'3600',upsert:false});
   if(res.error)return {ok:false,error:res.error.message};
