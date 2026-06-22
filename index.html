@@ -73,6 +73,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .btn-outline{background:transparent;border:2px solid var(--border);color:var(--text)}
 .btn-outline:hover{border-color:var(--primary-light);color:var(--primary-light)}
 .btn-danger{background:var(--danger);color:#fff}
+.btn-success{background:var(--success);color:#fff}
 .btn-whatsapp{background:#25D366;color:#fff;text-decoration:none}
 .btn-whatsapp:hover{background:#1da851;color:#fff;transform:translateY(-1px)}
 .btn-whatsapp .wa-icon{width:18px;height:18px;flex-shrink:0}
@@ -1366,6 +1367,28 @@ img,svg,video,canvas{max-width:100%;height:auto}
   </div>
 </div>
 
+<!-- Modal: approve budget -> project -->
+<div class="modal-overlay" id="modal-approve-budget">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">אישור תקציב והעברה לפרויקט</div><button class="modal-close" onclick="closeModal('modal-approve-budget')"><i data-lucide="x"></i></button></div>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px;line-height:1.5">אישור התקציב מעביר את הסכום הכולל (כולל מע"מ) לתקציב הפרויקט שתבחר. כל החישובים הכספיים בפרויקט (תשלומים מול תקציב, אחוז ניצול, חריגה) יתבססו על הסכום הזה. התקציב עצמו נשאר זמין לעריכה.</p>
+    <div class="form-group">
+      <label>תקציב</label>
+      <div id="approve-budget-name" style="font-weight:600;color:var(--primary)"></div>
+      <div id="approve-budget-amount" style="font-size:15px;font-weight:700;margin-top:4px"></div>
+    </div>
+    <div class="form-group">
+      <label>העבר לפרויקט <span class="req-mark">*</span></label>
+      <select id="approve-budget-project" onchange="onApproveBudgetProjectChange()"></select>
+    </div>
+    <div id="approve-budget-warn" style="font-size:13px;color:var(--warning);margin-bottom:12px;display:none"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-approve-budget')">ביטול</button>
+      <button class="btn btn-success" id="approve-budget-btn" style="width:auto" onclick="confirmApproveBudget()"><i data-lucide="circle-check"></i> אשר והעבר לפרויקט</button>
+    </div>
+  </div>
+</div>
+
 <!-- Budget client view / print -->
 <div class="budget-client-overlay" id="budget-client-overlay" onclick="closeBudgetClientView(event)">
   <div class="budget-client-sheet" id="budget-print-root" onclick="event.stopPropagation()">
@@ -2556,6 +2579,7 @@ var budgetsCache=[],budgetItemsByBudget={},budgetBuilderMode='list',editingBudge
 var budgetBuilderDraft=null,budgetPendingContactItemId=null,budgetBuilderInitInflight=null;
 var budgetExcelImportRows=[];
 var budgetExcelImportCategories=[];
+var approveBudgetContext=null;
 const BUDGET_EXCEL_MAX_BYTES=5*1024*1024;
 const BUDGET_EXCEL_HEADER_WORDS=['תיאור','description','פריט','מקט','כמות','quantity','מחיר','price','מחיר יחידה','unit','סכום','total','סה"כ','סהכ','סה״כ','#','מס','מס\'','item','sum','amount'];
 const BUDGET_EXCEL_SKIP_WORDS=['הערה','סה"כ','סהכ','סה״כ','סכום','כולל','לפני'];
@@ -6401,14 +6425,17 @@ function renderBudgetBuilderListHtml(budgets,loadedOk){
   budgets.forEach(function(b){
     var items=getBudgetItems(b.id);
     var t=calcBudgetTotals(items,b.marginPercent);
+    var linkedProj=getProjectApprovedFromBudget(b.id);
+    var approvedBadge=linkedProj?'<span style="color:var(--success);font-weight:600">'+ic('circle-check')+' מאושר · פרויקט: '+escHtml(linkedProj.name||linkedProj.clientName||'')+'</span>':'';
     html+='<div class="card budget-builder-card">'+
       '<div><div class="budget-builder-card-title">'+escHtml(b.clientName||b.title)+'</div>'+
       '<div class="budget-builder-card-meta">'+
       '<span>'+ic('map-pin')+' '+escHtml(b.projectAddress||'—')+'</span>'+
       '<span>'+ic('calendar')+' '+formatSubcontractorDate(b.budgetDate)+'</span>'+
       '<span>'+ic('banknote')+' '+fmtMoney(t.total)+' כולל מע"מ</span>'+
-      '<span>'+items.length+' פריטים</span></div></div>'+
+      '<span>'+items.length+' פריטים</span>'+approvedBadge+'</div></div>'+
       '<div class="flex-gap">'+
+      '<button type="button" class="btn btn-success btn-sm" onclick="openApproveBudgetModal(\''+b.id+'\')">'+ic('circle-check')+' '+(linkedProj?'עדכן בפרויקט':'אישור תקציב')+'</button>'+
       '<button type="button" class="btn btn-primary btn-sm" onclick="openBudgetClientView(\''+b.id+'\')">'+ic('file-text')+' ייצוא ל-PDF</button>'+
       '<button type="button" class="btn btn-outline btn-sm" onclick="openBudgetEdit(\''+b.id+'\')">'+ic('pencil')+' עריכה</button>'+
       '<button type="button" class="btn btn-outline btn-sm" onclick="duplicateBudget(\''+b.id+'\')">'+ic('copy')+' שכפל תקציב</button>'+
@@ -6416,6 +6443,77 @@ function renderBudgetBuilderListHtml(budgets,loadedOk){
   });
   html+='</div>';
   return html;
+}
+// Returns the project (from app_data) that a given budget was approved into, or null.
+function getProjectApprovedFromBudget(budgetId){
+  if(!budgetId||!appDataCache||!appDataCache.projects)return null;
+  return appDataCache.projects.find(function(p){return p.approvedBudgetId===budgetId;})||null;
+}
+async function openApproveBudgetModal(budgetId){
+  if(!requireAdmin())return;
+  var b=budgetsCache.find(function(x){return x.id===budgetId;});
+  if(!b){showToast('תקציב לא נמצא','error');return;}
+  var loaded=await refreshBudgetItems(budgetId);
+  if(!loaded.ok){showToast('שגיאה בטעינת פריטי התקציב: '+formatSupabaseErrorHint(loaded.error),'error');return;}
+  var t=calcBudgetTotals(getBudgetItems(budgetId),b.marginPercent);
+  approveBudgetContext={budgetId:budgetId,total:t.total,beforeVat:t.beforeVat,name:b.clientName||b.title||'תקציב'};
+  document.getElementById('approve-budget-name').textContent=approveBudgetContext.name+(b.projectAddress?' · '+b.projectAddress:'');
+  document.getElementById('approve-budget-amount').textContent=fmtMoney(t.total)+' כולל מע"מ  ('+fmtMoney(t.beforeVat)+' לפני מע"מ)';
+  var projects=(appDataCache&&appDataCache.projects)||[];
+  var sel=document.getElementById('approve-budget-project');
+  if(!projects.length){
+    sel.innerHTML='<option value="">— אין פרויקטים. צור פרויקט תחילה —</option>';
+  }else{
+    var wanted=(approveBudgetContext.name||'').trim();
+    var match=projects.find(function(p){return (p.name||'').trim()===wanted||(p.clientName||'').trim()===wanted;});
+    var alreadyLinked=getProjectApprovedFromBudget(budgetId);
+    var preferId=(alreadyLinked&&alreadyLinked.id)||(match&&match.id)||projects[0].id;
+    sel.innerHTML=projects.map(function(p){
+      return '<option value="'+escHtml(p.id)+'"'+(p.id===preferId?' selected':'')+'>'+escHtml(p.name||p.clientName||p.id)+'</option>';
+    }).join('');
+  }
+  onApproveBudgetProjectChange();
+  openModal('modal-approve-budget');
+  refreshIcons(document.getElementById('modal-approve-budget'));
+}
+function onApproveBudgetProjectChange(){
+  var sel=document.getElementById('approve-budget-project');
+  var warn=document.getElementById('approve-budget-warn');
+  if(!sel||!warn)return;
+  var projects=(appDataCache&&appDataCache.projects)||[];
+  var p=projects.find(function(x){return x.id===sel.value;});
+  var existing=p?Number(p.budget)||0:0;
+  if(p&&existing>0){
+    warn.style.display='block';
+    warn.textContent='שים לב: לפרויקט "'+(p.name||p.clientName||'')+'" כבר מוגדר תקציב '+fmtMoney(existing)+' — האישור יחליף אותו.';
+  }else{warn.style.display='none';warn.textContent='';}
+}
+async function confirmApproveBudget(){
+  if(!requireAdmin())return;
+  if(!approveBudgetContext){showToast('שגיאה: אין תקציב לאישור','error');return;}
+  var sel=document.getElementById('approve-budget-project');
+  var projectId=sel?sel.value:'';
+  if(!projectId){showToast('יש לבחור פרויקט','error');return;}
+  var data=getData();
+  var idx=data.projects.findIndex(function(p){return p.id===projectId;});
+  if(idx<0){showToast('שגיאה: הפרויקט לא נמצא — רענן את העמוד','error');return;}
+  var amount=Math.round(approveBudgetContext.total);
+  data.projects[idx]=Object.assign({},data.projects[idx],{
+    budget:amount,
+    approvedBudgetId:approveBudgetContext.budgetId,
+    approvedBudgetName:approveBudgetContext.name,
+    approvedBudgetTotal:amount,
+    approvedBudgetBeforeVat:Math.round(approveBudgetContext.beforeVat),
+    approvedBudgetAt:todayDateInputValue()
+  });
+  var projName=data.projects[idx].name||data.projects[idx].clientName||'';
+  if(!await saveData(data))return;
+  logActivity('אישור תקציב','תקציב: '+approveBudgetContext.name+' → פרויקט: '+projName+' ('+fmtMoney(amount)+')');
+  await persistActivityLogOnly();
+  approveBudgetContext=null;
+  closeModal('modal-approve-budget');
+  showToast('התקציב אושר והועבר לפרויקט "'+projName+'" — '+fmtMoney(amount));
+  if(currentView==='budget-builder')initBudgetBuilderView();
 }
 async function initBudgetBuilderView(){
   var root=getBudgetBuilderRoot();
@@ -9224,6 +9322,7 @@ Object.assign(window,{
   openDailyLogForm,cancelDailyLogForm,saveDailyLog,onDailyLogFilterChange,onActivityLogFilterChange,
   startNewBudgetDraft,openBudgetEdit,duplicateBudget,saveBudgetBuilder,deleteBudget,backToBudgetList,
   openBudgetExcelImportModal,closeBudgetExcelImportModal,confirmBudgetExcelImport,onBudgetExcelFileSelected,onBudgetExcelUseFileCatsToggle,
+  openApproveBudgetModal,confirmApproveBudget,onApproveBudgetProjectChange,
   addBudgetItemToCategory,removeBudgetItem,onBudgetDraftFieldChange,onBudgetItemFieldChange,
   onBudgetAddCategoryClick,addBudgetCustomCategory,onBudgetItemContactChange,
   openBudgetQuickSubcontractorModal,closeBudgetQuickSubcontractorModal,saveBudgetQuickSubcontractor,
