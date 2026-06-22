@@ -5985,7 +5985,8 @@ function detectBudgetExcelColumns(sheet,range){
   else descCol=range.s.c;
   if(descCol<range.s.c)descCol=range.s.c;
   return {headerRow:best.row,descCol:descCol,unitCol:cols.unit==null?null:cols.unit,
-    qtyCol:cols.qty==null?null:cols.qty,priceCol:cols.price==null?null:cols.price};
+    qtyCol:cols.qty==null?null:cols.qty,priceCol:cols.price==null?null:cols.price,
+    totalCol:cols.total==null?null:cols.total};
 }
 function parseBudgetExcelWorkbook(arrayBuffer){
   if(typeof XLSX==='undefined')return {ok:false,message:'ספריית Excel לא נטענה — רענן את העמוד'};
@@ -5995,21 +5996,24 @@ function parseBudgetExcelWorkbook(arrayBuffer){
   if(!sheet||!sheet['!ref'])return {ok:false,message:'לא נמצאו נתונים בגיליון הראשון'};
   var range=XLSX.utils.decode_range(sheet['!ref']);
   var det=detectBudgetExcelColumns(sheet,range);
-  var descCol,unitCol,qtyCol,priceCol,startRow;
-  if(det){descCol=det.descCol;unitCol=det.unitCol;qtyCol=det.qtyCol;priceCol=det.priceCol;startRow=det.headerRow;}
-  else{descCol=2;unitCol=null;qtyCol=4;priceCol=5;startRow=range.s.r;} // legacy fixed layout
+  var descCol,unitCol,qtyCol,priceCol,totalCol,startRow;
+  if(det){descCol=det.descCol;unitCol=det.unitCol;qtyCol=det.qtyCol;priceCol=det.priceCol;totalCol=det.totalCol;startRow=det.headerRow;}
+  else{descCol=2;unitCol=null;qtyCol=4;priceCol=5;totalCol=6;startRow=range.s.r;} // legacy fixed layout
   function cellAt(r,c){return c==null?null:sheet[XLSX.utils.encode_cell({r:r,c:c})];}
   var rows=[],currentCategory='כללי';
   for(var r=startRow;r<=range.e.r;r++){
     var descCell=cellAt(r,descCol);
     var desc=descCell!=null&&descCell.v!=null?String(descCell.v).trim().replace(/\s+/g,' '):'';
     if(!desc)continue;
-    var unitCell=cellAt(r,unitCol),qtyCell=cellAt(r,qtyCol),priceCell=cellAt(r,priceCol);
+    var unitCell=cellAt(r,unitCol),qtyCell=cellAt(r,qtyCol),priceCell=cellAt(r,priceCol),totalCell=cellAt(r,totalCol);
     var unitVal=unitCell&&unitCell.v!=null?String(unitCell.v).trim():'';
     var qty=parseExcelCellNumber(qtyCell&&qtyCell.v);
     var unitPrice=parseExcelCellNumber(priceCell&&priceCell.v);
-    // A "category header" is a text-only row: no unit value, no quantity, no price.
-    var isCategoryHeader=(unitVal===''||isBudgetExcelHeaderRow(unitVal))&&qty==null&&unitPrice==null;
+    // A row counts as having a "total" cell if that cell exists at all (even value 0).
+    var hasTotalCell=totalCell!=null&&totalCell.v!=null&&String(totalCell.v).trim()!=='';
+    // A "category header" is a pure text row: no unit, no quantity, no price, and NO total
+    // cell. Note/disclaimer rows carry a total of 0, so they are excluded here.
+    var isCategoryHeader=(unitVal===''||isBudgetExcelHeaderRow(unitVal))&&qty==null&&unitPrice==null&&!hasTotalCell;
     if(r===startRow){
       if(!isBudgetExcelHeaderRow(desc)&&desc.length>2)currentCategory=desc; // first category
       continue;
