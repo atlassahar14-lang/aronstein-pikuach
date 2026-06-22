@@ -1022,6 +1022,10 @@ img,svg,video,canvas{max-width:100%;height:auto}
     </div>
     <div class="form-group"><label>תיאור</label><textarea id="proj-desc" placeholder="תיאור קצר"></textarea></div>
     <div class="grid-2">
+      <div class="form-group"><label>אדריכל</label><input type="text" id="proj-architect" placeholder="שם האדריכל"/></div>
+      <div class="form-group"><label>קונסטרוקטור</label><input type="text" id="proj-constructor" placeholder="שם הקונסטרוקטור"/></div>
+    </div>
+    <div class="grid-2">
       <div class="form-group"><label>תאריך התחלה <span class="req-mark">*</span></label><input type="date" id="proj-start"/></div>
       <div class="form-group"><label>תאריך סיום משוער</label><input type="date" id="proj-end"/></div>
     </div>
@@ -7437,6 +7441,8 @@ function renderProjectDetail(el){
     '<div class="flex-between"><span style="color:var(--text-muted)">תקציב:</span><span style="font-weight:600">'+fmtMoney(projectBudget)+'</span></div>'+
     (p.builtArea?'<div class="flex-between"><span style="color:var(--text-muted)">שטח בנוי:</span><span style="font-weight:600">'+p.builtArea+' מ"ר</span></div>':'')+
     (p.propertyArea?'<div class="flex-between"><span style="color:var(--text-muted)">שטח הבית עצמו:</span><span style="font-weight:600">'+p.propertyArea+' מ"ר</span></div>':'')+
+    (p.architect?'<div class="flex-between"><span style="color:var(--text-muted)">אדריכל:</span><span style="font-weight:600">'+escHtml(p.architect)+'</span></div>':'')+
+    (p.structuralEngineer?'<div class="flex-between"><span style="color:var(--text-muted)">קונסטרוקטור:</span><span style="font-weight:600">'+escHtml(p.structuralEngineer)+'</span></div>':'')+
     '</div></div>'+
     '<div class="card"><div class="card-title">'+ic('layout-dashboard')+' תקציב</div>'+
     '<div style="margin-bottom:14px"><div class="flex-between" style="margin-bottom:6px;font-size:13px"><span style="color:var(--text-muted)">שולם</span><span style="font-weight:600;color:var(--success)">'+fmtMoney(paid)+'</span></div>'+
@@ -8081,7 +8087,7 @@ function openNewProjectModal(){
   editingProjectId=null;
   clearFormErrors('modal-project');
   document.getElementById('modal-proj-title').textContent='פרויקט חדש';
-  ['proj-name','proj-addr','proj-house','proj-client-name','proj-client-phone','proj-desc','proj-start','proj-end','proj-built','proj-property','proj-budget'].forEach(function(id){document.getElementById(id).value='';});
+  ['proj-name','proj-addr','proj-house','proj-client-name','proj-client-phone','proj-desc','proj-architect','proj-constructor','proj-start','proj-end','proj-built','proj-property','proj-budget'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('proj-status').value='active';
   populateProjectClientVisibilityForm(DEFAULT_CLIENT_VISIBILITY);
   openModal('modal-project');
@@ -8099,6 +8105,8 @@ async function openEditProjectModal(id){
   document.getElementById('proj-addr').value=p.address;
   document.getElementById('proj-house').value=p.houseNumber||'';
   document.getElementById('proj-desc').value=p.desc||'';
+  document.getElementById('proj-architect').value=p.architect||'';
+  document.getElementById('proj-constructor').value=p.structuralEngineer||'';
   document.getElementById('proj-start').value=p.start;
   document.getElementById('proj-end').value=p.end;
   document.getElementById('proj-built').value=p.builtArea||'';
@@ -8130,7 +8138,7 @@ async function saveProject(){
   var clientName=document.getElementById('proj-client-name').value.trim();
   var clientPhone=document.getElementById('proj-client-phone').value.trim();
   var data=getData();
-  var proj={name:document.getElementById('proj-name').value.trim(),address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:Number(document.getElementById('proj-budget').value)||0,status:document.getElementById('proj-status').value,clientName:clientName,clientPhone:clientPhone};
+  var proj={name:document.getElementById('proj-name').value.trim(),address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,architect:document.getElementById('proj-architect').value.trim(),structuralEngineer:document.getElementById('proj-constructor').value.trim(),start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:Number(document.getElementById('proj-budget').value)||0,status:document.getElementById('proj-status').value,clientName:clientName,clientPhone:clientPhone};
   var clientVisibility=readProjectClientVisibilityFromForm();
   var newProjectId=null;
   if(editingProjectId){
