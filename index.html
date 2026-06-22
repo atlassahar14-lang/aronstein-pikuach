@@ -816,8 +816,12 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .milestone-alert-inner{flex-direction:column;align-items:stretch}
   .milestone-alert-btn{width:100%;text-align:center}
   .milestone-actions .btn{flex:1;justify-content:center;min-width:calc(50% - 4px)}
-  .dash-metrics{grid-template-columns:1fr}
-  .dash-metric-value{font-size:26px}
+  .dash-metrics{grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px}
+  .dash-metric-card{padding:16px}
+  .dash-metric-icon{width:36px;height:36px;border-radius:10px;margin-bottom:10px}
+  .dash-metric-icon svg{width:18px;height:18px}
+  .dash-metric-value{font-size:23px}
+  .dash-metric-label{font-size:12px;margin-top:4px}
   .budget-summary{grid-template-columns:1fr}
   .payments-desktop{display:none}
   .payments-mobile-list{display:flex}
