@@ -1082,6 +1082,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="modal-header"><div class="modal-title">תשלום חדש</div><button class="modal-close" onclick="closeModal('modal-payment')"><i data-lucide="x"></i></button></div>
     <div class="form-group"><label>תיאור התשלום <span class="req-mark">*</span></label><input type="text" id="pay-desc" placeholder="לדוגמה: תשלום לקבלן שלד"/></div>
     <div class="form-group"><label>סכום (₪) <span class="req-mark">*</span></label><input type="number" id="pay-amount" placeholder="0"/></div>
+    <div class="form-group"><label>סטטוס</label><select id="pay-status"><option value="approved">מאושר (נספר בחישובים)</option><option value="pending">ממתין לתשלום (לא נספר)</option></select></div>
     <div class="form-group"><label>תאריך <span class="req-mark">*</span></label><input type="date" id="pay-date"/></div>
     <div class="form-group"><label>נמען</label><input type="text" id="pay-to" placeholder="שם הקבלן / ספק"/></div>
     <div class="form-group"><label>קטגוריה</label><select id="pay-category"><option>שלד</option><option>חפירות</option><option>טיח</option><option>חשמל</option><option>אינסטלציה</option><option>ריצוף</option><option>גמר</option><option>צנרת ואינסטלציה</option><option>בידוד</option><option>פיקוח הנדסי</option><option>חוץ וגינון</option><option>אחר</option></select></div>
@@ -2931,7 +2932,7 @@ function formatDailyLogWorkersForCsv(workers){
   }).join('; ');
 }
 function sumProjectPaidFromList(payments){
-  return (payments||[]).reduce(function(s,x){return s+Number(x.amount||0);},0);
+  return (payments||[]).reduce(function(s,x){return paymentIsApproved(x)?s+Number(x.amount||0):s;},0);
 }
 function clientCanAccessProject(projectId){
   if(!projectId||!currentUser)return false;
@@ -7317,7 +7318,7 @@ function calcBudgetUtilPct(paid,budget){
   return pct>0&&pct<1?Math.round(pct*10)/10:Math.round(pct);
 }
 function sumProjectPaid(p){
-  return (p.payments||[]).reduce(function(s,x){return s+Number(x.amount||0);},0);
+  return (p.payments||[]).reduce(function(s,x){return paymentIsApproved(x)?s+Number(x.amount||0):s;},0);
 }
 function calcBudgetAnalysis(p){
   var approved=getProjectBudget(p);
@@ -7495,7 +7496,7 @@ function projectStatusBadgeMeta(status){
   return map[status]||map.pending;
 }
 function projectCardHTML(p){
-  var paid=p.payments.reduce(function(s,x){return s+Number(x.amount||0);},0);
+  var paid=p.payments.reduce(function(s,x){return paymentIsApproved(x)?s+Number(x.amount||0):s;},0);
   var sc=projectStatusBadgeMeta(p.status);
   return '<div class="project-card" data-project-id="'+escHtml(p.id)+'" onclick="showView(\'project\',\''+p.id+'\')">'+
     '<button type="button" class="project-card-delete admin-only-action" title="מחק פרויקט" onclick="event.stopPropagation();confirmDeleteProject(\''+p.id+'\')">'+ic('trash-2')+'</button>'+
@@ -7545,7 +7546,7 @@ function renderDashboard(el){
   var projects=data.projects;
   var active=projects.filter(function(p){return p.status==='active';}).length;
   var done=projects.filter(function(p){return p.status==='done';}).length;
-  var totalPaid=projects.reduce(function(s,p){return s+p.payments.reduce(function(ss,pay){return ss+Number(pay.amount||0);},0);},0);
+  var totalPaid=projects.reduce(function(s,p){return s+p.payments.reduce(function(ss,pay){return paymentIsApproved(pay)?ss+Number(pay.amount||0):ss;},0);},0);
   var overdueCount=countOverduePhases(projects);
   var overdueList=getOverduePhasesList(projects);
   var statusLabels={active:'בביצוע',pending:'ממתין'};
@@ -7852,6 +7853,7 @@ function getCategoryFinancials(p){
   var actual={};
   FIN_CATEGORIES.forEach(function(c){actual[c]=0;});
   p.payments.forEach(function(pay){
+    if(!paymentIsApproved(pay))return;
     var cat=pay.category||'אחר';
     if(actual[cat]===undefined)actual[cat]=0;
     actual[cat]+=Number(pay.amount||0);
@@ -8846,6 +8848,7 @@ function openEditPaymentModal(id){
   document.getElementById('pay-date').value=formatPhaseDateForInput(pay.date)||pay.date||'';
   document.getElementById('pay-to').value=pay.to||'';
   document.getElementById('pay-category').value=pay.category||'שלד';
+  document.getElementById('pay-status').value=paymentIsApproved(pay)?'approved':'pending';
   document.querySelector('#modal-payment .modal-title').textContent='עריכת תשלום';
   // store editing id
   document.getElementById('modal-payment').dataset.editId=id;
@@ -8875,6 +8878,7 @@ function openAddPaymentModal(){
   document.getElementById('pay-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('pay-to').value='';
   document.getElementById('pay-category').value='שלד';
+  document.getElementById('pay-status').value='approved';
   openModal('modal-payment');
   refreshIcons(document.getElementById('modal-payment'));
 }
@@ -8890,7 +8894,7 @@ async function savePayment(){
   var editId=document.getElementById('modal-payment').dataset.editId;
   var payId=editId||('p'+Date.now());
   var existing=editId?proj.payments.find(function(x){return x.id===editId;}):null;
-  var pay={desc:document.getElementById('pay-desc').value.trim(),amount:Number(document.getElementById('pay-amount').value),date:document.getElementById('pay-date').value,to:document.getElementById('pay-to').value,category:document.getElementById('pay-category').value};
+  var pay={desc:document.getElementById('pay-desc').value.trim(),amount:Number(document.getElementById('pay-amount').value),date:document.getElementById('pay-date').value,to:document.getElementById('pay-to').value,category:document.getElementById('pay-category').value,status:document.getElementById('pay-status').value};
   var file=document.getElementById('pay-receipt').files[0];
   var btn=document.querySelector('#modal-payment .btn-primary');
   var cancelBtn=document.querySelector('#modal-payment .btn-outline');
