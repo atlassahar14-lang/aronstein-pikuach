@@ -6745,12 +6745,22 @@ async function printBudgetClientView(){
   var body=document.getElementById('budget-client-body');
   if(!body)return;
   showToast('מייצר PDF...');
+  var sheet=document.getElementById('budget-print-root');
+  var scrolls=body.querySelectorAll('.table-scroll');
+  var savedSheetW=sheet?sheet.style.width:'',savedSheetMax=sheet?sheet.style.maxWidth:'';
+  var savedScroll=[];scrolls.forEach(function(s){savedScroll.push(s.style.cssText);});
   try{
+    // Force a wide, non-scrolling layout so every column (incl. prices) is captured, not clipped.
+    if(sheet){sheet.style.width='900px';sheet.style.maxWidth='900px';}
+    scrolls.forEach(function(s){s.style.overflow='visible';s.style.margin='0';s.style.padding='0';});
     await rasterizeElementToPdf(body,'הצעת-מחיר.pdf');
     showToast('ה-PDF הורד בהצלחה');
   }catch(err){
     console.error('printBudgetClientView',err);
     showToast('שגיאה ביצוא PDF','error');
+  }finally{
+    if(sheet){sheet.style.width=savedSheetW;sheet.style.maxWidth=savedSheetMax;}
+    scrolls.forEach(function(s,i){s.style.cssText=savedScroll[i];});
   }
 }
 
