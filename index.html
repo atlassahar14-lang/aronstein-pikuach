@@ -1303,6 +1303,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="modal-overlay" id="modal-update">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">עדכון חדש ללקוח</div><button class="modal-close" onclick="closeModal('modal-update')"><i data-lucide="x"></i></button></div>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px;line-height:1.5"><i data-lucide="message-circle" style="width:14px;height:14px;vertical-align:-2px"></i> לאחר השליחה ייפתח וואטסאפ עם הודעה מוכנה לטלפון הלקוח של הפרויקט.</p>
     <div class="form-group"><label>כותרת <span class="req-mark">*</span></label><input type="text" id="upd-title" placeholder="לדוגמה: סיום שלב השלד"/></div>
     <div class="form-group"><label>תוכן <span class="req-mark">*</span></label><textarea id="upd-body" placeholder="פרטי העדכון..."></textarea></div>
     <div class="form-group"><label>תמונה / וידאו / PDF מהשטח (אופציונלי)</label><label class="upload-label"><i data-lucide="camera"></i> בחר קובץ<input type="file" id="upd-media" accept=".jpg,.jpeg,.png,.webp,.heic,.pdf,.mp4,.mov,image/jpeg,image/png,image/webp,image/heic,application/pdf,video/mp4,video/quicktime"/></label><p class="upload-hint">JPG, PNG, PDF, MP4 עד 10MB</p><div id="upd-media-preview" class="file-preview"></div><div id="upd-media-upload-error" class="upload-error"></div></div>
@@ -1497,6 +1498,14 @@ function toWhatsAppInternationalPhone(phone){
 function getSubcontractorWhatsAppUrl(phone){
   var intl=toWhatsAppInternationalPhone(phone);
   return intl?'https://wa.me/'+intl:'';
+}
+// The client phone tied to a project — prefer the linked client's profile phone,
+// falling back to the phone typed in the project edit form (proj.clientPhone).
+function getProjectClientPhone(proj){
+  if(!proj)return '';
+  var linked=getProjectLinkedClient(proj.id);
+  if(linked&&linked.phone)return linked.phone;
+  return proj.clientPhone||'';
 }
 function renderSubcontractorWhatsAppBtn(phone){
   var url=getSubcontractorWhatsAppUrl(phone);
@@ -9069,6 +9078,18 @@ async function saveOverallProgress(){
   showToast('ההתקדמות עודכנה בהצלחה');
 }
 
+// After publishing an update, open WhatsApp to the project's client with a ready message.
+function notifyClientUpdateViaWhatsApp(proj,title,body){
+  var intl=toWhatsAppInternationalPhone(getProjectClientPhone(proj));
+  if(!intl){
+    showToast('לא נשלחה וואטסאפ — לא הוגדר טלפון ללקוח בעריכת הפרויקט','error');
+    return;
+  }
+  var msg='שלום, פורסם עדכון חדש בפרויקט "'+(proj.name||'')+'":\n\n'+title+(body?'\n\n'+body:'')+'\n\nניתן להיכנס למערכת לצפייה בפרטים המלאים.';
+  var url='https://wa.me/'+intl+'?text='+encodeURIComponent(msg);
+  var w=window.open(url,'_blank','noopener,noreferrer');
+  if(!w){window.location.href=url;} // popup blocked — fall back to opening directly
+}
 async function saveUpdate(){
   if(!requireAdmin()||!requireProjectAccess())return;
   clearFormErrors('modal-update');
@@ -9113,6 +9134,7 @@ async function saveUpdate(){
     document.getElementById('upd-body').value='';
     clearFilePreview('upd-media','upd-media-preview');
     showToast('העדכון נשלח בהצלחה');
+    notifyClientUpdateViaWhatsApp(proj,title,body);
     renderProjectDetail(document.getElementById('main-content'));
   }finally{
     btn.disabled=false;btn.textContent=origText;
