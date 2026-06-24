@@ -1048,7 +1048,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="form-group"><label>שטח הבית עצמו (מ"ר)</label><input type="number" id="proj-property" placeholder="לדוגמה: 500" min="0"/></div>
     </div>
     <div class="form-group"><label>תקציב כולל (₪)</label><input type="number" id="proj-budget" placeholder="0"/></div>
-    <div class="form-group"><label>סטטוס</label><select id="proj-status"><option value="pending">טרם התחיל</option><option value="active">בביצוע</option><option value="paused">מושהה</option><option value="done">הושלם</option></select></div>
+    <div class="form-group"><label>סטטוס</label><select id="proj-status"><option value="pending">ממתין לתחילת עבודה</option><option value="active">בביצוע</option><option value="paused">מושהה</option><option value="done">הושלם</option></select></div>
     <div class="client-visibility-modal-section" id="proj-client-visibility-wrap">
       <div class="client-visibility-section-title"><i data-lucide="eye"></i> הגדרות תצוגה ללקוח</div>
       <p class="client-visibility-hint">בחר אילו מסכים יוצגו ללקוח בפרויקט זה. השינויים נשמרים עם לחיצה על "שמור פרויקט".</p>
@@ -7502,7 +7502,7 @@ function projectAddressLine(p,stopProp){
 
 function projectStatusBadgeMeta(status){
   var map={
-    pending:['status-pending','טרם התחיל'],
+    pending:['status-pending','ממתין לתחילת עבודה'],
     active:['status-active','בביצוע'],
     paused:['status-paused','מושהה'],
     done:['status-done','הושלם']
