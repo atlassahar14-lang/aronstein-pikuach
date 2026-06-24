@@ -7429,7 +7429,11 @@ async function rasterizeElementToPdf(el,fileName){
   if(document.fonts&&document.fonts.ready)await document.fonts.ready;
   await new Promise(function(r){setTimeout(r,150);});
   var libs=await loadJsPdfLib();
-  var canvas=await libs.html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
+  // Force a desktop-width render so the PDF uses the desktop layout even when exported
+  // from a phone (otherwise html2canvas captures the cramped mobile layout).
+  var renderWidth=1024;
+  var canvas=await libs.html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,
+    windowWidth:renderWidth,windowHeight:Math.max(window.innerHeight||0,(el.scrollHeight||0)+200,1400)});
   var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
   var margin=10,pageW=210,pageH=297;
   var imgW=pageW-margin*2;
