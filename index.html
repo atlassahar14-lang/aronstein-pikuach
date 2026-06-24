@@ -9078,17 +9078,12 @@ async function saveOverallProgress(){
   showToast('ההתקדמות עודכנה בהצלחה');
 }
 
-// After publishing an update, open WhatsApp to the project's client with a ready message.
-function notifyClientUpdateViaWhatsApp(proj,title,body){
+// Build the WhatsApp URL for notifying a project's client about a new update ('' if no phone).
+function buildClientUpdateWhatsAppUrl(proj,title,body){
   var intl=toWhatsAppInternationalPhone(getProjectClientPhone(proj));
-  if(!intl){
-    showToast('לא נשלחה וואטסאפ — לא הוגדר טלפון ללקוח בעריכת הפרויקט','error');
-    return;
-  }
+  if(!intl)return '';
   var msg='שלום, פורסם עדכון חדש בפרויקט "'+(proj.name||'')+'":\n\n'+title+(body?'\n\n'+body:'')+'\n\nניתן להיכנס למערכת לצפייה בפרטים המלאים.';
-  var url='https://wa.me/'+intl+'?text='+encodeURIComponent(msg);
-  var w=window.open(url,'_blank','noopener,noreferrer');
-  if(!w){window.location.href=url;} // popup blocked — fall back to opening directly
+  return 'https://wa.me/'+intl+'?text='+encodeURIComponent(msg);
 }
 async function saveUpdate(){
   if(!requireAdmin()||!requireProjectAccess())return;
@@ -9105,11 +9100,17 @@ async function saveUpdate(){
   var file=document.getElementById('upd-media').files[0];
   var btn=document.querySelector('#modal-update .btn-primary');
   var origText=btn.textContent;
+  // Open the WhatsApp tab NOW, inside the click, so the browser doesn't block it.
+  // It's redirected to the message after the save succeeds (or closed if anything fails).
+  var waUrl=buildClientUpdateWhatsAppUrl(proj,title,body);
+  var waWin=waUrl?window.open('','_blank'):null;
+  if(waWin){try{waWin.document.write('<!doctype html><meta charset="utf-8"><body style="margin:0;font-family:Heebo,Arial,sans-serif;direction:rtl"><p style="text-align:center;margin-top:48px;color:#1B2B5E;font-size:18px">פותח וואטסאפ…</p></body>');}catch(e){}}
   try{
     if(file){
       var mediaCheck=validateUploadFile(file,{allowPdf:true,allowVideo:true});
       if(!mediaCheck.ok){
         setUploadInputError('upd-media',mediaCheck.message,{errorElId:'upd-media-upload-error'});
+        if(waWin)waWin.close();
         return;
       }
       btn.disabled=true;btn.textContent='מעלה קובץ...';
@@ -9120,7 +9121,7 @@ async function saveUpdate(){
         uploadFile=prepared.file;
       }
       var upload=await uploadMediaFile('updates/'+proj.id+'/'+updId,uploadFile);
-      if(!upload.ok){alert('שגיאה בהעלאת הקובץ: '+upload.error);return;}
+      if(!upload.ok){alert('שגיאה בהעלאת הקובץ: '+upload.error);if(waWin)waWin.close();return;}
       upd.mediaUrl=upload.data.url;
       upd.mediaName=upload.data.name;
       upd.mediaType=upload.data.type;
@@ -9128,13 +9129,18 @@ async function saveUpdate(){
     }
     proj.updates.push(upd);
     logActivity('פרסום עדכון','פרויקט: '+proj.name+' · '+upd.title);
-    if(!await saveData(data))return;
+    if(!await saveData(data)){if(waWin)waWin.close();return;}
     closeModal('modal-update');
     document.getElementById('upd-title').value='';
     document.getElementById('upd-body').value='';
     clearFilePreview('upd-media','upd-media-preview');
     showToast('העדכון נשלח בהצלחה');
-    notifyClientUpdateViaWhatsApp(proj,title,body);
+    if(waUrl){
+      if(waWin&&!waWin.closed){waWin.location.href=waUrl;}
+      else{var w2=window.open(waUrl,'_blank','noopener,noreferrer');if(!w2)window.location.href=waUrl;}
+    }else{
+      showToast('לא נשלחה וואטסאפ — לא הוגדר טלפון ללקוח בעריכת הפרויקט','error');
+    }
     renderProjectDetail(document.getElementById('main-content'));
   }finally{
     btn.disabled=false;btn.textContent=origText;
