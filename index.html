@@ -7570,6 +7570,7 @@ function renderDashboard(el){
   var projects=data.projects;
   var active=projects.filter(function(p){return p.status==='active';}).length;
   var done=projects.filter(function(p){return p.status==='done';}).length;
+  var awaiting=projects.filter(function(p){return p.status==='pending';}).length;
   var overdueCount=countOverduePhases(projects);
   var overdueList=getOverduePhasesList(projects);
   var statusLabels={active:'בביצוע',pending:'ממתין'};
@@ -7577,6 +7578,7 @@ function renderDashboard(el){
     '<button class="btn btn-primary btn-sm" onclick="showView(\'projects\')">'+ic('construction')+' כל הפרויקטים</button></div>'+
     '<div class="dash-metrics">'+
     dashMetricCard('accent','zap',active,'פרויקטים פעילים (בביצוע)')+
+    dashMetricCard('','clock',awaiting,'פרויקטים ממתינים לביצוע')+
     dashMetricCard('success','circle-check',done,'פרויקטים שהושלמו')+
     dashMetricCard('warn','alert-triangle',overdueCount,'שלבים באיחור')+
     '</div>';
