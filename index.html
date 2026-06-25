@@ -3501,7 +3501,7 @@ function formatSupabaseErrorHint(errMsg){
   if(m.includes('500')||m.includes('internal server'))return 'שגיאת שרת בשמירה — הרץ את supabase-setup.sql המעודכן (פונקציית save_app_data), או בדוק אם נתוני הפרויקט גדולים מדי.';
   if(m.includes('save_app_data')||m.includes('42883')||m.includes('does not exist'))return 'חסרה פונקציית save_app_data — הרץ את supabase-setup.sql המעודכן ב-SQL Editor.';
   if(m.includes('project_id')&&m.includes('not-null'))return 'עמודת project_id חייבת להיות nullable — הרץ את supabase-budgets-project-id-nullable-migration.sql ב-Supabase SQL Editor.';
-  if(m.includes('budget_items')||m.includes('subcontractor_id'))return 'שגיאה בפריטי תקציב — הרץ את supabase-budget-items-subcontractor-migration.sql ב-Supabase SQL Editor.';
+  if(m.includes('budget_items')||m.includes('subcontractor_id'))return 'שגיאת קישור קבלן משנה — הרץ את supabase-subcontractor-fk-ondelete-fix.sql ב-Supabase SQL Editor (מתקן מחיקת קבלן משנה).';
   if(m.includes('profiles')&&m.includes('phone')||m.includes('column')&&m.includes('phone'))return 'חסרה עמודת phone בטבלת profiles — הרץ את supabase-profiles-phone-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('punch_items')&&(m.includes('location')||m.includes('photo_url')))return 'חסרות עמודות location / photo_url בטבלת punch_items — הרץ את supabase-punch-items-location-photo-migration.sql ב-Supabase SQL Editor.';
   if(m.includes('milestones'))return 'חסרה טבלת milestones — הרץ את supabase-milestones-migration.sql ב-Supabase SQL Editor.';
@@ -7520,7 +7520,7 @@ function projectStatusBadgeMeta(status){
   return map[status]||map.pending;
 }
 function projectCardHTML(p){
-  var paid=p.payments.reduce(function(s,x){return paymentIsApproved(x)?s+Number(x.amount||0):s;},0);
+  var paid=(p.payments||[]).reduce(function(s,x){return paymentIsApproved(x)?s+Number(x.amount||0):s;},0);
   var sc=projectStatusBadgeMeta(p.status);
   return '<div class="project-card" data-project-id="'+escHtml(p.id)+'" onclick="showView(\'project\',\''+p.id+'\')">'+
     '<button type="button" class="project-card-delete admin-only-action" title="מחק פרויקט" onclick="event.stopPropagation();confirmDeleteProject(\''+p.id+'\')">'+ic('trash-2')+'</button>'+
@@ -7528,7 +7528,7 @@ function projectCardHTML(p){
     '<span class="status-badge '+sc[0]+'">'+sc[1]+'</span></div>'+
     '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+(p.progress||0)+'%"></div></div>'+
     '<div class="progress-label"><span>התקדמות</span><span>'+(p.progress||0)+'%</span></div>'+
-    '<div class="project-meta"><span>'+ic('banknote')+' '+(getProjectBudget(p)/1000000).toFixed(1)+'M</span><span>'+ic('file-text')+' '+p.documents.length+' מסמכים</span><span>'+ic('bell')+' '+p.updates.length+' עדכונים</span></div>'+
+    '<div class="project-meta"><span>'+ic('banknote')+' '+(getProjectBudget(p)/1000000).toFixed(1)+'M</span><span>'+ic('file-text')+' '+(p.documents||[]).length+' מסמכים</span><span>'+ic('bell')+' '+(p.updates||[]).length+' עדכונים</span></div>'+
     '</div>';
 }
 
@@ -7736,7 +7736,7 @@ function renderProjectDetail(el){
     '</div></div></div>';
 
   // TIMELINE TAB
-  html+='<div id="tab-timeline" class="tab-content '+(currentTab==='timeline'?'active':'')+'">'+
+  if(isAdminUser||isClientTabVisible(p,'timeline'))html+='<div id="tab-timeline" class="tab-content '+(currentTab==='timeline'?'active':'')+'">'+
     renderTimelineDependencyAlertsHtml(p.phases)+
     renderGanttChartHtml(p.phases)+
     '<div class="section-actions"><div class="section-title">'+ic('layout-grid')+' פירוט שלבים</div>'+
@@ -7767,7 +7767,7 @@ function renderProjectDetail(el){
     '</div>';
 
   // BUDGET TAB
-  html+='<div id="tab-budget" class="tab-content '+(currentTab==='budget'?'active':'')+'">'+
+  if(isAdminUser||isClientTabVisible(p,'budget'))html+='<div id="tab-budget" class="tab-content '+(currentTab==='budget'?'active':'')+'">'+
     '<div class="budget-summary">'+
     '<div class="budget-item"><div class="label">תקציב כולל</div><div class="amount total">'+fmtMoney(projectBudget)+'</div></div>'+
     '<div class="budget-item"><div class="label">שולם</div><div class="amount paid">'+fmtMoney(paid)+'</div></div>'+
@@ -7809,7 +7809,7 @@ function renderProjectDetail(el){
   if(isAdminUser||isClientTabVisible(p,'docs'))html+='<div id="tab-docs" class="tab-content '+(currentTab==='docs'?'active':'')+'">'+renderProjectDocsTabHtml(p)+'</div>';
 
   // GALLERY TAB
-  html+='<div id="tab-gallery" class="tab-content '+(currentTab==='gallery'?'active':'')+'">'+renderGalleryTabInnerHtml(p)+'</div>';
+  if(isAdminUser||isClientTabVisible(p,'gallery'))html+='<div id="tab-gallery" class="tab-content '+(currentTab==='gallery'?'active':'')+'">'+renderGalleryTabInnerHtml(p)+'</div>';
 
   // FINISH SELECTIONS TAB (admin)
   if(isAdminUser)html+='<div id="tab-finish-selections" class="tab-content '+(currentTab==='finish-selections'?'active':'')+'"><div id="finish-selections-tab-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div></div>';
@@ -7876,13 +7876,13 @@ var finCharts={pie:null,bar:null};
 function getCategoryFinancials(p){
   var actual={};
   FIN_CATEGORIES.forEach(function(c){actual[c]=0;});
-  p.payments.forEach(function(pay){
+  (p.payments||[]).forEach(function(pay){
     if(!paymentIsApproved(pay))return;
     var cat=pay.category||'אחר';
     if(actual[cat]===undefined)actual[cat]=0;
     actual[cat]+=Number(pay.amount||0);
   });
-  var planned=p.budgetPlan||{};
+  var planned=Object.assign({},p.budgetPlan||{});
   var hasPlan=Object.keys(planned).length>0;
   if(!hasPlan){
     var perCat=Math.round(getProjectBudget(p)/FIN_CATEGORIES.length);
@@ -8205,7 +8205,7 @@ async function deleteSubcontractor(id){
   if(!s)return;
   if(!confirm('למחוק את הקבלן "'+s.companyName+'"?'))return;
   var res=await supabase.from('subcontractors').delete().eq('id',id);
-  if(res.error){alert('שגיאה במחיקה:\n'+formatSupabaseErrorHint(res.error.message)+'\n\n[פירוט טכני]: '+res.error.message);return;}
+  if(res.error){alert('שגיאה במחיקה:\n'+formatSupabaseErrorHint(res.error.message));return;}
   logActivity('מחיקת קבלן משנה',s.companyName);
   await refreshSubcontractors();
   await persistActivityLogOnly();
