@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>בית גדליה — מודל תלת-מימד</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;font-family:Arial,Helvetica,sans-serif;background:#0e1726}
+  #c{display:block;width:100vw;height:100vh}
+  #hud{position:fixed;top:14px;right:16px;color:#fff;z-index:10;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+  #hud h1{font-size:18px;font-weight:700}
+  #hud p{font-size:12px;opacity:.85;margin-top:2px}
+  #tip{position:fixed;bottom:14px;right:16px;color:#fff;font-size:12px;opacity:.8;z-index:10;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+  .btn{position:fixed;bottom:14px;left:16px;z-index:10;display:flex;gap:8px}
+  .btn button{background:rgba(255,255,255,.9);border:none;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;font-family:inherit}
+  .btn button:hover{background:#fff}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"><h1>בית גדליה</h1><p>מודל תלת-מימד · לפי תוכניות ההגשה 1:100</p></div>
+<div id="tip">גרור לסיבוב · גלגלת להגדלה · קליק-ימני להזזה</div>
+<div class="btn">
+  <button id="rot">⏸ עצור סיבוב</button>
+  <button id="view">📷 מבט קדמי</button>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x9fc6e8);
+scene.fog=new THREE.Fog(0x9fc6e8,55,140);
+
+const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.1,500);
+camera.position.set(22,16,26);
+
+const renderer=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+
+const controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true; controls.dampingFactor=0.08;
+controls.target.set(0,3,0); controls.maxPolarAngle=Math.PI/2.05;
+controls.minDistance=12; controls.maxDistance=90;
+
+scene.add(new THREE.HemisphereLight(0xddeeff,0x6b7a5a,0.85));
+const sun=new THREE.DirectionalLight(0xfff4e0,1.05);
+sun.position.set(28,38,18); sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+const s=55; Object.assign(sun.shadow.camera,{left:-s,right:s,top:s,bottom:-s,near:1,far:160});
+scene.add(sun);
+
+const MAT={
+  wall:new THREE.MeshLambertMaterial({color:0xf0e6d2}),
+  wall2:new THREE.MeshLambertMaterial({color:0xe7dcc4}),
+  base:new THREE.MeshLambertMaterial({color:0xcdbfa6}),
+  roof:new THREE.MeshLambertMaterial({color:0xa6502f,side:THREE.DoubleSide}),
+  fascia:new THREE.MeshLambertMaterial({color:0xf6efe2}),
+  glass:new THREE.MeshPhongMaterial({color:0x9fc4d6,transparent:true,opacity:0.5,shininess:90}),
+  frame:new THREE.MeshLambertMaterial({color:0x4a4a4a}),
+  shutter:new THREE.MeshLambertMaterial({color:0x6f5436}),
+  door:new THREE.MeshLambertMaterial({color:0x5a3d24}),
+  rail:new THREE.MeshLambertMaterial({color:0xf6efe2}),
+  grass:new THREE.MeshLambertMaterial({color:0x86a86a}),
+  paving:new THREE.MeshLambertMaterial({color:0xcfc8ba}),
+  water:new THREE.MeshPhongMaterial({color:0x3f9fd1,transparent:true,opacity:0.85,shininess:120}),
+  parapet:new THREE.MeshLambertMaterial({color:0xede3cf})
+};
+const house=new THREE.Group(); scene.add(house);
+function box(w,h,d,mat,x,y,z,g){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;(g||house).add(m);return m;}
+
+// ---- site ----
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(140,140),MAT.grass);
+ground.rotation.x=-Math.PI/2; ground.position.y=-0.02; ground.receiveShadow=true; scene.add(ground);
+// plot base / paving around house
+box(30,0.1,26,MAT.paving,0,0.05,1);
+// driveway
+box(7,0.12,12,MAT.paving,11,0.06,-12);
+
+// ====== building footprint (meters) ======
+// Ground floor: L-shaped — main block + front wing/garage
+const GF=3.3, UF=3.05;           // floor heights
+const W=15, D=12;                // main block footprint (x,z)
+// main ground-floor mass
+box(W,GF,D,MAT.wall,0,GF/2,0);
+box(W+0.3,0.5,D+0.3,MAT.base,0,0.25,0);          // plinth
+// single-story side wing (garage) on +x
+box(5,GF,6,MAT.wall2,W/2+2.5,GF/2,D/2-3);
+box(5.3,0.4,6.3,MAT.parapet,W/2+2.5,GF+0.2,D/2-3); // wing flat-roof parapet
+
+// flat-roof terrace slab over ground floor
+box(W+0.2,0.35,D+0.2,MAT.parapet,0,GF+0.18,0);
+// parapet around terrace
+function parapet(x,z,w,d){box(w,0.6,0.2,MAT.parapet,x,GF+0.65,z-d/2);box(w,0.6,0.2,MAT.parapet,x,GF+0.65,z+d/2);box(0.2,0.6,d,MAT.parapet,x-w/2,GF+0.65,z);box(0.2,0.6,d,MAT.parapet,x+w/2,GF+0.65,z);}
+parapet(0,0,W,D);
+
+// ====== upper floor (setback central block) ======
+const uW=10, uD=8, uX=-1.5, uZ=-0.5, uY=GF+0.35;
+box(uW,UF,uD,MAT.wall,uX,uY+UF/2,uZ);
+box(uW+0.2,0.3,uD+0.2,MAT.wall2,uX,uY+0.15,uZ);  // band
+
+// ====== hip roof over upper block ======
+function hipRoof(cx,cy,cz,w,d,h,over,mat){
+  const g=new THREE.Group(); house.add(g);
+  const W2=w/2+over, D2=d/2+over, rl=Math.min(w,d)*0.30; // ridge half-length
+  const ridgeAlongX = w>=d;
+  const eaveY=cy, ridgeY=cy+h;
+  let r0,r1;
+  if(ridgeAlongX){ r0=new THREE.Vector3(-rl,ridgeY,0); r1=new THREE.Vector3(rl,ridgeY,0); }
+  else { r0=new THREE.Vector3(0,ridgeY,-rl); r1=new THREE.Vector3(0,ridgeY,rl); }
+  const c=[new THREE.Vector3(-W2,eaveY,-D2),new THREE.Vector3(W2,eaveY,-D2),new THREE.Vector3(W2,eaveY,D2),new THREE.Vector3(-W2,eaveY,D2)];
+  const faces=[[c[0],c[1],r1,r0],[c[2],c[3],r0,r1],[c[1],c[2],r1],[c[3],c[0],r0]];
+  if(!ridgeAlongX){faces.length=0;faces.push([c[3],c[0],r0,r1],[c[1],c[2],r1,r0],[c[0],c[1],r1],[c[2],c[3],r0]);}
+  const pos=[]; const push=v=>pos.push(v.x,v.y,v.z);
+  faces.forEach(f=>{ if(f.length===4){push(f[0]);push(f[1]);push(f[2]);push(f[0]);push(f[2]);push(f[3]);}
+    else{push(f[0]);push(f[1]);push(f[2]);} });
+  const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); geo.computeVertexNormals();
+  const roof=new THREE.Mesh(geo,mat); roof.castShadow=true; roof.position.set(cx,0,cz); g.add(roof);
+  // fascia/eave board
+  box(w+over*2+0.2,0.35,d+over*2+0.2,MAT.fascia,cx,cy-0.05,cz,g);
+  return g;
+}
+hipRoof(uX,uY+UF,uZ,uW,uD,3.0,0.7,MAT.roof);
+// chimney
+box(0.8,1.6,0.8,MAT.base,uX-3,uY+UF+2.4,uZ-1.8);
+
+// ====== openings: windows / doors ======
+function windowOnFace(face,u,y,w,h,shutters){
+  // face: 'S','N','E','W' relative to main block; u = offset along face; y = sill+? center height
+  let x,z,rotY=0,depth=0.25;
+  if(face==='S'){x=u; z=D/2; }
+  if(face==='N'){x=u; z=-D/2; }
+  if(face==='E'){z=u; x=W/2; rotY=Math.PI/2;}
+  if(face==='W'){z=u; x=-W/2; rotY=Math.PI/2;}
+  const g=new THREE.Group();
+  const frame=new THREE.Mesh(new THREE.BoxGeometry(w+0.16,h+0.16,0.18),MAT.frame);
+  const glass=new THREE.Mesh(new THREE.BoxGeometry(w,h,0.06),MAT.glass);
+  glass.position.z=0.05; g.add(frame); g.add(glass);
+  // mullions
+  const ml=new THREE.Mesh(new THREE.BoxGeometry(0.06,h,0.1),MAT.frame); ml.position.z=0.07; g.add(ml);
+  if(shutters){
+    const sw=w/2+0.05;
+    [-1,1].forEach(s=>{const sh=new THREE.Mesh(new THREE.BoxGeometry(sw,h+0.1,0.06),MAT.shutter);sh.position.set(s*(w/2+sw/2+0.02),0,0.12);g.add(sh);});
+  }
+  g.position.set(x,y,z); g.rotation.y=rotY; g.children.forEach(c=>{c.castShadow=true;});
+  house.add(g); return g;
+}
+function upperWindow(face,u,y,w,h){
+  let x,z,rotY=0;
+  const uW2=uW/2,uD2=uD/2;
+  if(face==='S'){x=uX+u; z=uZ+uD2;}
+  if(face==='N'){x=uX+u; z=uZ-uD2;}
+  if(face==='E'){z=uZ+u; x=uX+uW2; rotY=Math.PI/2;}
+  if(face==='W'){z=uZ+u; x=uX-uW2; rotY=Math.PI/2;}
+  const g=new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(w+0.14,h+0.14,0.16),MAT.frame));
+  const gl=new THREE.Mesh(new THREE.BoxGeometry(w,h,0.05),MAT.glass); gl.position.z=0.05; g.add(gl);
+  [-1,1].forEach(sgn=>{const sw=w/2+0.04;const sh=new THREE.Mesh(new THREE.BoxGeometry(sw,h+0.08,0.05),MAT.shutter);sh.position.set(sgn*(w/2+sw/2),0,0.11);g.add(sh);});
+  g.position.set(x,uY+y,z); g.rotation.y=rotY; g.children.forEach(c=>c.castShadow=true); house.add(g);
+}
+// South ground floor: big living-room glazing + windows
+box(6,2.4,0.12,MAT.frame,-3.5,1.5,D/2+0.02);
+box(5.6,2.2,0.06,MAT.glass,-3.5,1.5,D/2+0.08);
+for(let i=0;i<3;i++)box(0.08,2.2,0.12,MAT.frame,-3.5-2.2+i*2.2,1.5,D/2+0.1);
+windowOnFace('S',3.5,1.9,1.3,1.4,true);
+windowOnFace('S',5.6,1.9,1.1,1.4,true);
+// entrance door (south, near center-right)
+const door=box(1.6,2.5,0.2,MAT.door,1.2,1.25,D/2+0.02);
+box(2.0,0.25,0.5,MAT.base,1.2,2.6,D/2+0.2); // canopy
+// West & East ground windows
+windowOnFace('W',-3,1.9,1.3,1.4,true);
+windowOnFace('W',2.5,1.9,1.3,1.4,true);
+windowOnFace('E',-2,1.9,1.3,1.4,true);
+windowOnFace('N',-4,1.9,1.3,1.4,true);
+windowOnFace('N',0,1.9,1.3,1.4,true);
+// Upper floor windows (all faces, regular)
+[-3,0,3].forEach(u=>upperWindow('S',u,1.6,1.2,1.4));
+[-3,0,3].forEach(u=>upperWindow('N',u,1.6,1.1,1.3));
+[-2,1.5].forEach(u=>upperWindow('E',u,1.6,1.1,1.3));
+[-2,1.5].forEach(u=>upperWindow('W',u,1.6,1.1,1.3));
+
+// terrace railing posts (decorative) on front of terrace
+for(let x=-6;x<=6;x+=1.5)box(0.12,0.6,0.12,MAT.rail,x,GF+0.95,D/2-0.1);
+
+// trees
+function tree(x,z){const t=new THREE.Group();const tr=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.25,1.6),new THREE.MeshLambertMaterial({color:0x6b4a2b}));tr.position.y=0.8;const cr=new THREE.Mesh(new THREE.SphereGeometry(1.3,10,10),new THREE.MeshLambertMaterial({color:0x4f7a40}));cr.position.y=2.4;t.add(tr);t.add(cr);t.position.set(x,0,z);t.traverse(o=>o.castShadow=true);scene.add(t);}
+tree(-12,8);tree(-13,-6);tree(13,9);
+
+// ---- interaction ----
+let autoRot=true;
+document.getElementById('rot').onclick=e=>{autoRot=!autoRot;e.target.textContent=autoRot?'⏸ עצור סיבוב':'▶ הפעל סיבוב';};
+document.getElementById('view').onclick=()=>{camera.position.set(0,7,34);controls.target.set(0,4,0);};
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+(function loop(){requestAnimationFrame(loop); if(autoRot)house.rotation.y+=0.0016; controls.update(); renderer.render(scene,camera);})();
+</script>
+</body>
+</html>
