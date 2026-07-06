@@ -7379,18 +7379,24 @@ function renderWeeklyForm(el){
   el.innerHTML=WEEKLY_FORM_STYLE+
     '<div class="page-header flex-between responsive-stack">'+
       '<div><h1>'+ic('calendar-check')+' טופס שבועי</h1><p>דוח התקדמות שבועי — מלא, שמור כ-PDF, והעלה לפרויקט תחת קטגוריית "סיכום שבועי"</p></div>'+
-      '<div class="flex-gap"><button class="btn" style="background:var(--accent);color:#3a2600;width:auto" onclick="printWeeklyForm()">'+ic('printer')+' הדפסה / שמירה כ-PDF</button></div>'+
+      '<div class="flex-gap"><button class="btn" style="background:var(--accent);color:#3a2600;width:auto" onclick="printWeeklyForm()">'+ic('download')+' הורד PDF</button></div>'+
     '</div>'+
     weeklyFormDocHtml();
   refreshIcons(el);
 }
 
-function printWeeklyForm(){
-  document.body.classList.add('wf-printing');
-  var done=function(){document.body.classList.remove('wf-printing');window.removeEventListener('afterprint',done);};
-  window.addEventListener('afterprint',done);
-  window.print();
-  setTimeout(done,2000);
+async function printWeeklyForm(){
+  var el=document.getElementById('weekly-form-doc');
+  if(!el)return;
+  if(typeof showToast==='function')showToast('מייצר PDF...');
+  try{
+    await rasterizeElementToPdf(el,'דוח-שבועי.pdf');
+  }catch(e){
+    // Fallback to the browser print dialog if the PDF library fails to load
+    document.body.classList.add('wf-printing');
+    window.print();
+    setTimeout(function(){document.body.classList.remove('wf-printing');},2000);
+  }
 }
 
 function showView(view,pid){
