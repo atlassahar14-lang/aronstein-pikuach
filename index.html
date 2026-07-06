@@ -1450,8 +1450,8 @@ const UPLOAD_HINT_PDF='PDF עד 10MB';
 const UPLOAD_HINT_MEDIA='JPG, PNG, PDF, MP4 עד 10MB';
 const UPLOAD_IMAGE_EXTS=['jpg','jpeg','png','webp','heic'];
 const UPLOAD_DOC_EXTS=['pdf','dwg'];
-const DOC_CATEGORIES=['תוכניות אדריכלות','תוכניות DWG','קונסטרוקטור','היתרים','הסכמים','אחר'];
-const DOC_CATEGORY_ICONS={'תוכניות אדריכלות':'ruler','תוכניות DWG':'pencil-ruler','קונסטרוקטור':'wrench','היתרים':'clipboard-list','הסכמים':'file-pen','אחר':'file-text'};
+const DOC_CATEGORIES=['סיכום שבועי','תוכניות אדריכלות','תוכניות DWG','קונסטרוקטור','היתרים','הסכמים','אחר'];
+const DOC_CATEGORY_ICONS={'סיכום שבועי':'calendar-check','תוכניות אדריכלות':'ruler','תוכניות DWG':'pencil-ruler','קונסטרוקטור':'wrench','היתרים':'clipboard-list','הסכמים':'file-pen','אחר':'file-text'};
 const UPLOAD_VIDEO_EXTS=['mp4','mov'];
 const UPLOAD_ACCEPT_IMAGES='.jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic';
 const UPLOAD_ACCEPT_RECEIPT=UPLOAD_ACCEPT_IMAGES+',.pdf,application/pdf';
@@ -7003,6 +7003,7 @@ function renderSidebar(){
       '<div class="nav-item '+(currentView==='projects'?'active':'')+'" onclick="showView(\'projects\')"><span class="nav-icon">'+ic('construction')+'</span> פרויקטים</div>'+
       '<div class="nav-item '+(currentView==='milestones'?'active':'')+'" onclick="showView(\'milestones\')"><span class="nav-icon">'+ic('milestone')+'</span> אבני דרך</div>'+
       '<div class="nav-item '+(currentView==='budget-builder'?'active':'')+'" onclick="showView(\'budget-builder\')"><span class="nav-icon">'+ic('calculator')+'</span> בניית תקציב</div>'+
+      '<div class="nav-item '+(currentView==='weekly-form'?'active':'')+'" onclick="showView(\'weekly-form\')"><span class="nav-icon">'+ic('calendar-check')+'</span> טופס שבועי</div>'+
       '<div class="nav-section-title">מערכת</div>'+
       '<div class="nav-item '+(currentView==='clients'?'active':'')+'" onclick="showView(\'clients\')"><span class="nav-icon">'+ic('users')+'</span> לקוחות</div>'+
       '<div class="nav-item '+(currentView==='subcontractors'?'active':'')+'" onclick="showView(\'subcontractors\')"><span class="nav-icon">'+ic('hard-hat')+'</span> קבלני משנה</div>'+
@@ -7022,7 +7023,7 @@ function renderSidebar(){
 }
 
 var TAB_LABELS={overview:'סקירה',suppliers:'ספקים',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-builder':'בניית תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה','finish-selections':'בחירות גמרים','price-comparisons':'השוואת מחירים',punch:'ליקויים','daily-log':'יומן עבודה',updates:'עדכונים',messages:'שאלות'};
-var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',milestones:'אבני דרך','budget-builder':'בניית תקציב',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
+var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',milestones:'אבני דרך','budget-builder':'בניית תקציב','weekly-form':'טופס שבועי',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
   if(el)el.textContent=text||'ארונשטיין פיקוח וניהול';
@@ -7269,6 +7270,129 @@ function initGlobalSearchHandlers(){
   });
 }
 
+var WEEKLY_FORM_STYLE='<style>'+
+  '.wf-wrap{display:flex;justify-content:center;padding:2px 0 20px}'+
+  '.wf-doc{width:100%;max-width:840px;background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 4px 20px rgba(27,43,94,.08)}'+
+  '.wf-head{background:linear-gradient(135deg,var(--navy),var(--primary-light));color:#fff;padding:22px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px}'+
+  '.wf-brand{display:flex;align-items:center;gap:12px}'+
+  '.wf-logo{width:46px;height:46px;border-radius:11px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;color:#fff;flex:0 0 auto}'+
+  '.wf-logo svg{width:26px;height:26px}'+
+  '.wf-head h3{font-size:19px;font-weight:800;margin:0}'+
+  '.wf-head .wf-sub{font-size:12.5px;opacity:.75;margin-top:2px}'+
+  '.wf-badge{background:var(--accent);color:#3a2600;font-weight:800;font-size:13px;padding:7px 14px;border-radius:9px;text-align:center;white-space:nowrap}'+
+  '.wf-badge small{display:block;font-weight:600;font-size:10px;opacity:.8;margin-top:1px}'+
+  '.wf-meta{display:grid;grid-template-columns:repeat(3,1fr);background:#fafbfd;border-bottom:2px solid var(--border)}'+
+  '.wf-field{padding:10px 18px;border-inline-start:1px solid var(--border);border-top:1px solid var(--border)}'+
+  '.wf-field:nth-child(3n+1){border-inline-start:0}'+
+  '.wf-field label{display:block;font-size:10.5px;font-weight:700;color:var(--steel);margin-bottom:2px}'+
+  '.wf-field input{width:100%;border:0;border-bottom:1px dashed transparent;background:transparent;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--text);padding:2px 0}'+
+  '.wf-field input:focus{outline:0;border-bottom-color:var(--accent)}'+
+  '.wf-body{padding:6px 28px 26px}'+
+  '.wf-sec{margin-top:20px;page-break-inside:avoid}'+
+  '.wf-sec-head{display:flex;align-items:center;gap:8px;margin-bottom:9px;border-inline-start:4px solid var(--accent);padding-inline-start:10px}'+
+  '.wf-n{width:21px;height:21px;border-radius:6px;background:var(--navy);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:0 0 auto}'+
+  '.wf-sec-head h4{font-size:14.5px;font-weight:800;color:var(--navy);margin:0}'+
+  '.wf-tip{font-size:11px;color:var(--text-muted);font-weight:500}'+
+  '.wf-textarea{width:100%;min-height:56px;border:1px solid var(--border);border-radius:10px;padding:9px 11px;font-family:inherit;font-size:13px;line-height:1.7;color:var(--text);resize:vertical;background:#fff}'+
+  '.wf-textarea:focus{outline:0;border-color:var(--primary-light)}'+
+  '.wf-doc table{width:100%;border-collapse:collapse;font-size:12.5px}'+
+  '.wf-doc th{background:var(--navy);color:#fff;font-weight:700;font-size:11.5px;padding:7px 9px;text-align:right;border:1px solid var(--primary-light)}'+
+  '.wf-doc td{border:1px solid var(--border);padding:0;vertical-align:top}'+
+  '.wf-doc td input{width:100%;border:0;background:transparent;font-family:inherit;font-size:12.5px;color:var(--text);padding:8px 9px;min-height:34px}'+
+  '.wf-doc td input:focus{outline:0;background:#fff8ec}'+
+  '.wf-doc tbody tr:nth-child(even) td{background:#fafbfd}'+
+  '.wf-num{width:32px;text-align:center;color:var(--text-muted);font-weight:700}'+
+  '.wf-legend{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px;font-size:11px}'+
+  '.wf-pill{padding:3px 9px;border-radius:20px;font-weight:700}'+
+  '.wf-p-done{background:#e7f8ee;color:#15803d}.wf-p-prog{background:#fff4e0;color:#b45309}.wf-p-late{background:#fde8e8;color:#b91c1c}'+
+  '.wf-budget{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}'+
+  '.wf-box{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fafbfd}'+
+  '.wf-box label{display:block;font-size:10.5px;font-weight:700;color:var(--steel);margin-bottom:4px}'+
+  '.wf-box input{width:100%;border:0;border-bottom:1px dashed var(--border);background:transparent;font-family:inherit;font-size:15px;font-weight:800;color:var(--navy);padding:2px 0;text-align:center}'+
+  '.wf-box input:focus{outline:0;border-bottom-color:var(--accent)}'+
+  '.wf-signs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:12px}'+
+  '.wf-sign{border-top:1.5px solid var(--text);padding-top:6px;font-size:11.5px;color:var(--text-muted);font-weight:600}'+
+  '.wf-sign b{color:var(--navy);font-weight:800;font-size:12.5px}'+
+  '@media print{'+
+    'body.wf-printing{background:#fff}'+
+    'body.wf-printing *{visibility:hidden!important}'+
+    'body.wf-printing #weekly-form-doc,body.wf-printing #weekly-form-doc *{visibility:visible!important}'+
+    'body.wf-printing #weekly-form-doc{position:absolute;top:0;right:0;left:0;width:100%;max-width:none;margin:0;border:0;border-radius:0;box-shadow:none}'+
+    'body.wf-printing #weekly-form-doc td input:focus{background:transparent}'+
+  '}'+
+  '@media(max-width:640px){.wf-meta{grid-template-columns:1fr}.wf-budget{grid-template-columns:1fr 1fr}.wf-signs{grid-template-columns:1fr}}'+
+  '</style>';
+
+function wfRows(cols,n,hasNum){
+  var out='';
+  for(var r=0;r<n;r++){
+    out+='<tr>';
+    for(var c=0;c<cols;c++){
+      if(hasNum&&c===0)out+='<td class="wf-num">'+(r+1)+'</td>';
+      else out+='<td><input type="text"></td>';
+    }
+    out+='</tr>';
+  }
+  return out;
+}
+
+function weeklyFormDocHtml(){
+  return '<div class="wf-wrap"><div class="wf-doc" id="weekly-form-doc">'+
+    '<div class="wf-head"><div class="wf-brand"><div class="wf-logo">'+ic('construction')+'</div>'+
+      '<div><h3>ארונשטיין פיקוח וניהול</h3><div class="wf-sub">מערכת ניהול פרויקטי בנייה</div></div></div>'+
+      '<div class="wf-badge">דוח שבועי<small>Weekly Report</small></div></div>'+
+    '<div class="wf-meta">'+
+      '<div class="wf-field"><label>שם הפרויקט</label><input type="text" placeholder="—"></div>'+
+      '<div class="wf-field"><label>לקוח</label><input type="text" placeholder="—"></div>'+
+      '<div class="wf-field"><label>מפקח / עורך הדוח</label><input type="text" placeholder="—"></div>'+
+      '<div class="wf-field"><label>שבוע / תקופה</label><input type="text" placeholder="מ־__/__ עד __/__"></div>'+
+      '<div class="wf-field"><label>תאריך</label><input type="text" placeholder="__/__/____"></div>'+
+      '<div class="wf-field"><label>התקדמות כללית</label><input type="text" placeholder="__ %"></div>'+
+    '</div>'+
+    '<div class="wf-body">'+
+      '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">1</span><h4>תקציר השבוע</h4><span class="wf-tip">— מצב כללי בכמה שורות</span></div>'+
+        '<textarea class="wf-textarea" placeholder="האם מתקדם לפי התכנון, נקודות עיקריות, אירועים חשובים..."></textarea></div>'+
+      '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">2</span><h4>מה נעשה השבוע</h4></div>'+
+        '<table><thead><tr><th class="wf-num">#</th><th style="width:48%">פעילות שבוצעה</th><th>גורם מבצע</th><th style="width:16%">סטטוס</th></tr></thead><tbody>'+wfRows(4,5,true)+'</tbody></table>'+
+        '<div class="wf-legend"><span class="wf-pill wf-p-done">✓ הושלם</span><span class="wf-pill wf-p-prog">● בתהליך</span><span class="wf-pill wf-p-late">▲ מתעכב</span></div></div>'+
+      '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">3</span><h4>הלוז לשבוע הבא</h4></div>'+
+        '<table><thead><tr><th class="wf-num">#</th><th style="width:56%">משימה מתוכננת</th><th>אחראי</th><th style="width:16%">תאריך יעד</th></tr></thead><tbody>'+wfRows(4,5,true)+'</tbody></table></div>'+
+      '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">4</span><h4>בעיות ועיכובים</h4><span class="wf-tip">— חסמים ומה נדרש לפתרון</span></div>'+
+        '<table><thead><tr><th class="wf-num">#</th><th style="width:50%">הנושא / הבעיה</th><th>נדרש / החלטה נדרשת</th></tr></thead><tbody>'+wfRows(3,4,true)+'</tbody></table></div>'+
+      '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">5</span><h4>תקציב</h4><span class="wf-tip">— ב-₪</span></div>'+
+        '<div class="wf-budget">'+
+          '<div class="wf-box"><label>תקציב מאושר</label><input type="text" placeholder="0"></div>'+
+          '<div class="wf-box"><label>נוצל עד כה</label><input type="text" placeholder="0"></div>'+
+          '<div class="wf-box"><label>עלות השבוע</label><input type="text" placeholder="0"></div>'+
+          '<div class="wf-box"><label>יתרה</label><input type="text" placeholder="0"></div>'+
+        '</div></div>'+
+      '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">6</span><h4>הערות והחלטות נדרשות מהלקוח</h4></div>'+
+        '<textarea class="wf-textarea" placeholder="נושאים שממתינים להחלטה או אישור מהלקוח..."></textarea></div>'+
+      '<div class="wf-sec"><div class="wf-signs">'+
+        '<div class="wf-sign"><b>המפקח</b> — שם וחתימה &nbsp; ______________</div>'+
+        '<div class="wf-sign"><b>הלקוח</b> — שם וחתימה &nbsp; ______________</div>'+
+      '</div></div>'+
+    '</div></div></div>';
+}
+
+function renderWeeklyForm(el){
+  el.innerHTML=WEEKLY_FORM_STYLE+
+    '<div class="page-header flex-between responsive-stack">'+
+      '<div><h1>'+ic('calendar-check')+' טופס שבועי</h1><p>דוח התקדמות שבועי — מלא, שמור כ-PDF, והעלה לפרויקט תחת קטגוריית "סיכום שבועי"</p></div>'+
+      '<div class="flex-gap"><button class="btn" style="background:var(--accent);color:#3a2600;width:auto" onclick="printWeeklyForm()">'+ic('printer')+' הדפסה / שמירה כ-PDF</button></div>'+
+    '</div>'+
+    weeklyFormDocHtml();
+  refreshIcons(el);
+}
+
+function printWeeklyForm(){
+  document.body.classList.add('wf-printing');
+  var done=function(){document.body.classList.remove('wf-printing');window.removeEventListener('afterprint',done);};
+  window.addEventListener('afterprint',done);
+  window.print();
+  setTimeout(done,2000);
+}
+
 function showView(view,pid){
   closeMobileSidebar();
   var el=document.getElementById('main-content');
@@ -7304,6 +7428,7 @@ function showView(view,pid){
   else if(view==='milestones')renderMilestonesScreen(el);
   else if(view==='activity-log')renderActivityLog(el);
   else if(view==='settings')renderSettings(el);
+  else if(view==='weekly-form')renderWeeklyForm(el);
   if(view!=='project'){
     updateWhatsAppFab(false);
     resetMobileTabMenu();
