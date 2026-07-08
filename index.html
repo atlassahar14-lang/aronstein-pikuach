@@ -7330,7 +7330,17 @@ var WEEKLY_FORM_STYLE='<style>'+
     'body.wf-printing #weekly-form-doc{position:absolute;top:0;right:0;left:0;width:100%;max-width:none;margin:0;border:0;border-radius:0;box-shadow:none}'+
     'body.wf-printing #weekly-form-doc td input:focus{background:transparent}'+
   '}'+
-  '@media(max-width:640px){.wf-meta{grid-template-columns:1fr}.wf-budget{grid-template-columns:1fr 1fr}.wf-signs{grid-template-columns:1fr}}'+
+  '.wf-tablescroll{width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}'+
+  '.wf-tablescroll table{min-width:430px}'+
+  '@media(max-width:640px){'+
+    '.wf-head{padding:16px;flex-wrap:wrap;gap:10px}'+
+    '.wf-head h3{font-size:16px}'+
+    '.wf-body{padding:4px 14px 20px}'+
+    '.wf-field{padding:9px 14px}'+
+    '.wf-meta{grid-template-columns:1fr}'+
+    '.wf-budget{grid-template-columns:1fr 1fr}'+
+    '.wf-signs{grid-template-columns:1fr}'+
+  '}'+
   '</style>';
 
 function wfRows(cols,n,hasNum){
@@ -7363,12 +7373,12 @@ function weeklyFormDocHtml(){
       '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">1</span><h4>תקציר השבוע</h4><span class="wf-tip">— מצב כללי בכמה שורות</span></div>'+
         '<textarea class="wf-textarea" placeholder="האם מתקדם לפי התכנון, נקודות עיקריות, אירועים חשובים..."></textarea></div>'+
       '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">2</span><h4>מה נעשה השבוע</h4></div>'+
-        '<table><thead><tr><th class="wf-num">#</th><th style="width:48%">פעילות שבוצעה</th><th>גורם מבצע</th><th style="width:16%">סטטוס</th></tr></thead><tbody>'+wfRows(4,5,true)+'</tbody></table>'+
+        '<div class="wf-tablescroll"><table><thead><tr><th class="wf-num">#</th><th style="width:48%">פעילות שבוצעה</th><th>גורם מבצע</th><th style="width:16%">סטטוס</th></tr></thead><tbody>'+wfRows(4,5,true)+'</tbody></table></div>'+
         '<div class="wf-legend"><span class="wf-pill wf-p-done">✓ הושלם</span><span class="wf-pill wf-p-prog">● בתהליך</span><span class="wf-pill wf-p-late">▲ מתעכב</span></div></div>'+
       '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">3</span><h4>הלוז לשבוע הבא</h4></div>'+
-        '<table><thead><tr><th class="wf-num">#</th><th style="width:56%">משימה מתוכננת</th><th>אחראי</th><th style="width:16%">תאריך יעד</th></tr></thead><tbody>'+wfRows(4,5,true)+'</tbody></table></div>'+
+        '<div class="wf-tablescroll"><table><thead><tr><th class="wf-num">#</th><th style="width:56%">משימה מתוכננת</th><th>אחראי</th><th style="width:16%">תאריך יעד</th></tr></thead><tbody>'+wfRows(4,5,true)+'</tbody></table></div></div>'+
       '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">4</span><h4>בעיות ועיכובים</h4><span class="wf-tip">— חסמים ומה נדרש לפתרון</span></div>'+
-        '<table><thead><tr><th class="wf-num">#</th><th style="width:50%">הנושא / הבעיה</th><th>נדרש / החלטה נדרשת</th></tr></thead><tbody>'+wfRows(3,4,true)+'</tbody></table></div>'+
+        '<div class="wf-tablescroll"><table><thead><tr><th class="wf-num">#</th><th style="width:50%">הנושא / הבעיה</th><th>נדרש / החלטה נדרשת</th></tr></thead><tbody>'+wfRows(3,4,true)+'</tbody></table></div></div>'+
       '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">5</span><h4>תקציב</h4><span class="wf-tip">— ב-₪</span></div>'+
         '<div class="wf-budget">'+
           '<div class="wf-box"><label>תקציב מאושר</label><input type="text" placeholder="0"></div>'+
