@@ -1703,6 +1703,7 @@ function renderProjectDocsTabHtml(p){
             (isHttp&&isDwg?'<button type="button" class="btn btn-outline btn-sm" onclick="openDocInAutodeskViewer(\''+d.id+'\')">פתח ב-Autodesk Viewer</button>'+
             '<a href="'+escHtml(d.url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" download="'+escHtml(d.name)+'">'+ic('download')+'</a>':'')+
             (isData?'<a href="'+escHtml(d.url)+'" download="'+escHtml(d.name)+'" class="btn btn-outline btn-sm">'+ic('download')+'</a>':'')+
+            (d.weeklyData?'<button class="btn btn-outline btn-sm admin-only-action" onclick="editWeeklyReport(\''+p.id+'\',\''+d.id+'\')">'+ic('pencil')+' ערוך</button>':'')+
             '<button class="btn btn-danger btn-sm admin-only-action" onclick="deleteDoc(\''+d.id+'\')">'+ic('trash-2')+'</button>'+
             '</div></div>';
         }).join('')+
@@ -7313,6 +7314,15 @@ var WEEKLY_FORM_STYLE='<style>'+
   '.wf-signs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:12px}'+
   '.wf-sign{border-top:1.5px solid var(--text);padding-top:6px;font-size:11.5px;color:var(--text-muted);font-weight:600}'+
   '.wf-sign b{color:var(--navy);font-weight:800;font-size:12.5px}'+
+  '.wf-linkbar{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px 20px;margin:0 0 14px;box-shadow:0 2px 10px rgba(27,43,94,.05)}'+
+  '.wf-linkrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}'+
+  '.wf-linkbar label{font-size:13px;font-weight:800;color:var(--navy);display:flex;align-items:center;gap:6px;white-space:nowrap}'+
+  '.wf-linkbar label svg{width:16px;height:16px}'+
+  '.wf-linkbar select{flex:1;min-width:220px;font-family:inherit;font-size:14px;font-weight:600;color:var(--text);padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;background:#fafbfd;cursor:pointer}'+
+  '.wf-linkbar select:focus{outline:0;border-color:var(--accent)}'+
+  '.wf-linkchip{display:none;align-items:center;gap:5px;background:#e7f0ff;color:var(--navy);font-size:12.5px;font-weight:700;padding:5px 11px;border-radius:20px}'+
+  '.wf-linkchip svg{width:14px;height:14px}'+
+  '.wf-linkhint{font-size:12px;color:var(--text-muted);margin-top:9px}'+
   '@media print{'+
     'body.wf-printing{background:#fff}'+
     'body.wf-printing *{visibility:hidden!important}'+
@@ -7342,8 +7352,8 @@ function weeklyFormDocHtml(){
       '<div><h3>ארונשטיין פיקוח וניהול</h3><div class="wf-sub">מערכת ניהול פרויקטי בנייה</div></div></div>'+
       '<div class="wf-badge">דוח שבועי<small>Weekly Report</small></div></div>'+
     '<div class="wf-meta">'+
-      '<div class="wf-field"><label>שם הפרויקט</label><input type="text" placeholder="—"></div>'+
-      '<div class="wf-field"><label>לקוח</label><input type="text" placeholder="—"></div>'+
+      '<div class="wf-field"><label>שם הפרויקט</label><input id="wf-f-project" type="text" placeholder="—"></div>'+
+      '<div class="wf-field"><label>לקוח</label><input id="wf-f-client" type="text" placeholder="—"></div>'+
       '<div class="wf-field"><label>מפקח / עורך הדוח</label><input type="text" placeholder="—"></div>'+
       '<div class="wf-field"><label>שבוע / תקופה</label><input type="text" placeholder="מ־__/__ עד __/__"></div>'+
       '<div class="wf-field"><label>תאריך</label><input type="text" placeholder="__/__/____"></div>'+
@@ -7375,14 +7385,114 @@ function weeklyFormDocHtml(){
     '</div></div></div>';
 }
 
+var weeklyRestore=null;   // pending payload when editing an existing saved report
+var weeklyEditDocId=null; // id of the report doc currently being edited (null = new)
+
 function renderWeeklyForm(el){
+  var projs=(getData().projects||[]);
+  var projOpts='<option value="">— בחר פרויקט —</option>'+projs.map(function(p){
+    return '<option value="'+escHtml(p.id)+'">'+escHtml(p.name||p.clientName||'')+'</option>';
+  }).join('');
   el.innerHTML=WEEKLY_FORM_STYLE+
     '<div class="page-header flex-between responsive-stack">'+
-      '<div><h1>'+ic('calendar-check')+' טופס שבועי</h1><p>דוח התקדמות שבועי — מלא, שמור כ-PDF, והעלה לפרויקט תחת קטגוריית "סיכום שבועי"</p></div>'+
-      '<div class="flex-gap"><button class="btn" style="background:var(--accent);color:#3a2600;width:auto" onclick="printWeeklyForm()">'+ic('download')+' הורד PDF</button></div>'+
+      '<div><h1>'+ic('calendar-check')+' טופס שבועי</h1><p>מלא דיגיטלית, קשר לפרויקט, ושמור — הדוח יופיע במסמכי הפרויקט תחת "סיכום שבועי"</p></div>'+
+      '<div class="flex-gap">'+
+        '<button class="btn" style="background:var(--accent);color:#3a2600;width:auto" onclick="saveWeeklyReportToProject()">'+ic('save')+' שמור לפרויקט</button>'+
+        '<button class="btn btn-outline" style="width:auto" onclick="printWeeklyForm()">'+ic('download')+' הורד PDF</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="wf-linkbar">'+
+      '<div class="wf-linkrow"><label>'+ic('link')+' קשר לפרויקט:</label>'+
+        '<select id="wf-project" onchange="onWeeklyProjectPick()">'+projOpts+'</select>'+
+        '<span class="wf-linkchip" id="wf-linkchip">'+ic('check')+' מקושר</span></div>'+
+      '<div class="wf-linkhint">בחירת פרויקט תמלא אוטומטית שם ולקוח, והשמירה תיכנס ישירות למסמכי אותו פרויקט תחת "סיכום שבועי".</div>'+
     '</div>'+
     weeklyFormDocHtml();
   refreshIcons(el);
+  if(weeklyRestore){
+    weeklyEditDocId=weeklyRestore.editDocId||null;
+    var selr=document.getElementById('wf-project');
+    if(selr)selr.value=weeklyRestore.projectId||'';
+    applyWeeklyValues(weeklyRestore.values||[]);
+    var chip=document.getElementById('wf-linkchip');
+    if(chip)chip.style.display=(selr&&selr.value)?'inline-flex':'none';
+    weeklyRestore=null;
+  }else{
+    weeklyEditDocId=null;
+  }
+}
+function onWeeklyProjectPick(){
+  var sel=document.getElementById('wf-project');if(!sel)return;
+  var pid=sel.value;
+  var proj=(getData().projects||[]).find(function(p){return p.id===pid;});
+  var fp=document.getElementById('wf-f-project'),fc=document.getElementById('wf-f-client');
+  if(proj){ if(fp)fp.value=proj.name||''; if(fc)fc.value=proj.clientName||''; }
+  var chip=document.getElementById('wf-linkchip');if(chip)chip.style.display=pid?'inline-flex':'none';
+}
+function collectWeeklyValues(){
+  var d=document.getElementById('weekly-form-doc');if(!d)return [];
+  return Array.prototype.map.call(d.querySelectorAll('input,textarea'),function(f){return f.value;});
+}
+function applyWeeklyValues(vals){
+  var d=document.getElementById('weekly-form-doc');if(!d||!vals)return;
+  var fields=d.querySelectorAll('input,textarea');
+  for(var i=0;i<fields.length;i++){ if(i<vals.length)fields[i].value=vals[i]; }
+}
+async function rasterizeElementToDataUrl(el){
+  if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+  await new Promise(function(r){setTimeout(r,150);});
+  var libs=await loadJsPdfLib();
+  var canvas=await libs.html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,
+    windowWidth:1024,windowHeight:Math.max(window.innerHeight||0,(el.scrollHeight||0)+200,1400)});
+  var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
+  var margin=10,pageW=210,pageH=297,imgW=pageW-margin*2,pxPerMm=canvas.width/imgW,pageChunkPx=Math.floor((pageH-margin*2)*pxPerMm),sY=0,pageNum=0;
+  while(sY<canvas.height){
+    var chunkPx=Math.min(pageChunkPx,canvas.height-sY);
+    var pc=document.createElement('canvas');pc.width=canvas.width;pc.height=chunkPx;
+    var ctx=pc.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,pc.width,pc.height);
+    ctx.drawImage(canvas,0,sY,canvas.width,chunkPx,0,0,canvas.width,chunkPx);
+    if(pageNum>0)doc.addPage();
+    doc.addImage(pc.toDataURL('image/jpeg',0.92),'JPEG',margin,margin,imgW,chunkPx/pxPerMm);
+    sY+=chunkPx;pageNum++;
+  }
+  return doc.output('datauristring');
+}
+async function saveWeeklyReportToProject(){
+  var sel=document.getElementById('wf-project');
+  var pid=sel?sel.value:'';
+  if(!pid){showToast('בחר פרויקט לקישור','error');return;}
+  var data=getData();
+  var proj=(data.projects||[]).find(function(p){return p.id===pid;});
+  if(!proj){showToast('הפרויקט לא נמצא','error');return;}
+  showToast('שומר דוח...');
+  var values=collectWeeklyValues();
+  var docEl=document.getElementById('weekly-form-doc');
+  var pdfUrl='#';
+  try{ pdfUrl=await rasterizeElementToDataUrl(docEl); }catch(e){ pdfUrl='#'; }
+  var dateStr=new Date().toLocaleDateString('he-IL');
+  var docName='דוח שבועי - '+dateStr+'.pdf';
+  if(!proj.documents)proj.documents=[];
+  if(weeklyEditDocId){
+    var ex=proj.documents.find(function(x){return x.id===weeklyEditDocId;});
+    if(ex){ ex.name=docName;ex.date=dateStr;if(pdfUrl!=='#')ex.url=pdfUrl;ex.weeklyData=values; }
+    else{ var nd={id:'d'+Date.now(),name:docName,category:'סיכום שבועי',date:dateStr,url:pdfUrl,weeklyData:values};proj.documents.push(nd);weeklyEditDocId=nd.id; }
+  }else{
+    var nid='d'+Date.now();
+    proj.documents.push({id:nid,name:docName,category:'סיכום שבועי',date:dateStr,url:pdfUrl,weeklyData:values});
+    weeklyEditDocId=nid;
+  }
+  logActivity('שמירת דוח שבועי','פרויקט: '+proj.name);
+  if(!await saveData(data)){showToast('שגיאה בשמירה','error');return;}
+  showToast('✓ נשמר לפרויקט '+proj.name+' תחת "סיכום שבועי"');
+}
+function editWeeklyReport(projId,docId){
+  var proj=(getData().projects||[]).find(function(p){return p.id===projId;});
+  if(!proj){showToast('הפרויקט לא נמצא','error');return;}
+  var d=(proj.documents||[]).find(function(x){return x.id===docId;});
+  if(!d||!d.weeklyData){showToast('לא נמצאו נתונים לעריכה','error');return;}
+  weeklyRestore={projectId:projId,values:d.weeklyData,editDocId:docId};
+  showView('weekly-form');
+  showToast('נטען דוח לעריכה — ערוך ולחץ "שמור לפרויקט"');
 }
 
 async function printWeeklyForm(){
@@ -9518,7 +9628,7 @@ Object.assign(window,{
   openBudgetQuickSubcontractorModal,closeBudgetQuickSubcontractorModal,saveBudgetQuickSubcontractor,
   openBudgetClientView,previewBudgetDraftClientView,closeBudgetClientView,printBudgetClientView,
   openGlobalSearch,onGlobalSearchInput,onGlobalSearchKeydown,navigateGlobalSearchResult,
-  printWeeklyForm,renderWeeklyForm
+  printWeeklyForm,renderWeeklyForm,onWeeklyProjectPick,saveWeeklyReportToProject,editWeeklyReport
 });
 window.addEventListener('resize',function(){
   if(window.innerWidth>=1181)closeMobileSidebar();
