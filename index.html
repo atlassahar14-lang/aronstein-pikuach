@@ -7288,6 +7288,8 @@ var WEEKLY_FORM_STYLE='<style>'+
   '.wf-field label{display:block;font-size:10.5px;font-weight:700;color:var(--steel);margin-bottom:2px}'+
   '.wf-field input{width:100%;border:0;border-bottom:1px dashed transparent;background:transparent;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--text);padding:2px 0}'+
   '.wf-field input:focus{outline:0;border-bottom-color:var(--accent)}'+
+  '.wf-field select{width:100%;border:0;background:transparent;font-family:inherit;font-size:13.5px;font-weight:700;color:var(--navy);padding:2px 0;cursor:pointer;margin-inline-start:-2px}'+
+  '.wf-field select:focus{outline:0}'+
   '.wf-body{padding:6px 28px 26px}'+
   '.wf-sec{margin-top:20px;page-break-inside:avoid}'+
   '.wf-sec-head{display:flex;align-items:center;gap:8px;margin-bottom:9px;border-inline-start:4px solid var(--accent);padding-inline-start:10px}'+
@@ -7343,6 +7345,24 @@ var WEEKLY_FORM_STYLE='<style>'+
   '}'+
   '</style>';
 
+function weeklyWeekOptions(){
+  var now=new Date();
+  var year=now.getFullYear();
+  var jan1=new Date(year,0,1);
+  var start=new Date(year,0,1-jan1.getDay()); // Sunday of the week that contains Jan 1 (Israel week starts Sunday)
+  var pad=function(x){return (x<10?'0':'')+x;};
+  var opts='<option value="">— בחר שבוע —</option>';
+  for(var n=1;n<=53;n++){
+    var ws=new Date(start.getFullYear(),start.getMonth(),start.getDate()+(n-1)*7);
+    if(ws.getFullYear()>year)break;
+    var we=new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()+6);
+    var label='שבוע '+n+' · '+pad(ws.getDate())+'/'+pad(ws.getMonth()+1)+'–'+pad(we.getDate())+'/'+pad(we.getMonth()+1);
+    var weEnd=new Date(we.getFullYear(),we.getMonth(),we.getDate(),23,59,59);
+    var sel=(now>=ws&&now<=weEnd)?' selected':'';
+    opts+='<option value="שבוע '+n+'"'+sel+'>'+label+'</option>';
+  }
+  return opts;
+}
 function wfRows(cols,n,hasNum){
   var out='';
   for(var r=0;r<n;r++){
@@ -7365,7 +7385,7 @@ function weeklyFormDocHtml(){
       '<div class="wf-field"><label>שם הפרויקט</label><input id="wf-f-project" type="text" placeholder="—"></div>'+
       '<div class="wf-field"><label>לקוח</label><input id="wf-f-client" type="text" placeholder="—"></div>'+
       '<div class="wf-field"><label>מפקח / עורך הדוח</label><input type="text" placeholder="—"></div>'+
-      '<div class="wf-field"><label>שבוע / תקופה</label><input type="text" placeholder="מ־__/__ עד __/__"></div>'+
+      '<div class="wf-field"><label>שבוע / תקופה</label><select>'+weeklyWeekOptions()+'</select></div>'+
       '<div class="wf-field"><label>תאריך</label><input type="text" placeholder="__/__/____"></div>'+
       '<div class="wf-field"><label>התקדמות כללית</label><input type="text" placeholder="__ %"></div>'+
     '</div>'+
@@ -7441,11 +7461,11 @@ function onWeeklyProjectPick(){
 }
 function collectWeeklyValues(){
   var d=document.getElementById('weekly-form-doc');if(!d)return [];
-  return Array.prototype.map.call(d.querySelectorAll('input,textarea'),function(f){return f.value;});
+  return Array.prototype.map.call(d.querySelectorAll('input,textarea,select'),function(f){return f.value;});
 }
 function applyWeeklyValues(vals){
   var d=document.getElementById('weekly-form-doc');if(!d||!vals)return;
-  var fields=d.querySelectorAll('input,textarea');
+  var fields=d.querySelectorAll('input,textarea,select');
   for(var i=0;i<fields.length;i++){ if(i<vals.length)fields[i].value=vals[i]; }
 }
 async function rasterizeElementToDataUrl(el){
