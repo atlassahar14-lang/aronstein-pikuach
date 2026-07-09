@@ -7468,7 +7468,7 @@ function applyWeeklyValues(vals){
   var fields=d.querySelectorAll('input,textarea,select');
   for(var i=0;i<fields.length;i++){ if(i<vals.length)fields[i].value=vals[i]; }
 }
-async function rasterizeElementToDataUrl(el){
+async function buildPdfFromElement(el){
   if(document.fonts&&document.fonts.ready)await document.fonts.ready;
   await new Promise(function(r){setTimeout(r,150);});
   var libs=await loadJsPdfLib();
@@ -7485,8 +7485,9 @@ async function rasterizeElementToDataUrl(el){
     doc.addImage(pc.toDataURL('image/jpeg',0.92),'JPEG',margin,margin,imgW,chunkPx/pxPerMm);
     sY+=chunkPx;pageNum++;
   }
-  return doc.output('datauristring');
+  return doc;
 }
+async function rasterizeElementToPdfBlob(el){ var d=await buildPdfFromElement(el); return d.output('blob'); }
 async function saveWeeklyReportToProject(){
   var sel=document.getElementById('wf-project');
   var pid=sel?sel.value:'';
@@ -7497,22 +7498,34 @@ async function saveWeeklyReportToProject(){
   showToast('שומר דוח...');
   var values=collectWeeklyValues();
   var docEl=document.getElementById('weekly-form-doc');
-  var pdfUrl='#';
-  try{ pdfUrl=await rasterizeElementToDataUrl(docEl); }catch(e){ pdfUrl='#'; }
   var dateStr=new Date().toLocaleDateString('he-IL');
   var docName='דוח שבועי - '+dateStr+'.pdf';
+  // Generate the PDF and upload it to storage (like any document) so app_data stays small.
+  var url='#',path='';
+  try{
+    var blob=await rasterizeElementToPdfBlob(docEl);
+    var upId=weeklyEditDocId||('d'+Date.now());
+    var pdfFile=new File([blob],docName,{type:'application/pdf'});
+    var up=await uploadMediaFile('documents/'+proj.id+'/'+upId,pdfFile);
+    if(up.ok){url=up.data.url;path=up.data.path;}
+  }catch(e){ console.warn('weekly pdf upload failed',e); }
   if(!proj.documents)proj.documents=[];
-  if(weeklyEditDocId){
-    var ex=proj.documents.find(function(x){return x.id===weeklyEditDocId;});
-    if(ex){ ex.name=docName;ex.date=dateStr;if(pdfUrl!=='#')ex.url=pdfUrl;ex.weeklyData=values; }
-    else{ var nd={id:'d'+Date.now(),name:docName,category:'סיכום שבועי',date:dateStr,url:pdfUrl,weeklyData:values};proj.documents.push(nd);weeklyEditDocId=nd.id; }
+  var savedDoc=weeklyEditDocId?proj.documents.find(function(x){return x.id===weeklyEditDocId;}):null;
+  var isNew=!savedDoc;
+  if(savedDoc){
+    savedDoc.name=docName;savedDoc.date=dateStr;savedDoc.weeklyData=values;
+    if(url!=='#'){savedDoc.url=url;savedDoc.path=path;savedDoc.type='application/pdf';}
   }else{
-    var nid='d'+Date.now();
-    proj.documents.push({id:nid,name:docName,category:'סיכום שבועי',date:dateStr,url:pdfUrl,weeklyData:values});
-    weeklyEditDocId=nid;
+    savedDoc={id:'d'+Date.now(),name:docName,category:'סיכום שבועי',date:dateStr,url:url,weeklyData:values};
+    if(url!=='#'){savedDoc.path=path;savedDoc.type='application/pdf';}
+    proj.documents.push(savedDoc);
   }
   logActivity('שמירת דוח שבועי','פרויקט: '+proj.name);
-  if(!await saveData(data)){showToast('שגיאה בשמירה','error');return;}
+  if(!await saveData(data)){
+    if(isNew){var ri=proj.documents.indexOf(savedDoc);if(ri>=0)proj.documents.splice(ri,1);}
+    showToast('שגיאה בשמירה','error');return;
+  }
+  weeklyEditDocId=savedDoc.id;
   showToast('✓ נשמר לפרויקט '+proj.name+' תחת "סיכום שבועי"');
 }
 function editWeeklyReport(projId,docId){
