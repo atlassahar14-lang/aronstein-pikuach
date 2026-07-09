@@ -7363,12 +7363,21 @@ function weeklyWeekOptions(){
   }
   return opts;
 }
-function wfRows(cols,n,hasNum){
+function weeklySubcontractorDatalistOptions(){
+  var out='';
+  (subcontractorsCache||[]).forEach(function(s){
+    var label=(s.companyName||'')+(s.contactName?' · '+s.contactName:'');
+    if(label)out+='<option value="'+escHtml(label)+'"></option>';
+  });
+  return out;
+}
+function wfRows(cols,n,hasNum,subCol){
   var out='';
   for(var r=0;r<n;r++){
     out+='<tr>';
     for(var c=0;c<cols;c++){
       if(hasNum&&c===0)out+='<td class="wf-num">'+(r+1)+'</td>';
+      else if(subCol!=null&&c===subCol)out+='<td><input type="text" list="wf-subs-list" placeholder="קבלן משנה / חופשי"></td>';
       else out+='<td><input type="text"></td>';
     }
     out+='</tr>';
@@ -7393,10 +7402,10 @@ function weeklyFormDocHtml(){
       '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">1</span><h4>תקציר השבוע</h4><span class="wf-tip">— מצב כללי בכמה שורות</span></div>'+
         '<textarea class="wf-textarea" placeholder="האם מתקדם לפי התכנון, נקודות עיקריות, אירועים חשובים..."></textarea></div>'+
       '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">2</span><h4>מה נעשה השבוע</h4></div>'+
-        '<div class="wf-tablescroll"><table><thead><tr><th class="wf-num">#</th><th style="width:48%">פעילות שבוצעה</th><th>גורם מבצע</th><th style="width:16%">סטטוס</th></tr></thead><tbody>'+wfRows(4,5,true)+'</tbody></table></div>'+
+        '<div class="wf-tablescroll"><table><thead><tr><th class="wf-num">#</th><th style="width:48%">פעילות שבוצעה</th><th>גורם מבצע</th><th style="width:16%">סטטוס</th></tr></thead><tbody>'+wfRows(4,5,true,2)+'</tbody></table></div>'+
         '<div class="wf-legend"><span class="wf-pill wf-p-done">✓ הושלם</span><span class="wf-pill wf-p-prog">● בתהליך</span><span class="wf-pill wf-p-late">▲ מתעכב</span></div></div>'+
       '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">3</span><h4>הלוז לשבוע הבא</h4></div>'+
-        '<div class="wf-tablescroll"><table><thead><tr><th class="wf-num">#</th><th style="width:56%">משימה מתוכננת</th><th>אחראי</th><th style="width:16%">תאריך יעד</th></tr></thead><tbody>'+wfRows(4,5,true)+'</tbody></table></div></div>'+
+        '<div class="wf-tablescroll"><table><thead><tr><th class="wf-num">#</th><th style="width:56%">משימה מתוכננת</th><th>אחראי</th><th style="width:16%">תאריך יעד</th></tr></thead><tbody>'+wfRows(4,5,true,2)+'</tbody></table></div></div>'+
       '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">4</span><h4>בעיות ועיכובים</h4><span class="wf-tip">— חסמים ומה נדרש לפתרון</span></div>'+
         '<div class="wf-tablescroll"><table><thead><tr><th class="wf-num">#</th><th style="width:50%">הנושא / הבעיה</th><th>נדרש / החלטה נדרשת</th></tr></thead><tbody>'+wfRows(3,4,true)+'</tbody></table></div></div>'+
       '<div class="wf-sec"><div class="wf-sec-head"><span class="wf-n">5</span><h4>תקציב</h4><span class="wf-tip">— ב-₪</span></div>'+
@@ -7437,8 +7446,15 @@ function renderWeeklyForm(el){
         '<span class="wf-linkchip" id="wf-linkchip">'+ic('check')+' מקושר</span></div>'+
       '<div class="wf-linkhint">בחירת פרויקט תמלא אוטומטית שם ולקוח, והשמירה תיכנס ישירות למסמכי אותו פרויקט תחת "סיכום שבועי".</div>'+
     '</div>'+
-    weeklyFormDocHtml();
+    weeklyFormDocHtml()+
+    '<datalist id="wf-subs-list">'+weeklySubcontractorDatalistOptions()+'</datalist>';
   refreshIcons(el);
+  if((subcontractorsCache||[]).length===0){
+    refreshSubcontractors().then(function(){
+      var dl=document.getElementById('wf-subs-list');
+      if(dl&&currentView==='weekly-form')dl.innerHTML=weeklySubcontractorDatalistOptions();
+    });
+  }
   if(weeklyRestore){
     weeklyEditDocId=weeklyRestore.editDocId||null;
     var selr=document.getElementById('wf-project');
