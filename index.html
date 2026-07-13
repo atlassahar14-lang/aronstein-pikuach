@@ -1087,7 +1087,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="form-group"><label>תאריך <span class="req-mark">*</span></label><input type="date" id="pay-date"/></div>
     <div class="form-group"><label>נמען</label><input type="text" id="pay-to" placeholder="שם הקבלן / ספק"/></div>
     <div class="form-group"><label>קטגוריה</label><select id="pay-category"><option>שלד</option><option>חפירות</option><option>טיח</option><option>חשמל</option><option>אינסטלציה</option><option>ריצוף</option><option>גמר</option><option>צנרת ואינסטלציה</option><option>בידוד</option><option>פיקוח הנדסי</option><option>חוץ וגינון</option><option>אחר</option></select></div>
-    <div class="form-group"><label>קבלה/חשבונית</label><label class="upload-label"><i data-lucide="paperclip"></i> בחר קובץ<input type="file" id="pay-receipt" accept=".jpg,.jpeg,.png,.webp,.heic,.pdf,image/jpeg,image/png,image/webp,image/heic,application/pdf" capture="environment"/></label><p class="upload-hint">JPG, PNG, PDF עד 10MB</p><div id="pay-receipt-preview" class="file-preview"></div><div id="pay-receipt-existing" class="file-preview-existing"></div><div id="pay-receipt-upload-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span id="pay-receipt-upload-text">מעלה קבלה...</span></div><div id="pay-receipt-upload-error" class="upload-error"></div></div>
+    <div class="form-group"><label>קבלה/חשבונית</label><label class="upload-label"><i data-lucide="paperclip"></i> בחר קובץ<input type="file" id="pay-receipt" accept=".jpg,.jpeg,.png,.webp,.heic,.pdf,image/jpeg,image/png,image/webp,image/heic,application/pdf" capture="environment"/></label><p class="upload-hint">JPG, PNG, PDF עד 50MB</p><div id="pay-receipt-preview" class="file-preview"></div><div id="pay-receipt-existing" class="file-preview-existing"></div><div id="pay-receipt-upload-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span id="pay-receipt-upload-text">מעלה קבלה...</span></div><div id="pay-receipt-upload-error" class="upload-error"></div></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-payment')">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="savePayment()">שמור תשלום</button>
@@ -1232,7 +1232,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="form-group"><label>כולל פינוי פסולת</label><select id="price-offer-includes-waste"><option value="no">לא</option><option value="yes">כן</option></select></div>
     </div>
     <div class="form-group"><label>הערות</label><textarea id="price-offer-notes" placeholder="הערות להצעה"></textarea></div>
-    <div class="form-group"><label>העלאת הצעת מחיר (PDF)</label><label class="upload-label"><i data-lucide="file-text"></i> בחר קובץ PDF<input type="file" id="price-offer-pdf" accept=".pdf,application/pdf"/></label><p class="upload-hint">PDF עד 10MB</p><div id="price-offer-pdf-preview" class="file-preview"></div><div id="price-offer-pdf-existing" class="file-preview-existing"></div><div id="price-offer-pdf-upload-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span id="price-offer-pdf-upload-text">מעלה PDF...</span></div><div id="price-offer-pdf-upload-error" class="upload-error"></div></div>
+    <div class="form-group"><label>העלאת הצעת מחיר (PDF)</label><label class="upload-label"><i data-lucide="file-text"></i> בחר קובץ PDF<input type="file" id="price-offer-pdf" accept=".pdf,application/pdf"/></label><p class="upload-hint">PDF עד 50MB</p><div id="price-offer-pdf-preview" class="file-preview"></div><div id="price-offer-pdf-existing" class="file-preview-existing"></div><div id="price-offer-pdf-upload-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span id="price-offer-pdf-upload-text">מעלה PDF...</span></div><div id="price-offer-pdf-upload-error" class="upload-error"></div></div>
     <div class="price-offer-total-preview" id="price-offer-total-preview">סה"כ משוער: ₪0</div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-price-offer')">ביטול</button>
@@ -1289,7 +1289,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="form-group"><label>דחיפות</label><select id="punch-urgency"><option value="נמוכה">נמוכה</option><option value="בינונית" selected>בינונית</option><option value="קריטית">קריטית</option></select></div>
       <div class="form-group"><label>דד-ליין</label><input type="date" id="punch-deadline"/></div>
       <div class="form-group"><label for="punch-location">מיקום בבית</label><input type="text" id="punch-location" placeholder="לדוגמה: קומה 2 - חדר שינה"/></div>
-      <div class="form-group"><label for="punch-photo">תמונה מהשטח (אופציונלי)</label><input type="file" id="punch-photo" accept=".jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic"/><p class="upload-hint">JPG, PNG עד 10MB</p></div>
+      <div class="form-group"><label for="punch-photo">תמונה מהשטח (אופציונלי)</label><input type="file" id="punch-photo" accept=".jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic"/><p class="upload-hint">JPG, PNG עד 50MB</p></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-punch-item')">סגור</button>
@@ -1306,7 +1306,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px;line-height:1.5"><i data-lucide="message-circle" style="width:14px;height:14px;vertical-align:-2px"></i> לאחר השליחה ייפתח וואטסאפ עם הודעה מוכנה לטלפון הלקוח של הפרויקט.</p>
     <div class="form-group"><label>כותרת <span class="req-mark">*</span></label><input type="text" id="upd-title" placeholder="לדוגמה: סיום שלב השלד"/></div>
     <div class="form-group"><label>תוכן <span class="req-mark">*</span></label><textarea id="upd-body" placeholder="פרטי העדכון..."></textarea></div>
-    <div class="form-group"><label>תמונה / וידאו / PDF מהשטח (אופציונלי)</label><label class="upload-label"><i data-lucide="camera"></i> בחר קובץ<input type="file" id="upd-media" accept=".jpg,.jpeg,.png,.webp,.heic,.pdf,.mp4,.mov,image/jpeg,image/png,image/webp,image/heic,application/pdf,video/mp4,video/quicktime"/></label><p class="upload-hint">JPG, PNG, PDF, MP4 עד 10MB</p><div id="upd-media-preview" class="file-preview"></div><div id="upd-media-upload-error" class="upload-error"></div></div>
+    <div class="form-group"><label>תמונה / וידאו / PDF מהשטח (אופציונלי)</label><label class="upload-label"><i data-lucide="camera"></i> בחר קובץ<input type="file" id="upd-media" accept=".jpg,.jpeg,.png,.webp,.heic,.pdf,.mp4,.mov,image/jpeg,image/png,image/webp,image/heic,application/pdf,video/mp4,video/quicktime"/></label><p class="upload-hint">JPG, PNG, PDF, MP4 עד 50MB</p><div id="upd-media-preview" class="file-preview"></div><div id="upd-media-upload-error" class="upload-error"></div></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-update')">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="saveUpdate()">שלח עדכון</button>
@@ -1323,7 +1323,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="form-group">
       <label>תמונות (ניתן לבחור מספר)</label>
       <label class="upload-label"><i data-lucide="camera"></i> בחר תמונות<input type="file" id="gallery-post-files" accept=".jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic" multiple/></label>
-      <p class="upload-hint">JPG, PNG עד 10MB</p>
+      <p class="upload-hint">JPG, PNG עד 50MB</p>
       <div id="gallery-post-files-error" class="upload-error"></div>
       <div id="gallery-post-images" class="gallery-modal-images"></div>
     </div>
@@ -1442,12 +1442,12 @@ const PROJECT_BLUEPRINTS_BUCKET='project-blueprints';
 const SUBCONTRACTOR_DOCS_BUCKET='subcontractor-docs';
 const COMPRESS_MAX_EDGE=1920;
 const COMPRESS_JPEG_QUALITY=0.8;
-const MEDIA_MAX_BYTES=10*1024*1024;
+const MEDIA_MAX_BYTES=50*1024*1024;
 const UPLOAD_MAX_BYTES=MEDIA_MAX_BYTES;
-const UPLOAD_HINT_TEXT='JPG, PNG, PDF, DWG, MP4 עד 10MB';
-const UPLOAD_HINT_IMAGES='JPG, PNG עד 10MB';
-const UPLOAD_HINT_PDF='PDF עד 10MB';
-const UPLOAD_HINT_MEDIA='JPG, PNG, PDF, MP4 עד 10MB';
+const UPLOAD_HINT_TEXT='JPG, PNG, PDF, DWG, MP4 עד 50MB';
+const UPLOAD_HINT_IMAGES='JPG, PNG עד 50MB';
+const UPLOAD_HINT_PDF='PDF עד 50MB';
+const UPLOAD_HINT_MEDIA='JPG, PNG, PDF, MP4 עד 50MB';
 const UPLOAD_IMAGE_EXTS=['jpg','jpeg','png','webp','heic'];
 const UPLOAD_DOC_EXTS=['pdf','dwg'];
 const DOC_CATEGORIES=['סיכום שבועי','תוכניות אדריכלות','תוכניות DWG','קונסטרוקטור','היתרים','הסכמים','אחר'];
@@ -1569,7 +1569,7 @@ function resolveUploadFileExtension(file){
 function validateUploadFile(file,opts){
   opts=opts||{};
   if(!file)return {ok:false,message:'לא נבחר קובץ'};
-  if(file.size>UPLOAD_MAX_BYTES)return {ok:false,message:'הקובץ גדול מדי — גודל מקסימלי 10MB'};
+  if(file.size>UPLOAD_MAX_BYTES)return {ok:false,message:'הקובץ גדול מדי — גודל מקסימלי 50MB'};
   var allowPdf=opts.allowPdf!==false&&opts.imagesOnly!==true;
   var allowVideo=!!opts.allowVideo;
   var allowed=UPLOAD_IMAGE_EXTS.slice();
@@ -1659,7 +1659,7 @@ function getDocUploadAccept(cat){
 }
 function validateDocUploadFile(file,cat){
   if(!file)return {ok:false,message:'לא נבחר קובץ'};
-  if(file.size>UPLOAD_MAX_BYTES)return {ok:false,message:'הקובץ גדול מדי — גודל מקסימלי 10MB'};
+  if(file.size>UPLOAD_MAX_BYTES)return {ok:false,message:'הקובץ גדול מדי — גודל מקסימלי 50MB'};
   var ext=resolveUploadFileExtension(file);
   if(cat==='תוכניות DWG'){
     if(ext!=='dwg'&&ext!=='pdf'&&!isDwgType(file.type,file.name)&&!isPdfType(file.type,file.name)){
@@ -2090,7 +2090,7 @@ function setPriceOfferPdfUploadUi(loading,message,errorMsg){
 }
 function validatePriceOfferPdfFile(file){
   if(!file)return {ok:false,message:'לא נבחר קובץ'};
-  if(file.size>UPLOAD_MAX_BYTES)return {ok:false,message:'הקובץ גדול מדי — גודל מקסימלי 10MB'};
+  if(file.size>UPLOAD_MAX_BYTES)return {ok:false,message:'הקובץ גדול מדי — גודל מקסימלי 50MB'};
   var ext=resolveUploadFileExtension(file);
   if(ext!=='pdf'&&file.type!=='application/pdf')return {ok:false,message:'נא לבחור קובץ PDF בלבד'};
   return {ok:true};
