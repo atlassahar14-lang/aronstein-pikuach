@@ -5538,7 +5538,10 @@ function budgetCategoryContactLabel(sub){
 }
 function normalizeBudgetUnit(unit){
   var u=String(unit||'').trim();
-  if(!u||u==="יח'")return BUDGET_DEFAULT_UNIT;
+  if(!u)return BUDGET_DEFAULT_UNIT;
+  // map common "יחידה" spelling variants (יח', יח, י"ח, יח׳) to the standard unit
+  var bare=u.replace(/["'’׳״]/g,'').trim();
+  if(bare==='יח'||bare==='יחי')return BUDGET_DEFAULT_UNIT;
   return u;
 }
 function renderBudgetUnitOptions(selected){
