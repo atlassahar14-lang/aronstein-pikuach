@@ -1710,7 +1710,7 @@ function renderProjectDocsTabHtml(p){
         '<div class="admin-only-action" style="display:flex;gap:6px;margin-top:12px;flex-direction:column">'+
         '<p class="upload-hint" style="margin:0 0 4px">'+UPLOAD_HINT_TEXT+'</p>'+
         '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
-        '<label class="btn btn-outline btn-sm" style="cursor:pointer;flex:1;justify-content:center">'+ic('paperclip')+' העלה קובץ<input type="file" style="display:none" accept="'+getDocUploadAccept(cat)+'" onchange="uploadDocFile(event,\''+cat.replace(/'/g,'\\\'')+'\')"/></label>'+
+        '<label class="btn btn-outline btn-sm" style="cursor:pointer;flex:1;justify-content:center">'+ic('paperclip')+' העלה קבצים<input type="file" multiple style="display:none" accept="'+getDocUploadAccept(cat)+'" onchange="uploadDocFile(event,\''+cat.replace(/'/g,'\\\'')+'\')"/></label>'+
         '<button class="btn btn-outline btn-sm" style="flex:1" onclick="addDocLink(\''+cat.replace(/'/g,'\\\'')+'\')">'+ic('link')+' הוסף לינק</button>'+
         '</div></div>'+
         '</div>';
@@ -9533,34 +9533,42 @@ async function sendMessage(){
 
 function uploadDocFile(event,cat){
   if(!requireAdmin()||!requireProjectAccess())return;
-  var file=event.target.files[0];if(!file)return;
+  var files=event.target.files?Array.prototype.slice.call(event.target.files):[];
   event.target.value='';
-  var fileCheck=validateDocUploadFile(file,cat);
-  if(!fileCheck.ok){alert(fileCheck.message);return;}
+  if(!files.length)return;
   var proj=getCurrentProject();if(!proj)return;
-  var docId='d'+Date.now();
   (async function(){
-    var uploadFile=file;
-    if(isCompressibleImageFile(file)){
-      var prepared=await prepareImageForUpload(file);
-      showCompressionToast(prepared);
-      uploadFile=prepared.file;
+    var ok=0,fail=0,failMsgs=[];
+    for(var i=0;i<files.length;i++){
+      var file=files[i];
+      var check=validateDocUploadFile(file,cat);
+      if(!check.ok){fail++;failMsgs.push((file.name||'קובץ')+': '+check.message);continue;}
+      if(files.length>1)showToast('מעלה '+(i+1)+' מתוך '+files.length+'…');
+      var uploadFile=file;
+      if(isCompressibleImageFile(file)){
+        try{var prepared=await prepareImageForUpload(file);uploadFile=prepared.file;}catch(e){}
+      }
+      var docId='d'+Date.now()+'_'+i;
+      var upload=await uploadMediaFile('documents/'+proj.id+'/'+docId,uploadFile);
+      if(!upload.ok){fail++;failMsgs.push((uploadFile.name||file.name)+': '+formatSupabaseErrorHint(upload.error));continue;}
+      var data=getData();var p=getCurrentProject();if(!p)return;
+      if(!p.documents)p.documents=[];
+      p.documents.push({
+        id:docId,
+        name:uploadFile.name||file.name,
+        category:cat,
+        date:new Date().toLocaleDateString('he-IL'),
+        url:upload.data.url,
+        path:upload.data.path,
+        type:upload.data.type
+      });
+      if(!await saveData(data)){fail++;failMsgs.push((uploadFile.name||file.name)+': שגיאה בשמירה');continue;}
+      ok++;
     }
-    var upload=await uploadMediaFile('documents/'+proj.id+'/'+docId,uploadFile);
-    if(!upload.ok){alert('שגיאה בהעלאת המסמך:\n'+formatSupabaseErrorHint(upload.error));return;}
-    var data=getData();proj=getCurrentProject();if(!proj)return;
-    proj.documents.push({
-      id:docId,
-      name:uploadFile.name||file.name,
-      category:cat,
-      date:new Date().toLocaleDateString('he-IL'),
-      url:upload.data.url,
-      path:upload.data.path,
-      type:upload.data.type
-    });
-    logActivity('העלאת מסמך','פרויקט: '+proj.name+' · '+(uploadFile.name||file.name)+' ('+cat+')');
-    if(!await saveData(data))return;
     renderProjectDetail(document.getElementById('main-content'));
+    if(ok)logActivity('העלאת מסמכים','פרויקט: '+proj.name+' · '+ok+' קבצים ('+cat+')');
+    if(fail){console.warn('doc upload failures',failMsgs);showToast('הועלו '+ok+' קבצים · '+fail+' נכשלו','error');}
+    else showToast(ok>1?('✓ הועלו '+ok+' קבצים'):'✓ הקובץ הועלה');
   })();
 }
 async function addDocLink(cat){
