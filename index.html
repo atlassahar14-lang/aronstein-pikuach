@@ -7900,11 +7900,32 @@ function renderDashboard(el){
   refreshIcons(el);
 }
 
+var projectStatusFilter='';
+function renderProjectsFilterBarHtml(total,shown){
+  var opt=function(v,label){return '<option value="'+v+'"'+(projectStatusFilter===v?' selected':'')+'>'+label+'</option>';};
+  return '<div class="card list-filter-bar">'+
+    '<label for="proj-status-filter">סטטוס:</label>'+
+    '<select id="proj-status-filter" onchange="onProjectStatusFilterChange()">'+
+    opt('','כל הפרויקטים')+opt('pending','ממתין לתחילת עבודה')+opt('active','בביצוע')+opt('paused','מושהה')+opt('done','הושלם')+
+    '</select>'+
+    '<span style="color:var(--text-muted);font-size:13px;font-weight:600">מציג '+shown+' מתוך '+total+'</span>'+
+    '</div>';
+}
+function onProjectStatusFilterChange(){
+  var el=document.getElementById('proj-status-filter');
+  projectStatusFilter=el?el.value:'';
+  renderProjectsList(document.getElementById('main-content'));
+}
 function renderProjectsList(el){
   if(!isAdmin()){renderClientNoProject(el);return;}
   var data=getData();
+  var all=data.projects||[];
+  var list=all.filter(function(p){return !projectStatusFilter||p.status===projectStatusFilter;});
   el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>'+ic('construction')+' פרויקטים</h1><p>ניהול כל הפרויקטים</p></div><button class="btn btn-primary admin-only-action" onclick="openNewProjectModal()">'+ic('plus')+' פרויקט חדש</button></div>'+
-    '<div class="projects-grid">'+data.projects.map(projectCardHTML).join('')+'</div>';
+    renderProjectsFilterBarHtml(all.length,list.length)+
+    (list.length?'<div class="projects-grid">'+list.map(projectCardHTML).join('')+'</div>'
+      :'<div class="empty-state card"><div class="empty-icon">'+ic('construction')+'</div><p>אין פרויקטים בסטטוס זה</p></div>');
+  refreshIcons(el);
 }
 
 function renderPaymentActionsHtml(pay){
@@ -9704,7 +9725,8 @@ Object.assign(window,{
   openBudgetQuickSubcontractorModal,closeBudgetQuickSubcontractorModal,saveBudgetQuickSubcontractor,
   openBudgetClientView,previewBudgetDraftClientView,closeBudgetClientView,printBudgetClientView,
   openGlobalSearch,onGlobalSearchInput,onGlobalSearchKeydown,navigateGlobalSearchResult,
-  printWeeklyForm,renderWeeklyForm,onWeeklyProjectPick,saveWeeklyReportToProject,editWeeklyReport
+  printWeeklyForm,renderWeeklyForm,onWeeklyProjectPick,saveWeeklyReportToProject,editWeeklyReport,
+  onProjectStatusFilterChange
 });
 window.addEventListener('resize',function(){
   if(window.innerWidth>=1181)closeMobileSidebar();
