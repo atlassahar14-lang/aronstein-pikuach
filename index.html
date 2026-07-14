@@ -7596,6 +7596,7 @@ function showView(view,pid){
   }
   currentView=view;
   if(pid)currentProjectId=pid;
+  if(view==='project'&&pid&&isAdmin())recordRecentProject(pid);
   renderSidebar();
   if(view==='dashboard')renderDashboard(el);
   else if(view==='projects')renderProjectsList(el);
@@ -7867,6 +7868,30 @@ function dashMetricCard(cls,icon,value,label){
   return '<div class="dash-metric-card '+cls+'"><div class="dash-metric-icon">'+ic(icon)+'</div><div class="dash-metric-value">'+value+'</div><div class="dash-metric-label">'+label+'</div></div>';
 }
 
+var RECENT_PROJECTS_KEY='recentProjects_v1';
+function getRecentProjectIds(){
+  try{var raw=localStorage.getItem(RECENT_PROJECTS_KEY);var arr=raw?JSON.parse(raw):[];return Array.isArray(arr)?arr:[];}catch(e){return [];}
+}
+function recordRecentProject(pid){
+  if(!pid)return;
+  try{
+    var arr=getRecentProjectIds().filter(function(id){return id!==pid;});
+    arr.unshift(pid);
+    if(arr.length>20)arr=arr.slice(0,20);
+    localStorage.setItem(RECENT_PROJECTS_KEY,JSON.stringify(arr));
+  }catch(e){}
+}
+// Order projects so the ones most recently opened come first; never-opened keep their original order.
+function sortProjectsByRecent(projects){
+  var order=getRecentProjectIds(),rank={};
+  order.forEach(function(id,i){rank[id]=i;});
+  return projects.map(function(p,i){return {p:p,i:i};}).sort(function(a,b){
+    var ra=rank[a.p.id]==null?Infinity:rank[a.p.id];
+    var rb=rank[b.p.id]==null?Infinity:rank[b.p.id];
+    if(ra!==rb)return ra-rb;
+    return a.i-b.i;
+  }).map(function(x){return x.p;});
+}
 function renderDashboard(el){
   if(!isAdmin()){renderClientNoProject(el);return;}
   var data=getData();
@@ -7894,7 +7919,7 @@ function renderDashboard(el){
   }
   html+='<div class="card"><div class="section-actions"><div class="section-title">'+ic('construction')+' פרויקטים אחרונים</div><button class="btn btn-accent btn-sm admin-only-action" onclick="openNewProjectModal()">'+ic('plus')+' פרויקט חדש</button></div>'+
     (projects.length===0?'<div class="empty-state"><div class="empty-icon">'+ic('construction')+'</div><p>אין פרויקטים עדיין — צור את הראשון</p></div>':
-    '<div class="projects-grid">'+projects.slice(0,6).map(projectCardHTML).join('')+'</div>')+
+    '<div class="projects-grid">'+sortProjectsByRecent(projects).slice(0,6).map(projectCardHTML).join('')+'</div>')+
     '</div>';
   el.innerHTML=html;
   refreshIcons(el);
