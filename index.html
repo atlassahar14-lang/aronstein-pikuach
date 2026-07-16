@@ -1450,12 +1450,14 @@ const COMPRESS_MAX_EDGE=1920;
 const COMPRESS_JPEG_QUALITY=0.8;
 const MEDIA_MAX_BYTES=50*1024*1024;
 const UPLOAD_MAX_BYTES=MEDIA_MAX_BYTES;
-const UPLOAD_HINT_TEXT='JPG, PNG, PDF, DWG, MP4 עד 50MB';
+const UPLOAD_HINT_TEXT='JPG, PNG, PDF, DWG, XLS/XLSX, MP4 עד 50MB';
 const UPLOAD_HINT_IMAGES='JPG, PNG עד 50MB';
 const UPLOAD_HINT_PDF='PDF עד 50MB';
 const UPLOAD_HINT_MEDIA='JPG, PNG, PDF, MP4 עד 50MB';
 const UPLOAD_IMAGE_EXTS=['jpg','jpeg','png','webp','heic'];
 const UPLOAD_DOC_EXTS=['pdf','dwg'];
+const UPLOAD_SHEET_EXTS=['xls','xlsx','csv'];
+const UPLOAD_ACCEPT_SHEETS='.xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv';
 const DOC_CATEGORIES=['סיכום שבועי','תוכניות אדריכלות','תוכניות DWG','קונסטרוקטור','היתרים','הסכמים','אחר'];
 const DOC_CATEGORY_ICONS={'סיכום שבועי':'calendar-check','תוכניות אדריכלות':'ruler','תוכניות DWG':'pencil-ruler','קונסטרוקטור':'wrench','היתרים':'clipboard-list','הסכמים':'file-pen','אחר':'file-text'};
 const UPLOAD_VIDEO_EXTS=['mp4','mov'];
@@ -1578,11 +1580,14 @@ function validateUploadFile(file,opts){
   if(file.size>UPLOAD_MAX_BYTES)return {ok:false,message:'הקובץ גדול מדי — גודל מקסימלי 50MB'};
   var allowPdf=opts.allowPdf!==false&&opts.imagesOnly!==true;
   var allowVideo=!!opts.allowVideo;
+  var allowSheets=!!opts.allowSheets;
   var allowed=UPLOAD_IMAGE_EXTS.slice();
   if(allowPdf)allowed=allowed.concat(UPLOAD_DOC_EXTS);
   if(allowVideo)allowed=allowed.concat(UPLOAD_VIDEO_EXTS);
+  if(allowSheets)allowed=allowed.concat(UPLOAD_SHEET_EXTS);
   var ext=resolveUploadFileExtension(file);
   if(!ext||allowed.indexOf(ext)<0){
+    if(allowSheets)return {ok:false,message:'סוג קובץ לא נתמך — מותר: JPG, PNG, WEBP, HEIC, PDF, DWG, XLS, XLSX, CSV'};
     if(allowVideo)return {ok:false,message:'סוג קובץ לא נתמך — מותר: JPG, PNG, WEBP, HEIC, PDF, MP4, MOV'};
     if(allowPdf)return {ok:false,message:'סוג קובץ לא נתמך — מותר: JPG, PNG, WEBP, HEIC, PDF'};
     return {ok:false,message:'סוג קובץ לא נתמך — מותר: JPG, PNG, WEBP, HEIC'};
@@ -1654,14 +1659,18 @@ function isPdfDoc(doc){
 function isDwgDoc(doc){
   return !!(doc&&(isDwgType(doc.type,doc.name)||/\.dwg$/i.test(doc.name||'')));
 }
+function isSheetDoc(doc){
+  return !!(doc&&/\.(xlsx|xls|csv)$/i.test(doc.name||''));
+}
 function renderDocFileIcon(doc){
   if(isDwgDoc(doc))return '<span class="doc-file-icon" aria-hidden="true">📐</span>';
   if(isPdfDoc(doc))return '<span class="doc-file-icon" aria-hidden="true">📄</span>';
+  if(isSheetDoc(doc))return '<span class="doc-file-icon" aria-hidden="true">📊</span>';
   return ic('file-text');
 }
 function getDocUploadAccept(cat){
   if(cat==='תוכניות DWG')return '.dwg,.pdf,application/pdf,image/vnd.dwg,application/acad,application/x-acad,application/vnd.dwg';
-  return '.pdf,.dwg,.jpg,.jpeg,.png,.webp,.heic,application/pdf,image/vnd.dwg,application/acad,application/x-acad';
+  return '.pdf,.dwg,.jpg,.jpeg,.png,.webp,.heic,application/pdf,image/vnd.dwg,application/acad,application/x-acad,'+UPLOAD_ACCEPT_SHEETS;
 }
 function validateDocUploadFile(file,cat){
   if(!file)return {ok:false,message:'לא נבחר קובץ'};
@@ -1673,7 +1682,7 @@ function validateDocUploadFile(file,cat){
     }
     return {ok:true};
   }
-  return validateUploadFile(file,{allowPdf:true});
+  return validateUploadFile(file,{allowPdf:true,allowSheets:true});
 }
 function getAutodeskViewerUrl(fileUrl){
   return 'https://viewer.autodesk.com/share/url?url='+encodeURIComponent(fileUrl);
