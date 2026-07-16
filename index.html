@@ -1359,13 +1359,18 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="modal-overlay" id="modal-budget-excel-import">
   <div class="modal" style="max-width:min(95vw,720px)">
     <div class="modal-header"><div class="modal-title">ייבוא מאקסל</div><button class="modal-close" onclick="closeBudgetExcelImportModal()"><i data-lucide="x"></i></button></div>
-    <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px;line-height:1.5">העלה קובץ .xlsx — המערכת מזהה אוטומטית את עמודות התיאור, היחידה, הכמות והמחיר, ומפצלת את הפריטים לפי כותרות הקטגוריות שבקובץ (למשל "עבודות טייח", "עבודות חשמל").</p>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px;line-height:1.5">העלה קובץ Excel — המערכת סורקת את כל הגיליונות, מזהה אוטומטית את עמודות התיאור, היחידה, הכמות והמחיר, ומפצלת את הפריטים לפי כותרות הקטגוריות שבקובץ (למשל "עבודות טייח", "עבודות חשמל").</p>
     <div class="form-group">
-      <label>קובץ Excel (.xlsx)</label>
-      <label class="upload-label"><i data-lucide="sheet"></i> בחר קובץ<input type="file" id="budget-excel-file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/></label>
-      <p class="upload-hint">קובץ .xlsx בלבד · עד 5MB</p>
+      <label>קובץ Excel (.xlsx / .xls)</label>
+      <label class="upload-label"><i data-lucide="sheet"></i> בחר קובץ<input type="file" id="budget-excel-file" accept=".xlsx,.xls,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"/></label>
+      <p class="upload-hint">קבצי .xlsx / .xls · עד 5MB</p>
       <div id="budget-excel-parse-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span>קורא קובץ...</span></div>
       <div id="budget-excel-file-error" class="upload-error"></div>
+    </div>
+    <div class="form-group" id="budget-excel-sheet-wrap" style="display:none">
+      <label for="budget-excel-sheet">גיליון בקובץ</label>
+      <select id="budget-excel-sheet" onchange="onBudgetExcelSheetChange()"></select>
+      <p class="upload-hint" id="budget-excel-sheet-hint"></p>
     </div>
     <div class="form-group" id="budget-excel-use-file-cats-wrap" style="display:none;align-items:flex-start;gap:8px;flex-direction:row">
       <input type="checkbox" id="budget-excel-use-file-cats" onchange="onBudgetExcelUseFileCatsToggle()" style="margin-top:3px"/>
@@ -2617,6 +2622,8 @@ var toastTimer=null;
 var budgetsCache=[],budgetItemsByBudget={},budgetBuilderMode='list',editingBudgetId=null;
 var budgetBuilderDraft=null,budgetPendingContactItemId=null,budgetBuilderInitInflight=null;
 var budgetExcelImportRows=[];
+var budgetExcelSheets=[];      // every sheet in the workbook that yielded valid budget rows
+var budgetExcelSheetName='';   // the sheet currently shown/imported
 var budgetExcelImportCategories=[];
 var approveBudgetContext=null;
 const BUDGET_EXCEL_MAX_BYTES=5*1024*1024;
@@ -6118,12 +6125,9 @@ function detectBudgetExcelColumns(sheet,range){
     qtyCol:cols.qty==null?null:cols.qty,priceCol:cols.price==null?null:cols.price,
     totalCol:cols.total==null?null:cols.total};
 }
-function parseBudgetExcelWorkbook(arrayBuffer){
-  if(typeof XLSX==='undefined')return {ok:false,message:'ספריית Excel לא נטענה — רענן את העמוד'};
-  var wb=XLSX.read(arrayBuffer,{type:'array',cellFormula:true,cellDates:false});
-  if(!wb.SheetNames||!wb.SheetNames.length)return {ok:false,message:'הקובץ ריק או לא תקין'};
-  var sheet=wb.Sheets[wb.SheetNames[0]];
-  if(!sheet||!sheet['!ref'])return {ok:false,message:'לא נמצאו נתונים בגיליון הראשון'};
+// Parses ONE worksheet into budget rows. Returns {ok:false} when the sheet holds no valid lines.
+function parseBudgetExcelSheet(sheet){
+  if(!sheet||!sheet['!ref'])return {ok:false};
   var range=XLSX.utils.decode_range(sheet['!ref']);
   var det=detectBudgetExcelColumns(sheet,range);
   var descCol,unitCol,qtyCol,priceCol,totalCol,startRow;
@@ -6157,10 +6161,25 @@ function parseBudgetExcelWorkbook(arrayBuffer){
     rows.push({description:desc,category:currentCategory,
       unit:normalizeBudgetUnit(unitVal||BUDGET_DEFAULT_UNIT),quantity:qty,unitPrice:unitPrice});
   }
-  if(!rows.length)return {ok:false,message:'לא נמצאו שורות תקינות — ודא שיש עמודת תיאור, עמודת מחיר יחידה וכותרות (כמות / מחיר / סכום) בקובץ'};
+  if(!rows.length)return {ok:false};
   var categories=[],seenCat={};
   rows.forEach(function(x){if(x.category&&!seenCat[x.category]){seenCat[x.category]=1;categories.push(x.category);}});
   return {ok:true,rows:rows,categories:categories};
+}
+// Scans EVERY sheet in the workbook (budget files often keep the pricing on a later sheet)
+// and returns all sheets that hold real budget lines, best (most lines) first.
+function parseBudgetExcelWorkbook(arrayBuffer){
+  if(typeof XLSX==='undefined')return {ok:false,message:'ספריית Excel לא נטענה — רענן את העמוד'};
+  var wb=XLSX.read(arrayBuffer,{type:'array',cellFormula:true,cellDates:false});
+  if(!wb.SheetNames||!wb.SheetNames.length)return {ok:false,message:'הקובץ ריק או לא תקין'};
+  var sheets=[];
+  wb.SheetNames.forEach(function(name){
+    var parsed=parseBudgetExcelSheet(wb.Sheets[name]);
+    if(parsed.ok)sheets.push({name:name,rows:parsed.rows,categories:parsed.categories});
+  });
+  if(!sheets.length)return {ok:false,message:'לא נמצאו שורות תקינות באף גיליון — ודא שיש עמודת תיאור, עמודת מחיר יחידה וכותרות (כמות / מחיר / סכום) בקובץ'};
+  sheets.sort(function(a,b){return b.rows.length-a.rows.length;});
+  return {ok:true,sheets:sheets};
 }
 function populateBudgetExcelCategorySelect(){
   var sel=document.getElementById('budget-excel-category');
@@ -6219,6 +6238,34 @@ function onBudgetExcelUseFileCatsToggle(){
   if(catTh)catTh.style.display=useFile?'':'none';
   renderBudgetExcelPreview();
 }
+function updateBudgetExcelSheetUI(){
+  var wrap=document.getElementById('budget-excel-sheet-wrap');
+  var sel=document.getElementById('budget-excel-sheet');
+  var hint=document.getElementById('budget-excel-sheet-hint');
+  if(!wrap||!sel)return;
+  if(!budgetExcelSheets.length){wrap.style.display='none';sel.innerHTML='';if(hint)hint.textContent='';return;}
+  wrap.style.display=budgetExcelSheets.length>1?'block':'none';
+  sel.innerHTML=budgetExcelSheets.map(function(s){
+    return '<option value="'+escHtml(s.name)+'"'+(s.name===budgetExcelSheetName?' selected':'')+'>'+escHtml(s.name)+' — '+s.rows.length+' פריטים</option>';
+  }).join('');
+  if(hint)hint.textContent=budgetExcelSheets.length>1?('נמצאו '+budgetExcelSheets.length+' גיליונות עם נתונים — נבחר אוטומטית "'+budgetExcelSheetName+'". אפשר להחליף.'):'';
+}
+function applyBudgetExcelSheet(name){
+  var s=null;
+  for(var i=0;i<budgetExcelSheets.length;i++){if(budgetExcelSheets[i].name===name){s=budgetExcelSheets[i];break;}}
+  if(!s)s=budgetExcelSheets[0];
+  if(!s)return;
+  budgetExcelSheetName=s.name;
+  budgetExcelImportRows=s.rows;
+  budgetExcelImportCategories=s.categories||[];
+  updateBudgetExcelSheetUI();
+  updateBudgetExcelCategoriesUI();
+  renderBudgetExcelPreview();
+}
+function onBudgetExcelSheetChange(){
+  var sel=document.getElementById('budget-excel-sheet');
+  if(sel)applyBudgetExcelSheet(sel.value);
+}
 function setBudgetExcelFileError(msg){
   var el=document.getElementById('budget-excel-file-error');
   if(!el)return;
@@ -6245,11 +6292,14 @@ async function openBudgetExcelImportModal(){
   }
   budgetExcelImportRows=[];
   budgetExcelImportCategories=[];
+  budgetExcelSheets=[];
+  budgetExcelSheetName='';
   var fileInput=document.getElementById('budget-excel-file');
   if(fileInput)fileInput.value='';
   setBudgetExcelFileError('');
   setBudgetExcelLoading(false);
   populateBudgetExcelCategorySelect();
+  updateBudgetExcelSheetUI();
   updateBudgetExcelCategoriesUI();
   renderBudgetExcelPreview();
   openModal('modal-budget-excel-import');
@@ -6259,6 +6309,8 @@ function closeBudgetExcelImportModal(){
   closeModal('modal-budget-excel-import');
   budgetExcelImportRows=[];
   budgetExcelImportCategories=[];
+  budgetExcelSheets=[];
+  budgetExcelSheetName='';
   var fileInput=document.getElementById('budget-excel-file');
   if(fileInput)fileInput.value='';
   setBudgetExcelFileError('');
@@ -6267,13 +6319,18 @@ function onBudgetExcelFileSelected(event){
   var file=event.target.files&&event.target.files[0];
   budgetExcelImportRows=[];
   budgetExcelImportCategories=[];
+  budgetExcelSheets=[];
+  budgetExcelSheetName='';
   setBudgetExcelFileError('');
   setBudgetExcelLoading(false);
+  updateBudgetExcelSheetUI();
   updateBudgetExcelCategoriesUI();
   renderBudgetExcelPreview();
   if(!file)return;
-  if(!/\.xlsx$/i.test(file.name)&&file.type!=='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'){
-    setBudgetExcelFileError('יש להעלות קובץ .xlsx בלבד');
+  var isExcelName=/\.(xlsx|xls|xlsm)$/i.test(file.name);
+  var isExcelType=file.type==='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'||file.type==='application/vnd.ms-excel';
+  if(!isExcelName&&!isExcelType){
+    setBudgetExcelFileError('יש להעלות קובץ Excel (.xlsx או .xls)');
     event.target.value='';
     return;
   }
@@ -6292,12 +6349,11 @@ function onBudgetExcelFileSelected(event){
         setBudgetExcelFileError(parsed.message);
         return;
       }
-      budgetExcelImportRows=parsed.rows;
-      budgetExcelImportCategories=parsed.categories||[];
-      updateBudgetExcelCategoriesUI();
-      renderBudgetExcelPreview();
+      budgetExcelSheets=parsed.sheets;
+      applyBudgetExcelSheet(parsed.sheets[0].name);
       var catMsg=budgetExcelImportCategories.length>1?(' · '+budgetExcelImportCategories.length+' קטגוריות'):'';
-      showToast('נמצאו '+parsed.rows.length+' פריטים לייבוא'+catMsg,'success');
+      var sheetMsg=budgetExcelSheets.length>1?(' · גיליון "'+budgetExcelSheetName+'"'):'';
+      showToast('נמצאו '+budgetExcelImportRows.length+' פריטים לייבוא'+catMsg+sheetMsg,'success');
     }catch(err){
       console.error('parseBudgetExcelWorkbook',err);
       setBudgetExcelFileError('שגיאה בקריאת הקובץ — ודא שזה קובץ Excel תקין');
@@ -9822,7 +9878,7 @@ Object.assign(window,{
   handleBlueprintUpload,openNewPunchModal,openPunchItemView,onBlueprintImageClick,savePunchItem,retryPunchPhotoUpload,markPunchFixed,onPunchFilterChange,
   openDailyLogForm,cancelDailyLogForm,saveDailyLog,onDailyLogFilterChange,onActivityLogFilterChange,
   startNewBudgetDraft,openBudgetEdit,duplicateBudget,saveBudgetBuilder,deleteBudget,backToBudgetList,
-  openBudgetExcelImportModal,closeBudgetExcelImportModal,confirmBudgetExcelImport,onBudgetExcelFileSelected,onBudgetExcelUseFileCatsToggle,
+  openBudgetExcelImportModal,closeBudgetExcelImportModal,confirmBudgetExcelImport,onBudgetExcelFileSelected,onBudgetExcelUseFileCatsToggle,onBudgetExcelSheetChange,
   openApproveBudgetModal,confirmApproveBudget,onApproveBudgetProjectChange,
   addBudgetItemToCategory,removeBudgetItem,onBudgetDraftFieldChange,onBudgetItemFieldChange,
   onBudgetAddCategoryClick,addBudgetCustomCategory,onBudgetItemContactChange,
