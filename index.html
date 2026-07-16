@@ -3864,17 +3864,35 @@ async function renderMilestonesScreen(el){
   var pending=list.filter(function(m){return m.status==='pending';});
   var done=list.filter(function(m){return m.status==='done';});
   var addBtn=isAdmin()?'<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddMilestoneModal()">'+ic('plus')+' אבן דרך חדשה</button>':'';
+  var seedBtn=isAdmin()?'<button type="button" class="btn btn-outline btn-sm admin-only-action" onclick="seedDefaultMilestonesForCurrentProject()">'+ic('list-plus')+' הוסף תזכורות סטנדרטיות</button>':'';
   el.innerHTML='<div class="page-header flex-between responsive-stack"><div><h1>🚩 אבני דרך — '+escHtml(proj.name)+'</h1><p>'+pending.length+' ממתינות · '+done.length+' הושלמו</p></div>'+
-    (addBtn?'<div class="flex-gap">'+addBtn+'</div>':'')+
+    (addBtn?'<div class="flex-gap">'+seedBtn+addBtn+'</div>':'')+
     '</div>'+
     (isAdmin()?'<button type="button" class="back-btn admin-only-action" onclick="showView(\'project\',\''+proj.id+'\')">← חזרה לפרויקט</button>':'')+
     (!loaded.ok?'<div class="card" style="margin-bottom:16px;padding:14px;background:#fef2f2;color:var(--danger);font-size:13px">שגיאה בטעינה: '+escHtml(formatSupabaseErrorHint(loaded.error||'שגיאה'))+'</div>':'')+
     (list.length?'<div class="milestones-list">'+list.map(renderMilestoneItemHtml).join('')+'</div>':
-    '<div class="empty-state card"><div class="empty-icon">'+ic('flag')+'</div><p>אין אבני דרך לפרויקט זה</p>'+
-    (isAdmin()?'<button type="button" class="btn btn-primary admin-only-action" style="margin-top:16px" onclick="openAddMilestoneModal()">'+ic('plus')+' הוסף אבן דרך</button>':'')+
+    '<div class="empty-state card"><div class="empty-icon">'+ic('flag')+'</div><p>אין תזכורות לפרויקט זה עדיין</p>'+
+    (isAdmin()?'<div class="flex-gap" style="margin-top:16px;justify-content:center;flex-wrap:wrap">'+
+      '<button type="button" class="btn btn-primary admin-only-action" style="width:auto" onclick="seedDefaultMilestonesForCurrentProject()">'+ic('list-plus')+' הוסף '+DEFAULT_PROJECT_MILESTONES.length+' תזכורות סטנדרטיות</button>'+
+      '<button type="button" class="btn btn-outline admin-only-action" onclick="openAddMilestoneModal()">'+ic('plus')+' תזכורת בודדת</button>'+
+    '</div>':'')+
     '</div>');
   refreshIcons(el);
   updateMilestoneAlertBanner();
+}
+// Adds the standard project reminders to an existing project (new projects get them automatically).
+async function seedDefaultMilestonesForCurrentProject(){
+  if(!requireAdmin()||!requireProjectAccess())return;
+  var proj=getCurrentProject();if(!proj)return;
+  var n=DEFAULT_PROJECT_MILESTONES.length;
+  if(!confirm('להוסיף '+n+' תזכורות סטנדרטיות לפרויקט "'+proj.name+'"?\n\nהתאריכים ייקבעו לפי לוח הזמנים של הפרויקט — תוכל לשנות כל אחת אחר כך.'))return;
+  showToast('מוסיף תזכורות...');
+  var res=await seedDefaultMilestones(proj.id,proj.start,proj.end);
+  if(!res||!res.ok){showToast('שגיאה: '+formatSupabaseErrorHint((res&&res.error)||'שגיאה'),'error');return;}
+  logActivity('הוספת תזכורות סטנדרטיות','פרויקט: '+proj.name+' · '+n+' תזכורות');
+  await persistActivityLogOnly();
+  showToast('✓ נוספו '+n+' תזכורות');
+  await renderMilestonesScreen(document.getElementById('main-content'));
 }
 function openAddMilestoneModal(){
   if(!requireAdmin()||!requireProjectAccess())return;
@@ -9732,7 +9750,7 @@ Object.assign(window,{
   addSpecialtySetting,removeSpecialtySetting,
   openAddPaymentModal,openEditPaymentModal,savePayment,deletePayment,openPaymentReceipt,onPaymentFilterChange,exportPaymentsCsv,
   openAddPhaseModal,openEditPhaseModal,savePhase,deletePhase,deletePhaseFromModal,saveOverallProgress,
-  openAddMilestoneModal,openEditMilestoneModal,saveMilestone,deleteMilestone,markMilestoneDone,goToMilestonesView,
+  openAddMilestoneModal,openEditMilestoneModal,saveMilestone,deleteMilestone,markMilestoneDone,goToMilestonesView,seedDefaultMilestonesForCurrentProject,
   openAddFinishSelectionModal,openEditFinishSelectionModal,saveFinishSelection,deleteFinishSelection,markFinishSelectionDone,saveFinishSelectionNotes,onFinishCategoryFilterChange,
   openAddPriceCategoryModal,savePriceCategory,onPriceCategoryFilterChange,
   openAddPriceOfferModal,openEditPriceOfferModal,savePriceOffer,deletePriceOffer,updatePriceOfferTotalPreview,openPriceOfferPdf,
