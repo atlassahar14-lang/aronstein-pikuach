@@ -1179,6 +1179,12 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="form-group"><label>סטטוס</label><select id="milestone-status"><option value="pending">ממתין</option><option value="done">הושלם</option></select></div>
       <div class="form-group"><label>התראה מראש (ימים)</label><input type="number" id="milestone-alert-days" min="0" max="365" value="14"/></div>
     </div>
+    <div class="form-group">
+      <label>צירוף קובץ (אופציונלי)</label>
+      <div id="milestone-file-current" style="margin-bottom:8px"></div>
+      <input type="file" id="milestone-file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.dwg,application/pdf"/>
+      <p class="upload-hint">הקובץ יישמר על התזכורת <strong>וגם יתווסף אוטומטית למסמכי הפרויקט תחת "היתרים"</strong> · עד 50MB</p>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-milestone')">ביטול</button>
       <button class="btn btn-primary admin-only-action" style="width:auto" onclick="saveMilestone()">שמור</button>
@@ -3699,7 +3705,10 @@ function mapMilestoneRow(r){
     dueDate:r.due_date,
     status:r.status||'pending',
     priority:r.priority||'medium',
-    alertDaysBefore:r.alert_days_before!=null?Number(r.alert_days_before):14
+    alertDaysBefore:r.alert_days_before!=null?Number(r.alert_days_before):14,
+    fileUrl:r.file_url||'',
+    fileName:r.file_name||'',
+    filePath:r.file_path||''
   };
 }
 async function refreshMilestonesCache(){
@@ -3832,6 +3841,7 @@ function renderMilestoneItemHtml(m){
     '<div class="milestone-meta">'+
     '<span><strong>תאריך יעד:</strong> '+escHtml(formatMilestoneDueLabel(m))+'</span>'+
     '<span><strong>התראה:</strong> '+m.alertDaysBefore+' ימים לפני</span>'+
+    (m.fileUrl?'<span><a href="'+escHtml(m.fileUrl)+'" target="_blank" rel="noopener noreferrer" style="color:var(--primary);font-weight:700;text-decoration:underline">📎 '+escHtml(m.fileName||'קובץ מצורף')+'</a></span>':'')+
     '</div>'+
     '<div class="milestone-actions">'+
     (!done?'<button type="button" class="btn btn-accent btn-sm" onclick="markMilestoneDone(\''+m.id+'\')">'+ic('circle-check')+' סמן כהושלם</button>':'')+
@@ -3904,7 +3914,20 @@ function openAddMilestoneModal(){
   document.getElementById('milestone-priority').value='high';
   document.getElementById('milestone-status').value='pending';
   document.getElementById('milestone-alert-days').value='14';
+  resetMilestoneFileField(null);
   openModal('modal-milestone');
+}
+function resetMilestoneFileField(m){
+  var input=document.getElementById('milestone-file');
+  if(input)input.value='';
+  var cur=document.getElementById('milestone-file-current');
+  if(!cur)return;
+  if(m&&m.fileUrl){
+    cur.innerHTML='<a href="'+escHtml(m.fileUrl)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">'+
+      ic('paperclip')+' '+escHtml(m.fileName||'קובץ מצורף')+'</a>'+
+      '<span style="font-size:12px;color:var(--text-muted);margin-inline-start:8px">בחירת קובץ חדש תחליף אותו</span>';
+    refreshIcons(cur);
+  }else cur.innerHTML='';
 }
 function openEditMilestoneModal(id){
   if(!requireAdmin()||!requireProjectAccess())return;
@@ -3918,6 +3941,7 @@ function openEditMilestoneModal(id){
   document.getElementById('milestone-priority').value=m.priority||'medium';
   document.getElementById('milestone-status').value=m.status||'pending';
   document.getElementById('milestone-alert-days').value=String(m.alertDaysBefore!=null?m.alertDaysBefore:14);
+  resetMilestoneFileField(m);
   openModal('modal-milestone');
 }
 async function saveMilestone(){
@@ -3939,6 +3963,33 @@ async function saveMilestone(){
     priority:document.getElementById('milestone-priority').value||'medium',
     alert_days_before:Math.max(0,Number(document.getElementById('milestone-alert-days').value)||14)
   };
+  // Optional attachment: upload it, keep it on the milestone, and also file it under "היתרים" in the project docs.
+  var fileInput=document.getElementById('milestone-file');
+  var file=fileInput&&fileInput.files&&fileInput.files[0]?fileInput.files[0]:null;
+  if(file){
+    var check=validateUploadFile(file,{allowPdf:true});
+    if(!check.ok){showToast(check.message,'error');return;}
+    showToast('מעלה קובץ...');
+    var up=await uploadMediaFile('milestones/'+proj.id+'/ms'+Date.now(),file);
+    if(!up.ok){showToast('שגיאה בהעלאת הקובץ: '+formatSupabaseErrorHint(up.error),'error');return;}
+    row.file_url=up.data.url;
+    row.file_name=up.data.name||file.name;
+    row.file_path=up.data.path;
+    var pdata=getData();var pproj=getCurrentProject();
+    if(pproj){
+      if(!pproj.documents)pproj.documents=[];
+      pproj.documents.push({
+        id:'d'+Date.now(),
+        name:title+' — '+(up.data.name||file.name),
+        category:'היתרים',
+        date:new Date().toLocaleDateString('he-IL'),
+        url:up.data.url,
+        path:up.data.path,
+        type:up.data.type
+      });
+      await saveData(pdata);
+    }
+  }
   var res;
   if(editingMilestoneId)res=await supabase.from('milestones').update(row).eq('id',editingMilestoneId);
   else res=await supabase.from('milestones').insert(row);
