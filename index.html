@@ -1035,12 +1035,14 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="form-group"><label>טלפון</label><input type="tel" id="proj-client-phone" placeholder="050-0000000" dir="ltr" style="text-align:left"/></div>
     </div>
     <div class="form-group"><label>תיאור</label><textarea id="proj-desc" placeholder="תיאור קצר"></textarea></div>
+    <div class="form-group"><label>אדריכל — בחר מקבלני משנה (או הקלד ידנית)</label><select id="proj-architect-pick" onchange="onProjectPersonPick('architect')"></select></div>
     <div class="grid-2">
-      <div class="form-group"><label>אדריכל</label><input type="text" id="proj-architect" placeholder="שם האדריכל"/></div>
+      <div class="form-group"><label>שם האדריכל</label><input type="text" id="proj-architect" placeholder="שם האדריכל"/></div>
       <div class="form-group"><label>טלפון אדריכל</label><input type="tel" id="proj-architect-phone" placeholder="050-0000000" dir="ltr" style="text-align:left"/></div>
     </div>
+    <div class="form-group"><label>קונסטרוקטור — בחר מקבלני משנה (או הקלד ידנית)</label><select id="proj-constructor-pick" onchange="onProjectPersonPick('constructor')"></select></div>
     <div class="grid-2">
-      <div class="form-group"><label>קונסטרוקטור</label><input type="text" id="proj-constructor" placeholder="שם הקונסטרוקטור"/></div>
+      <div class="form-group"><label>שם הקונסטרוקטור</label><input type="text" id="proj-constructor" placeholder="שם הקונסטרוקטור"/></div>
       <div class="form-group"><label>טלפון קונסטרוקטור</label><input type="tel" id="proj-constructor-phone" placeholder="050-0000000" dir="ltr" style="text-align:left"/></div>
     </div>
     <div class="grid-2">
@@ -9141,9 +9143,33 @@ function openNewProjectModal(){
   document.getElementById('modal-proj-title').textContent='פרויקט חדש';
   ['proj-name','proj-addr','proj-house','proj-client-name','proj-client-phone','proj-desc','proj-architect','proj-architect-phone','proj-constructor','proj-constructor-phone','proj-start','proj-end','proj-built','proj-property','proj-budget'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('proj-status').value='active';
+  populateProjectPersonPickers();
   populateProjectClientVisibilityForm(DEFAULT_CLIENT_VISIBILITY);
   openModal('modal-project');
   refreshIcons(document.getElementById('modal-project'));
+}
+function populateProjectPersonPickers(){
+  ['proj-architect-pick','proj-constructor-pick'].forEach(function(selId){
+    var sel=document.getElementById(selId);if(!sel)return;
+    var opts='<option value="">— בחר איש קשר / הקלד ידנית למטה —</option>';
+    (subcontractorsCache||[]).slice().sort(function(a,b){return (a.companyName||'').localeCompare(b.companyName||'','he');}).forEach(function(s){
+      var label=(s.companyName||'')+(s.specialty?' · '+s.specialty:'')+(s.phone?' · '+s.phone:'');
+      opts+='<option value="'+escHtml(s.id)+'">'+escHtml(label)+'</option>';
+    });
+    sel.innerHTML=opts;sel.value='';
+  });
+  if((subcontractorsCache||[]).length===0){
+    refreshSubcontractors().then(function(){ if(document.getElementById('modal-project'))populateProjectPersonPickers(); });
+  }
+}
+function onProjectPersonPick(which){
+  var sel=document.getElementById('proj-'+which+'-pick');if(!sel)return;
+  var s=(subcontractorsCache||[]).find(function(x){return x.id===sel.value;});
+  if(!s)return;
+  var nameField=document.getElementById('proj-'+which);
+  var phoneField=document.getElementById('proj-'+which+'-phone');
+  if(nameField)nameField.value=s.companyName||s.contactName||'';
+  if(phoneField)phoneField.value=s.phone||'';
 }
 async function openEditProjectModal(id){
   if(!requireAdmin())return;
@@ -9176,6 +9202,7 @@ async function openEditProjectModal(id){
     document.getElementById('proj-client-name').value=p.clientName||'';
     document.getElementById('proj-client-phone').value=p.clientPhone||'';
   }
+  populateProjectPersonPickers();
   populateProjectClientVisibilityForm(getProjectClientVisibility(p));
   openModal('modal-project');
   refreshIcons(document.getElementById('modal-project'));
@@ -9866,7 +9893,7 @@ Object.assign(window,{
   doLogin,doLogout,showForgotPassword,showLoginForm,submitForgotPassword,
   saveUser,deleteUser,changeAdminPass,sendAdminResetEmail,resetData,
   showView,switchTab,openModal,closeModal,toggleMobileSidebar,closeMobileSidebar,toggleMobileTabMenu,closeMobileTabMenu,exportProjectOverviewPdf,
-  openNewProjectModal,openEditProjectModal,saveProject,confirmDeleteProject,closeDeleteProjectModal,executeDeleteProject,openAddUserModal,
+  openNewProjectModal,openEditProjectModal,saveProject,confirmDeleteProject,closeDeleteProjectModal,executeDeleteProject,openAddUserModal,onProjectPersonPick,
   openAddSubcontractorModal,openEditSubcontractorModal,saveSubcontractor,deleteSubcontractor,openSubcontractorPdf,onSubcontractorSpecialtyFilterChange,
   openSuppliersModal,onSupplierSubcontractorPick,saveSupplier,resetSupplierForm,editSupplierInline,deleteSupplier,exportSuppliersPdf,
   addSpecialtySetting,removeSpecialtySetting,
