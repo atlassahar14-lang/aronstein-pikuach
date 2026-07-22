@@ -1475,7 +1475,7 @@ const UPLOAD_VIDEO_EXTS=['mp4','mov'];
 const UPLOAD_ACCEPT_IMAGES='.jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic';
 const UPLOAD_ACCEPT_RECEIPT=UPLOAD_ACCEPT_IMAGES+',.pdf,application/pdf';
 const UPLOAD_ACCEPT_UPDATE=UPLOAD_ACCEPT_RECEIPT+',.mp4,.mov,video/mp4,video/quicktime';
-const DEFAULT_SUBCONTRACTOR_SPECIALTIES=['שלד ובטון','טיח וריצוף','חשמל','אינסטלציה וצנרת','גבס ותקרות','איטום וחוץ','מסגרות ואלומיניום','עיצוב פנים','ניהול פרויקט','יועץ קרקע','אדריכל','קונסטרוקטור','גז','מזגנים','אחר'];
+const DEFAULT_SUBCONTRACTOR_SPECIALTIES=['שלד ובטון','טיח וריצוף','חשמל','אינסטלציה וצנרת','גבס ותקרות','איטום וחוץ','מסגרות ואלומיניום','עיצוב פנים','ניהול פרויקט','יועץ קרקע','אדריכל','קונסטרוקטור','גז','מזגנים','שיש','נגרות','איש מקלחות','אחר'];
 var loginLockTimer=null;
 var filePreviewUrls={};
 
@@ -8509,7 +8509,7 @@ function compareSubcontractorCompanyName(a,b){
 }
 function getSubcontractorSpecialtyOptions(){
   var base=getSpecialtiesList().slice();
-  var extra=['יועץ קרקע','אדריכל','קונסטרוקטור','גז','מזגנים'];
+  var extra=['יועץ קרקע','אדריכל','קונסטרוקטור','גז','מזגנים','שיש','נגרות','איש מקלחות'];
   var hasOther=base.indexOf('אחר')>=0;
   var out=base.filter(function(s){return s!=='אחר';});
   extra.forEach(function(e){ if(out.indexOf(e)<0)out.push(e); });
