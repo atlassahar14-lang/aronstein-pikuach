@@ -1244,7 +1244,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <div class="form-group"><label>כולל פינוי פסולת</label><select id="price-offer-includes-waste"><option value="no">לא</option><option value="yes">כן</option></select></div>
     </div>
     <div class="form-group"><label>הערות</label><textarea id="price-offer-notes" placeholder="הערות להצעה"></textarea></div>
-    <div class="form-group"><label>העלאת הצעת מחיר (PDF)</label><label class="upload-label"><i data-lucide="file-text"></i> בחר קובץ PDF<input type="file" id="price-offer-pdf" accept=".pdf,application/pdf"/></label><p class="upload-hint">PDF עד 50MB</p><div id="price-offer-pdf-preview" class="file-preview"></div><div id="price-offer-pdf-existing" class="file-preview-existing"></div><div id="price-offer-pdf-upload-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span id="price-offer-pdf-upload-text">מעלה PDF...</span></div><div id="price-offer-pdf-upload-error" class="upload-error"></div></div>
+    <div class="form-group"><label>העלאת הצעת מחיר (PDF / Excel)</label><label class="upload-label"><i data-lucide="file-text"></i> בחר קובץ<input type="file" id="price-offer-pdf" accept=".pdf,application/pdf,.xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"/></label><p class="upload-hint">PDF או Excel · עד 50MB</p><div id="price-offer-pdf-preview" class="file-preview"></div><div id="price-offer-pdf-existing" class="file-preview-existing"></div><div id="price-offer-pdf-upload-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span id="price-offer-pdf-upload-text">מעלה קובץ...</span></div><div id="price-offer-pdf-upload-error" class="upload-error"></div></div>
     <div class="price-offer-total-preview" id="price-offer-total-preview">סה"כ משוער: ₪0</div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-price-offer')">ביטול</button>
@@ -2099,7 +2099,7 @@ function resetPriceOfferPdfForm(existingOffer){
   setPriceOfferPdfUploadUi(false);
   var existingEl=document.getElementById('price-offer-pdf-existing');
   if(existingEl){
-    if(existingOffer&&existingOffer.offerPdfUrl)existingEl.innerHTML='קובץ PDF קיים: '+escHtml(existingOffer.contractorName||'הצעה');
+    if(existingOffer&&existingOffer.offerPdfUrl)existingEl.innerHTML='קובץ קיים: '+escHtml(existingOffer.contractorName||'הצעה');
     else existingEl.innerHTML='';
   }
 }
@@ -2118,12 +2118,17 @@ function validatePriceOfferPdfFile(file){
   if(!file)return {ok:false,message:'לא נבחר קובץ'};
   if(file.size>UPLOAD_MAX_BYTES)return {ok:false,message:'הקובץ גדול מדי — גודל מקסימלי 50MB'};
   var ext=resolveUploadFileExtension(file);
-  if(ext!=='pdf'&&file.type!=='application/pdf')return {ok:false,message:'נא לבחור קובץ PDF בלבד'};
+  var okExts=['pdf','xls','xlsx','csv'];
+  var okType=file.type==='application/pdf'||/(excel|spreadsheet|csv)/i.test(file.type||'');
+  if(okExts.indexOf(ext)<0&&!okType)return {ok:false,message:'נא לבחור קובץ PDF או Excel (xls / xlsx / csv)'};
   return {ok:true};
 }
 async function uploadPriceOfferPdfFile(projectId,offerId,file){
-  var path=projectId+'/'+offerId+'-'+Date.now()+'.pdf';
-  var res=await supabase.storage.from(PRICE_OFFERS_BUCKET).upload(path,file,{cacheControl:'3600',upsert:false,contentType:'application/pdf'});
+  var ext=resolveUploadFileExtension(file)||'pdf';
+  var path=projectId+'/'+offerId+'-'+Date.now()+'.'+ext;
+  var opts={cacheControl:'3600',upsert:false};
+  if(file.type)opts.contentType=file.type;
+  var res=await supabase.storage.from(PRICE_OFFERS_BUCKET).upload(path,file,opts);
   if(res.error)return {ok:false,error:res.error.message};
   return {ok:true,data:{path:path,name:file.name}};
 }
