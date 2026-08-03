@@ -1475,7 +1475,7 @@ const UPLOAD_VIDEO_EXTS=['mp4','mov'];
 const UPLOAD_ACCEPT_IMAGES='.jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic';
 const UPLOAD_ACCEPT_RECEIPT=UPLOAD_ACCEPT_IMAGES+',.pdf,application/pdf';
 const UPLOAD_ACCEPT_UPDATE=UPLOAD_ACCEPT_RECEIPT+',.mp4,.mov,video/mp4,video/quicktime';
-const DEFAULT_SUBCONTRACTOR_SPECIALTIES=['שלד ובטון','טיח','ריצוף','חשמל','אינסטלציה וצנרת','גבס ותקרות','איטום וחוץ','מסגרות ואלומיניום','עיצוב פנים','ניהול פרויקט','יועץ קרקע','אדריכל','קונסטרוקטור','גז','מזגנים','שיש','נגרות','איש מקלחות','אחר'];
+const DEFAULT_SUBCONTRACTOR_SPECIALTIES=['שלד ובטון','טיח','ריצוף','חשמל','אינסטלציה וצנרת','גבס ותקרות + צבע','איטום וחוץ','מסגרות ואלומיניום','עיצוב פנים','ניהול פרויקט','יועץ קרקע','אדריכל','קונסטרוקטור','גז','מזגנים','שיש','נגרות','איש מקלחות','אחר'];
 var loginLockTimer=null;
 var filePreviewUrls={};
 
@@ -8521,6 +8521,7 @@ function getSubcontractorSpecialtyOptions(){
   base.forEach(function(s){
     if(s==='אחר')return;
     if(s==='טיח וריצוף'){ out.push('טיח'); out.push('ריצוף'); return; } // split legacy combined specialty
+    if(s==='גבס ותקרות'){ out.push('גבס ותקרות + צבע'); return; } // gypsum now also covers paint
     out.push(s);
   });
   extra.forEach(function(e){ out.push(e); });
