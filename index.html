@@ -1403,7 +1403,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <div class="modal-overlay" id="modal-approve-budget">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">אישור תקציב והעברה לפרויקט</div><button class="modal-close" onclick="closeModal('modal-approve-budget')"><i data-lucide="x"></i></button></div>
-    <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px;line-height:1.5">אישור התקציב מעביר את הסכום הכולל (כולל מע"מ) לתקציב הפרויקט שתבחר. כל החישובים הכספיים בפרויקט (תשלומים מול תקציב, אחוז ניצול, חריגה) יתבססו על הסכום הזה. התקציב עצמו נשאר זמין לעריכה.</p>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px;line-height:1.5">אישור התקציב מעביר את הסכום (ללא מע"מ) לתקציב הפרויקט שתבחר. כל החישובים הכספיים בפרויקט (תשלומים מול תקציב, אחוז ניצול, חריגה) יתבססו על הסכום הזה. התקציב עצמו נשאר זמין לעריכה.</p>
     <div class="form-group">
       <label>תקציב</label>
       <div id="approve-budget-name" style="font-weight:600;color:var(--primary)"></div>
@@ -2647,7 +2647,7 @@ const BUDGET_DEFAULT_UNIT='יחידה';
 const GALLERY_STAGES=['כללי','חפירות ויסודות','שלד ובטון','טיח וריצוף','חשמל ואינסטלציה','גמר וסיום'];
 // שלב גלריה: app_data.projects[].galleryPosts[].stage (JSON — אין טבלה נפרדת)
 const GALLERY_DEFAULT_STAGE='כללי';
-const VAT_RATE=0.17;
+const VAT_RATE=0; // מע"מ מבוטל — כל התקציבים והזרימות (פרויקט, מעקב תשלומים, ניתוח כספי) ללא מע"מ
 const DEFAULT_CLIENT_VISIBILITY={
   budget:true,
   timeline:true,
@@ -4458,7 +4458,7 @@ function updatePriceOfferTotalPreview(){
   var labor=document.getElementById('price-offer-labor-cost').value;
   var includesVat=document.getElementById('price-offer-includes-vat').value==='yes';
   var total=calcOfferTotalPrice(material,labor,includesVat);
-  el.textContent='סה"כ משוער: '+fmtMoney(total)+(includesVat?' (כולל מע"מ)':' (לפני מע"מ — נוסף '+Math.round(VAT_RATE*100)+'%)');
+  el.textContent='סה"כ משוער: '+fmtMoney(total)+' (ללא מע"מ)';
 }
 function getPriceOffersForProject(projectId){
   return priceOffersCache.filter(function(o){return o.projectId===projectId;});
@@ -5841,7 +5841,7 @@ function renderBudgetDonutChartHtml(items,marginPercent,categoryOrder){
   return '<div class="budget-donut-wrap">'+
     '<div class="budget-donut-chart">'+
     '<svg viewBox="0 0 '+size+' '+size+'" width="'+size+'" height="'+size+'" role="img" aria-label="גרף חלוקת תקציב לפי קטגוריות">'+slices+
-    '<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" class="budget-donut-center-label">סה"כ כולל מע"מ</text>'+
+    '<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" class="budget-donut-center-label">סה"כ (ללא מע"מ)</text>'+
     '<text x="'+cx+'" y="'+(cy+14)+'" text-anchor="middle" class="budget-donut-center-value">'+escHtml(fmtMoney(data.total))+'</text>'+
     '</svg></div>'+
     '<div class="budget-donut-legend">'+legend+'</div></div>';
@@ -6579,9 +6579,7 @@ function renderBudgetBuilderEditorHtml(){
     '<div class="form-group" style="margin-top:20px"><label for="budget-notes">הערות (אופציונלי)</label>'+
     '<textarea id="budget-notes" placeholder="הערות שיופיעו בהצעה..." oninput="onBudgetDraftFieldChange(\'notes\',this.value)">'+escHtml(d.notes)+'</textarea></div>'+
     '<div class="budget-summary-box">'+
-    '<div class="budget-summary-row"><span>סה"כ לפני מע"מ</span><strong id="budget-before-vat">'+fmtMoney(totals.beforeVat)+'</strong></div>'+
-    '<div class="budget-summary-row"><span>מע"מ (17%)</span><strong id="budget-vat">'+fmtMoney(totals.vat)+'</strong></div>'+
-    '<div class="budget-summary-row total"><span>סה"כ כולל מע"מ</span><strong id="budget-grand-total">'+fmtMoney(totals.total)+'</strong></div>'+
+    '<div class="budget-summary-row total"><span>סה"כ (ללא מע"מ)</span><strong id="budget-grand-total">'+fmtMoney(totals.total)+'</strong></div>'+
     '<div id="budget-category-donut">'+renderBudgetDonutChartHtml(d.items,d.marginPercent,cats)+'</div></div></div></div>';
 }
 function renderBudgetBuilderListHtml(budgets,loadedOk){
@@ -6606,7 +6604,7 @@ function renderBudgetBuilderListHtml(budgets,loadedOk){
       '<div class="budget-builder-card-meta">'+
       '<span>'+ic('map-pin')+' '+escHtml(b.projectAddress||'—')+'</span>'+
       '<span>'+ic('calendar')+' '+formatSubcontractorDate(b.budgetDate)+'</span>'+
-      '<span>'+ic('banknote')+' '+fmtMoney(t.total)+' כולל מע"מ</span>'+
+      '<span>'+ic('banknote')+' '+fmtMoney(t.total)+' (ללא מע"מ)</span>'+
       '<span>'+items.length+' פריטים</span>'+approvedBadge+'</div></div>'+
       '<div class="flex-gap">'+
       '<button type="button" class="btn btn-success btn-sm" onclick="openApproveBudgetModal(\''+b.id+'\')">'+ic('circle-check')+' '+(linkedProj?'עדכן בפרויקט':'אישור תקציב')+'</button>'+
@@ -6632,7 +6630,7 @@ async function openApproveBudgetModal(budgetId){
   var t=calcBudgetTotals(getBudgetItems(budgetId),b.marginPercent);
   approveBudgetContext={budgetId:budgetId,total:t.total,beforeVat:t.beforeVat,name:b.clientName||b.title||'תקציב'};
   document.getElementById('approve-budget-name').textContent=approveBudgetContext.name+(b.projectAddress?' · '+b.projectAddress:'');
-  document.getElementById('approve-budget-amount').textContent=fmtMoney(t.total)+' כולל מע"מ  ('+fmtMoney(t.beforeVat)+' לפני מע"מ)';
+  document.getElementById('approve-budget-amount').textContent=fmtMoney(t.total)+' (ללא מע"מ)';
   var projects=(appDataCache&&appDataCache.projects)||[];
   var sel=document.getElementById('approve-budget-project');
   if(!projects.length){
@@ -6832,9 +6830,7 @@ function renderBudgetClientBodyHtml(budget,items){
     (tableRows||'<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">אין פריטים</td></tr>')+
     '</tbody></table></div>'+
     '<div class="budget-client-totals">'+
-    '<div class="budget-summary-row"><span>סה"כ לפני מע"מ</span><strong>'+fmtMoney(t.beforeVat)+'</strong></div>'+
-    '<div class="budget-summary-row"><span>מע"מ (17%)</span><strong>'+fmtMoney(t.vat)+'</strong></div>'+
-    '<div class="budget-summary-row total"><span>סה"כ כולל מע"מ</span><strong>'+fmtMoney(t.total)+'</strong></div></div>'+
+    '<div class="budget-summary-row total"><span>סה"כ (ללא מע"מ)</span><strong>'+fmtMoney(t.total)+'</strong></div></div>'+
     '<div class="budget-client-donut">'+donutHtml+'</div>'+
     (budget.notes?'<div class="budget-client-notes"><strong>הערות:</strong> '+escHtml(budget.notes)+'</div>':'');
 }
