@@ -2,6 +2,19 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Entry guard — the management system is reachable ONLY through the landing page.
+   Both sites live on the same origin (atlassahar14-lang.github.io), so the landing
+   page's unlock flag (localStorage 'aronstein_gate_ok') is readable here too.
+   A visitor who hasn't passed the landing page is redirected there. */
+(function(){
+  try{
+    if(localStorage.getItem('aronstein_gate_ok')!=='1'){
+      location.replace('https://atlassahar14-lang.github.io/aronstein-landing/');
+    }
+  }catch(e){}
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Aronstin</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
