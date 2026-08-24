@@ -4,12 +4,13 @@
 <meta charset="UTF-8">
 <script>
 /* Entry guard — the management system is reachable ONLY through the landing page.
-   Both sites live on the same origin (atlassahar14-lang.github.io), so the landing
-   page's unlock flag (localStorage 'aronstein_gate_ok') is readable here too.
-   A visitor who hasn't passed the landing page is redirected there. */
+   Entry requires a per-tab token that the landing page's "כניסה למערכת" button sets
+   (sessionStorage 'aronstein_sys_entry'). A direct URL, a fresh tab, or a bookmark
+   has no token and is redirected to the landing page every time — including for the
+   owner. The token lives for the tab session, so refresh/in-app navigation is fine. */
 (function(){
   try{
-    if(localStorage.getItem('aronstein_gate_ok')!=='1'){
+    if(sessionStorage.getItem('aronstein_sys_entry')!=='1'){
       location.replace('https://atlassahar14-lang.github.io/aronstein-landing/');
     }
   }catch(e){}
