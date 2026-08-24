@@ -128,6 +128,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .user-role{font-size:11px;opacity:.6}
 .btn-logout{width:100%;padding:8px;background:rgba(255,255,255,.1);border:none;border-radius:8px;color:#fff;font-family:'Heebo',sans-serif;font-size:13px;cursor:pointer;transition:background .2s}
 .btn-logout:hover{background:rgba(255,255,255,.2)}
+.btn-back-site{width:100%;padding:9px;margin-bottom:8px;background:rgba(232,160,32,.16);border:1px solid rgba(232,160,32,.45);border-radius:8px;color:#ffd88a;font-family:'Heebo',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
+.btn-back-site:hover{background:rgba(232,160,32,.3)}
+.btn-back-site svg{width:16px;height:16px}
 .main-content{flex:1;min-width:0;width:100%;box-sizing:border-box;padding:32px;min-height:100vh}
 .main-shell{flex:1;min-width:0;margin-right:var(--sidebar);margin-left:0;display:flex;flex-direction:column;min-height:100vh}
 .sidebar-search{padding:0 12px 14px;flex-shrink:0}
@@ -1024,6 +1027,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
           <div class="user-avatar" id="user-avatar-sb">א</div>
           <div><div class="user-name" id="user-name-sb">משתמש</div><div class="user-role" id="user-role-sb">תפקיד</div></div>
         </div>
+        <a href="https://atlassahar14-lang.github.io/aronstein-landing/" class="btn-back-site" title="חזרה לאתר החברה"><i data-lucide="home"></i> חזרה לאתר החברה</a>
         <button type="button" class="btn-logout" id="logout-btn"><i data-lucide="log-out"></i> יציאה</button>
       </div>
     </aside>
