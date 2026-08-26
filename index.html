@@ -1488,8 +1488,8 @@ const UPLOAD_IMAGE_EXTS=['jpg','jpeg','png','webp','heic'];
 const UPLOAD_DOC_EXTS=['pdf','dwg'];
 const UPLOAD_SHEET_EXTS=['xls','xlsx','csv'];
 const UPLOAD_ACCEPT_SHEETS='.xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv';
-const DOC_CATEGORIES=['סיכום שבועי','תוכניות אדריכלות','תוכניות DWG','קונסטרוקטור','היתרים','הסכמים','אחר'];
-const DOC_CATEGORY_ICONS={'סיכום שבועי':'calendar-check','תוכניות אדריכלות':'ruler','תוכניות DWG':'pencil-ruler','קונסטרוקטור':'wrench','היתרים':'clipboard-list','הסכמים':'file-pen','אחר':'file-text'};
+const DOC_CATEGORIES=['סיכום שבועי','דוח פיקוח','תוכניות אדריכלות','תוכניות DWG','קונסטרוקטור','היתרים','הסכמים','אחר'];
+const DOC_CATEGORY_ICONS={'סיכום שבועי':'calendar-check','דוח פיקוח':'clipboard-check','תוכניות אדריכלות':'ruler','תוכניות DWG':'pencil-ruler','קונסטרוקטור':'wrench','היתרים':'clipboard-list','הסכמים':'file-pen','אחר':'file-text'};
 const UPLOAD_VIDEO_EXTS=['mp4','mov'];
 const UPLOAD_ACCEPT_IMAGES='.jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic';
 const UPLOAD_ACCEPT_RECEIPT=UPLOAD_ACCEPT_IMAGES+',.pdf,application/pdf';
@@ -1749,6 +1749,7 @@ function renderProjectDocsTabHtml(p){
             '<a href="'+escHtml(d.url)+'" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" download="'+escHtml(d.name)+'">'+ic('download')+'</a>':'')+
             (isData?'<a href="'+escHtml(d.url)+'" download="'+escHtml(d.name)+'" class="btn btn-outline btn-sm">'+ic('download')+'</a>':'')+
             (d.weeklyData?'<button class="btn btn-outline btn-sm admin-only-action" onclick="editWeeklyReport(\''+p.id+'\',\''+d.id+'\')">'+ic('pencil')+' ערוך</button>':'')+
+            (d.srData?'<button class="btn btn-outline btn-sm admin-only-action" onclick="editSupervisionReport(\''+p.id+'\',\''+d.id+'\')">'+ic('pencil')+' ערוך</button>':'')+
             '<button class="btn btn-danger btn-sm admin-only-action" onclick="deleteDoc(\''+d.id+'\')">'+ic('trash-2')+'</button>'+
             '</div></div>';
         }).join('')+
@@ -7737,6 +7738,12 @@ async function printWeeklyForm(){
 /* ===== Supervision report (דוח פיקוח) view ===== */
 var SR_STYLE='<style>'+
 '.sr-wrap{max-width:840px;margin:0 auto}'+
+'.sr-linkbar{max-width:840px;margin:0 auto 14px;background:#eef2f9;border:1px solid #d7dde7;border-radius:12px;padding:12px 16px}'+
+'.sr-linkrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}'+
+'.sr-linkrow label{font-weight:800;color:#152449;font-size:13.5px;display:flex;align-items:center;gap:6px}'+
+'.sr-linkrow select{flex:1;min-width:180px;padding:8px 10px;border:1.5px solid #d7dde7;border-radius:8px;font-family:inherit;font-size:14px;background:#fff}'+
+'.sr-linkchip{display:none;align-items:center;gap:4px;background:#e5f7ee;color:#1a8a52;font-weight:700;font-size:12.5px;padding:4px 10px;border-radius:20px}'+
+'.sr-linkhint{font-size:12px;color:#5b6577;margin-top:6px}'+
 '.sr-doc{background:#fff;border:1px solid #e3e8f0;border-radius:12px;padding:26px 30px;color:#1b2331;font-size:14px;line-height:1.6}'+
 '.sr-doc *{box-sizing:border-box}'+
 '.sr-head{display:flex;align-items:center;gap:16px;border-bottom:3px solid #152449;padding-bottom:14px}'+
@@ -7783,8 +7790,16 @@ function srRenumber(id){var b=document.querySelector('#'+id+' tbody');if(b)[].fo
 function srAddRow(id,cols){var b=document.querySelector('#'+id+' tbody');if(!b)return;var tr=document.createElement('tr');var h='<td class="num"></td>';for(var i=1;i<cols;i++)h+='<td contenteditable></td>';tr.innerHTML=h;b.appendChild(tr);srRenumber(id);if(tr.cells[1])tr.cells[1].focus();}
 function srPhotosHtml(){var out='';for(var i=1;i<=6;i++){out+='<div class="sr-photo" onclick="srPickPhoto(this)"><input type="file" accept="image/*" class="sr-photo-input" onchange="srPhotoChange(event,this)" style="display:none"><span class="sr-photo-ph">＋ הוסף תמונה</span></div>';}return out;}
 function srPickPhoto(box){var inp=box.querySelector('.sr-photo-input');if(inp)inp.click();}
-function srPhotoChange(ev,input){var f=ev.target.files&&ev.target.files[0];if(!f)return;var box=input.closest('.sr-photo');var r=new FileReader();r.onload=function(e){box.classList.add('has-img');var img=box.querySelector('img.sr-photo-img');if(!img){img=document.createElement('img');img.className='sr-photo-img';box.appendChild(img);}img.src=e.target.result;var rm=box.querySelector('.sr-photo-rm');if(!rm){rm=document.createElement('button');rm.type='button';rm.className='sr-photo-rm';rm.textContent='✕';rm.title='הסר תמונה';rm.onclick=function(evt){evt.stopPropagation();srRemovePhoto(box);};box.appendChild(rm);}};r.readAsDataURL(f);}
-function srRemovePhoto(box){var img=box.querySelector('img.sr-photo-img');if(img)img.remove();var rm=box.querySelector('.sr-photo-rm');if(rm)rm.remove();box.classList.remove('has-img');var inp=box.querySelector('.sr-photo-input');if(inp)inp.value='';}
+function srSetPhoto(box,src){box.classList.add('has-img');var img=box.querySelector('img.sr-photo-img');if(!img){img=document.createElement('img');img.className='sr-photo-img';box.appendChild(img);}img.src=src;var rm=box.querySelector('.sr-photo-rm');if(!rm){rm=document.createElement('button');rm.type='button';rm.className='sr-photo-rm';rm.textContent='✕';rm.title='הסר תמונה';rm.onclick=function(evt){evt.stopPropagation();srRemovePhoto(box);};box.appendChild(rm);}}
+function srPhotoChange(ev,input){var f=ev.target.files&&ev.target.files[0];if(!f)return;var box=input.closest('.sr-photo');box._srFile=f;var r=new FileReader();r.onload=function(e){srSetPhoto(box,e.target.result);};r.readAsDataURL(f);}
+function srRemovePhoto(box){var img=box.querySelector('img.sr-photo-img');if(img)img.remove();var rm=box.querySelector('.sr-photo-rm');if(rm)rm.remove();box.classList.remove('has-img');box._srFile=null;var inp=box.querySelector('.sr-photo-input');if(inp)inp.value='';}
+var srRestore=null,srEditDocId=null;
+function onSrProjectPick(){var sel=document.getElementById('sr-project');var pid=sel?sel.value:'';var proj=(getData().projects||[]).find(function(p){return p.id===pid;});var nameCell=document.querySelector('#sr-doc .sr-meta .val');if(proj&&nameCell)nameCell.textContent=proj.name||proj.clientName||'';var chip=document.getElementById('sr-linkchip');if(chip)chip.style.display=pid?'inline-flex':'none';}
+function collectSrData(){var meta=[].map.call(document.querySelectorAll('#sr-doc .sr-meta .val'),function(e){return e.innerHTML;});var st=document.querySelector('#sr-doc .sr-area');function rows(id){return [].map.call(document.querySelectorAll('#'+id+' tbody tr'),function(tr){return [].slice.call(tr.cells,1).map(function(td){return td.innerHTML;});});}var photos=[].map.call(document.querySelectorAll('#sr-doc .sr-photo'),function(box){var img=box.querySelector('img.sr-photo-img');return img?img.src:'';});return {meta:meta,status:st?st.innerHTML:'',defects:rows('sr-defects'),instructions:rows('sr-instructions'),photos:photos};}
+function applySrRows(id,cols,rowsData){var tbody=document.querySelector('#'+id+' tbody');if(!tbody)return;tbody.innerHTML='';var n=Math.max(rowsData.length,1);for(var r=0;r<n;r++){var tr=document.createElement('tr');var h='<td class="num">'+(r+1)+'</td>';for(var c=1;c<cols;c++)h+='<td contenteditable></td>';tr.innerHTML=h;tbody.appendChild(tr);var cells=rowsData[r]||[];for(var k=0;k<cells.length;k++){if(tr.cells[k+1])tr.cells[k+1].innerHTML=cells[k];}}}
+function applySrData(d){if(!d)return;var metaEls=document.querySelectorAll('#sr-doc .sr-meta .val');(d.meta||[]).forEach(function(v,i){if(metaEls[i])metaEls[i].innerHTML=v;});var area=document.querySelector('#sr-doc .sr-area');if(area)area.innerHTML=d.status||'';applySrRows('sr-defects',6,d.defects||[]);applySrRows('sr-instructions',5,d.instructions||[]);var boxes=document.querySelectorAll('#sr-doc .sr-photo');(d.photos||[]).forEach(function(src,i){if(src&&boxes[i])srSetPhoto(boxes[i],src);});}
+async function saveSupervisionReportToProject(){var sel=document.getElementById('sr-project');var pid=sel?sel.value:'';if(!pid){showToast('בחר פרויקט לקישור','error');return;}var data=getData();var proj=(data.projects||[]).find(function(p){return p.id===pid;});if(!proj){showToast('הפרויקט לא נמצא','error');return;}showToast('שומר דוח...');var docId=srEditDocId||('d'+Date.now());var docEl=document.getElementById('sr-doc');var metaEls=document.querySelectorAll('#sr-doc .sr-meta .val');var dateStr=(metaEls[2]?metaEls[2].textContent:'').trim()||new Date().toLocaleDateString('he-IL');var docName='דוח פיקוח - '+dateStr+'.pdf';var url='#',path='';try{docEl.classList.add('sr-capturing');var blob=await rasterizeElementToPdfBlob(docEl);docEl.classList.remove('sr-capturing');var pdfFile=new File([blob],docName,{type:'application/pdf'});var upd=await uploadMediaFile('documents/'+proj.id+'/'+docId,pdfFile);if(upd.ok){url=upd.data.url;path=upd.data.path;}}catch(e){docEl.classList.remove('sr-capturing');console.warn('sr pdf',e);}try{var boxes=document.querySelectorAll('#sr-doc .sr-photo');for(var i=0;i<boxes.length;i++){var box=boxes[i];var img=box.querySelector('img.sr-photo-img');if(box._srFile){var ext=((box._srFile.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,''))||'jpg';var up=await uploadMediaFile('supervision/'+proj.id+'/'+docId+'-'+i+'-'+Date.now()+'.'+ext,box._srFile);if(up.ok&&img){img.src=up.data.url;box._srFile=null;}}}}catch(e){console.warn('sr photos',e);}var srData=collectSrData();if(!proj.documents)proj.documents=[];var existing=srEditDocId?proj.documents.find(function(x){return x.id===srEditDocId;}):null;var isNew=!existing;if(existing){existing.name=docName;existing.date=dateStr;existing.srData=srData;if(url!=='#'){existing.url=url;existing.path=path;existing.type='application/pdf';}}else{existing={id:docId,name:docName,category:'דוח פיקוח',date:dateStr,url:url,srData:srData};if(url!=='#'){existing.path=path;existing.type='application/pdf';}proj.documents.push(existing);}logActivity('שמירת דוח פיקוח','פרויקט: '+proj.name);if(!await saveData(data)){if(isNew){var ri=proj.documents.indexOf(existing);if(ri>=0)proj.documents.splice(ri,1);}showToast('שגיאה בשמירה','error');return;}srEditDocId=existing.id;showToast('✓ נשמר לפרויקט '+proj.name+' תחת "דוח פיקוח"');}
+function editSupervisionReport(projId,docId){var proj=(getData().projects||[]).find(function(p){return p.id===projId;});if(!proj){showToast('הפרויקט לא נמצא','error');return;}var d=(proj.documents||[]).find(function(x){return x.id===docId;});if(!d||!d.srData){showToast('לא נמצאו נתונים לעריכה','error');return;}srRestore={projectId:projId,data:d.srData,editDocId:docId};showView('supervision-report');showToast('נטען דוח לעריכה — ערוך ולחץ "שמור לפרויקט"');}
 function srDocHtml(){
   return '<header class="sr-head">'+
     '<img src="logo.png" alt="ארונשטיין" onerror="this.style.display=\'none\'">'+
@@ -7813,11 +7828,16 @@ function srDocHtml(){
   '<div class="sr-foot">ארונשטיין — ניהול ופיקוח בנייה · 052-5999897 · 052-6471756</div>';
 }
 function renderSupervisionReport(el){
+  var projs=(getData().projects||[]);
+  var projOpts='<option value="">— בחר פרויקט —</option>'+projs.map(function(p){return '<option value="'+escHtml(p.id)+'">'+escHtml(p.name||p.clientName||'')+'</option>';}).join('');
   el.innerHTML=SR_STYLE+
-    '<div class="page-header flex-between responsive-stack"><div><h1>'+ic('clipboard-check')+' דוח פיקוח</h1><p>מלא דיגיטלית בכל ביקור באתר — ואז הורד PDF לשליחה</p></div>'+
-    '<div class="flex-gap"><button class="btn btn-outline" style="width:auto" onclick="printSupervisionReport()">'+ic('download')+' הורד PDF</button></div></div>'+
+    '<div class="page-header flex-between responsive-stack"><div><h1>'+ic('clipboard-check')+' דוח פיקוח</h1><p>מלא בכל ביקור, קשר לפרויקט ושמור — הדוח נכנס למסמכי הפרויקט תחת "דוח פיקוח"</p></div>'+
+    '<div class="flex-gap"><button class="btn" style="background:var(--accent);color:#3a2600;width:auto" onclick="saveSupervisionReportToProject()">'+ic('save')+' שמור לפרויקט</button>'+
+    '<button class="btn btn-outline" style="width:auto" onclick="printSupervisionReport()">'+ic('download')+' הורד PDF</button></div></div>'+
+    '<div class="sr-linkbar"><div class="sr-linkrow"><label>'+ic('link')+' קשר לפרויקט:</label><select id="sr-project" onchange="onSrProjectPick()">'+projOpts+'</select><span class="sr-linkchip" id="sr-linkchip">'+ic('check')+' מקושר</span></div><div class="sr-linkhint">בחירת פרויקט תמלא את שם הפרויקט, והשמירה תיכנס למסמכי אותו פרויקט תחת "דוח פיקוח".</div></div>'+
     '<div class="sr-wrap"><div class="sr-doc" id="sr-doc">'+srDocHtml()+'</div></div>';
   refreshIcons(el);
+  if(srRestore){srEditDocId=srRestore.editDocId||null;var sel=document.getElementById('sr-project');if(sel)sel.value=srRestore.projectId||'';applySrData(srRestore.data);var chip=document.getElementById('sr-linkchip');if(chip)chip.style.display=(sel&&sel.value)?'inline-flex':'none';srRestore=null;}else{srEditDocId=null;}
 }
 async function printSupervisionReport(){
   var el=document.getElementById('sr-doc');if(!el)return;
@@ -10045,6 +10065,7 @@ Object.assign(window,{
   openGlobalSearch,onGlobalSearchInput,onGlobalSearchKeydown,navigateGlobalSearchResult,
   printWeeklyForm,renderWeeklyForm,onWeeklyProjectPick,saveWeeklyReportToProject,editWeeklyReport,
   renderSupervisionReport,printSupervisionReport,srAddRow,srPickPhoto,srPhotoChange,srRemovePhoto,
+  saveSupervisionReportToProject,editSupervisionReport,onSrProjectPick,
   onProjectStatusFilterChange
 });
 window.addEventListener('resize',function(){
