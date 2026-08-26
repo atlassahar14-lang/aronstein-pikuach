@@ -7764,17 +7764,27 @@ var SR_STYLE='<style>'+
 '.sr-add{margin-top:8px;font-size:13px;font-weight:800;color:#b9821a;background:none;border:1.5px dashed #d7dde7;border-radius:8px;padding:7px 13px;cursor:pointer}'+
 '.sr-add:hover{border-color:#e0a326}'+
 '.sr-photos{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}'+
-'.sr-photo{border:1.5px dashed #d7dde7;border-radius:10px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;color:#b3bcca;font-size:12.5px;background:#f4f6fb}'+
+'.sr-photo{position:relative;overflow:hidden;cursor:pointer;border:1.5px dashed #d7dde7;border-radius:10px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;color:#b3bcca;font-size:12.5px;background:#f4f6fb;transition:border-color .15s}'+
+'.sr-photo:hover{border-color:#e0a326;color:#b9821a}'+
+'.sr-photo.has-img{border-style:solid;border-color:#c9d2e0;color:transparent}'+
+'.sr-photo .sr-photo-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}'+
+'.sr-photo .sr-photo-ph{pointer-events:none}'+
+'.sr-photo .sr-photo-rm{position:absolute;top:6px;left:6px;z-index:2;width:26px;height:26px;border-radius:50%;border:0;background:rgba(20,25,40,.72);color:#fff;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}'+
+'.sr-doc.sr-capturing .sr-photo-rm,.sr-doc.sr-capturing .sr-photo-ph{display:none!important}'+
 '.sr-sign{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px;padding-top:16px;border-top:1px solid #d7dde7}'+
 '.sr-sign .l{font-size:12px;color:#5b6577;font-weight:700;margin-bottom:24px}'+
 '.sr-sign .line{border-bottom:1.5px solid #1b2331}'+
 '.sr-sign .cap{font-size:11.5px;color:#5b6577;margin-top:4px}'+
 '.sr-foot{text-align:center;font-size:11px;color:#5b6577;margin-top:18px;padding-top:10px;border-top:1px solid #d7dde7}'+
-'@media print{body.sr-printing *{visibility:hidden!important}body.sr-printing #sr-doc,body.sr-printing #sr-doc *{visibility:visible!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body.sr-printing #sr-doc{position:absolute;top:0;right:0;left:0;width:100%;max-width:none;margin:0;border:0;border-radius:0;box-shadow:none}}'+
+'@media print{body.sr-printing *{visibility:hidden!important}body.sr-printing #sr-doc,body.sr-printing #sr-doc *{visibility:visible!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body.sr-printing #sr-doc{position:absolute;top:0;right:0;left:0;width:100%;max-width:none;margin:0;border:0;border-radius:0;box-shadow:none}body.sr-printing .sr-photo-rm,body.sr-printing .sr-photo-ph{display:none!important}}'+
 '</style>';
 function srRowsHtml(cols,count){var out='';for(var r=1;r<=count;r++){var row='<tr><td class="num">'+r+'</td>';for(var i=1;i<cols;i++)row+='<td contenteditable></td>';out+=row+'</tr>';}return out;}
 function srRenumber(id){var b=document.querySelector('#'+id+' tbody');if(b)[].forEach.call(b.rows,function(r,i){r.cells[0].textContent=i+1;});}
 function srAddRow(id,cols){var b=document.querySelector('#'+id+' tbody');if(!b)return;var tr=document.createElement('tr');var h='<td class="num"></td>';for(var i=1;i<cols;i++)h+='<td contenteditable></td>';tr.innerHTML=h;b.appendChild(tr);srRenumber(id);if(tr.cells[1])tr.cells[1].focus();}
+function srPhotosHtml(){var out='';for(var i=1;i<=6;i++){out+='<div class="sr-photo" onclick="srPickPhoto(this)"><input type="file" accept="image/*" class="sr-photo-input" onchange="srPhotoChange(event,this)" style="display:none"><span class="sr-photo-ph">＋ הוסף תמונה</span></div>';}return out;}
+function srPickPhoto(box){var inp=box.querySelector('.sr-photo-input');if(inp)inp.click();}
+function srPhotoChange(ev,input){var f=ev.target.files&&ev.target.files[0];if(!f)return;var box=input.closest('.sr-photo');var r=new FileReader();r.onload=function(e){box.classList.add('has-img');var img=box.querySelector('img.sr-photo-img');if(!img){img=document.createElement('img');img.className='sr-photo-img';box.appendChild(img);}img.src=e.target.result;var rm=box.querySelector('.sr-photo-rm');if(!rm){rm=document.createElement('button');rm.type='button';rm.className='sr-photo-rm';rm.textContent='✕';rm.title='הסר תמונה';rm.onclick=function(evt){evt.stopPropagation();srRemovePhoto(box);};box.appendChild(rm);}};r.readAsDataURL(f);}
+function srRemovePhoto(box){var img=box.querySelector('img.sr-photo-img');if(img)img.remove();var rm=box.querySelector('.sr-photo-rm');if(rm)rm.remove();box.classList.remove('has-img');var inp=box.querySelector('.sr-photo-input');if(inp)inp.value='';}
 function srDocHtml(){
   return '<header class="sr-head">'+
     '<img src="logo.png" alt="ארונשטיין" onerror="this.style.display=\'none\'">'+
@@ -7798,7 +7808,7 @@ function srDocHtml(){
   '<table id="sr-instructions"><thead><tr><th style="width:32px">מס׳</th><th>הוראה / משימה</th><th style="width:100px">באחריות</th><th style="width:90px">יעד לביצוע</th><th style="width:120px">הערות</th></tr></thead><tbody>'+srRowsHtml(5,3)+'</tbody></table>'+
   '<button class="sr-add" onclick="srAddRow(\'sr-instructions\',5)">➕ הוסף שורת הוראה</button>'+
   '<h2 class="s"><span class="n">4</span> תיעוד תמונות</h2>'+
-  '<div class="sr-photos"><div class="sr-photo">תמונה 1</div><div class="sr-photo">תמונה 2</div><div class="sr-photo">תמונה 3</div><div class="sr-photo">תמונה 4</div><div class="sr-photo">תמונה 5</div><div class="sr-photo">תמונה 6</div></div>'+
+  '<div class="sr-photos">'+srPhotosHtml()+'</div>'+
   '<div class="sr-sign"><div><div class="l">חתימת המפקח</div><div class="line"></div><div class="cap">ארונשטיין — ניהול ופיקוח בנייה</div></div><div><div class="l">התקבל / נמסר לקבלן</div><div class="line"></div><div class="cap">שם וחתימה</div></div></div>'+
   '<div class="sr-foot">ארונשטיין — ניהול ופיקוח בנייה · 052-5999897</div>';
 }
@@ -7812,8 +7822,10 @@ function renderSupervisionReport(el){
 async function printSupervisionReport(){
   var el=document.getElementById('sr-doc');if(!el)return;
   if(typeof showToast==='function')showToast('מייצר PDF...');
+  el.classList.add('sr-capturing');
   try{ await rasterizeElementToPdf(el,'דוח-פיקוח.pdf'); }
   catch(e){ document.body.classList.add('sr-printing'); window.print(); setTimeout(function(){document.body.classList.remove('sr-printing');},2000); }
+  finally{ el.classList.remove('sr-capturing'); }
 }
 
 function showView(view,pid){
@@ -10032,7 +10044,7 @@ Object.assign(window,{
   openBudgetClientView,previewBudgetDraftClientView,closeBudgetClientView,printBudgetClientView,
   openGlobalSearch,onGlobalSearchInput,onGlobalSearchKeydown,navigateGlobalSearchResult,
   printWeeklyForm,renderWeeklyForm,onWeeklyProjectPick,saveWeeklyReportToProject,editWeeklyReport,
-  renderSupervisionReport,printSupervisionReport,srAddRow,
+  renderSupervisionReport,printSupervisionReport,srAddRow,srPickPhoto,srPhotoChange,srRemovePhoto,
   onProjectStatusFilterChange
 });
 window.addEventListener('resize',function(){
