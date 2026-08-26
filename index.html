@@ -7170,6 +7170,7 @@ function renderSidebar(){
       '<div class="nav-item '+(currentView==='milestones'?'active':'')+'" onclick="showView(\'milestones\')"><span class="nav-icon">'+ic('milestone')+'</span> אבני דרך</div>'+
       '<div class="nav-item '+(currentView==='budget-builder'?'active':'')+'" onclick="showView(\'budget-builder\')"><span class="nav-icon">'+ic('calculator')+'</span> בניית תקציב</div>'+
       '<div class="nav-item '+(currentView==='weekly-form'?'active':'')+'" onclick="showView(\'weekly-form\')"><span class="nav-icon">'+ic('calendar-check')+'</span> טופס שבועי</div>'+
+      '<div class="nav-item '+(currentView==='supervision-report'?'active':'')+'" onclick="showView(\'supervision-report\')"><span class="nav-icon">'+ic('clipboard-check')+'</span> דוח פיקוח</div>'+
       '<div class="nav-section-title">מערכת</div>'+
       '<div class="nav-item '+(currentView==='clients'?'active':'')+'" onclick="showView(\'clients\')"><span class="nav-icon">'+ic('users')+'</span> לקוחות</div>'+
       '<div class="nav-item '+(currentView==='subcontractors'?'active':'')+'" onclick="showView(\'subcontractors\')"><span class="nav-icon">'+ic('hard-hat')+'</span> קבלני משנה</div>'+
@@ -7189,7 +7190,7 @@ function renderSidebar(){
 }
 
 var TAB_LABELS={overview:'סקירה',suppliers:'ספקים',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-builder':'בניית תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה','finish-selections':'בחירות גמרים','price-comparisons':'השוואת מחירים',punch:'ליקויים','daily-log':'יומן עבודה',updates:'עדכונים',messages:'שאלות'};
-var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',milestones:'אבני דרך','budget-builder':'בניית תקציב','weekly-form':'טופס שבועי',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
+var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',milestones:'אבני דרך','budget-builder':'בניית תקציב','weekly-form':'טופס שבועי','supervision-report':'דוח פיקוח',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
   if(el)el.textContent=text||'ארונשטיין פיקוח וניהול';
@@ -7733,6 +7734,88 @@ async function printWeeklyForm(){
   }
 }
 
+/* ===== Supervision report (דוח פיקוח) view ===== */
+var SR_STYLE='<style>'+
+'.sr-wrap{max-width:840px;margin:0 auto}'+
+'.sr-doc{background:#fff;border:1px solid #e3e8f0;border-radius:12px;padding:26px 30px;color:#1b2331;font-size:14px;line-height:1.6}'+
+'.sr-doc *{box-sizing:border-box}'+
+'.sr-head{display:flex;align-items:center;gap:16px;border-bottom:3px solid #152449;padding-bottom:14px}'+
+'.sr-head img{height:64px;width:auto}'+
+'.sr-head .co{font-size:19px;font-weight:900;color:#152449}'+
+'.sr-head .sub{font-size:12.5px;color:#5b6577;font-weight:600}'+
+'.sr-head .contact{font-size:12px;color:#5b6577;margin-top:3px}'+
+'.sr-badge{margin-inline-start:auto;align-self:flex-start;background:#152449;color:#fff;font-weight:800;font-size:13px;padding:7px 14px;border-radius:8px;white-space:nowrap}'+
+'.sr-meta{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid #d7dde7;border-radius:10px;overflow:hidden;margin:16px 0 20px}'+
+'.sr-meta .cell{padding:9px 13px;border-inline-start:1px solid #d7dde7;border-top:1px solid #d7dde7}'+
+'.sr-meta .cell:nth-child(-n+3){border-top:0}'+
+'.sr-meta .cell:nth-child(3n+1){border-inline-start:0}'+
+'.sr-meta .lbl{font-size:11px;font-weight:800;color:#b9821a;letter-spacing:.3px;margin-bottom:2px}'+
+'.sr-meta .val{font-size:14.5px;font-weight:700;min-height:22px;outline:none}'+
+'.sr-doc h2.s{font-size:16px;font-weight:900;color:#152449;display:flex;align-items:center;gap:9px;margin:20px 0 9px}'+
+'.sr-doc h2.s .n{width:25px;height:25px;border-radius:7px;background:#e0a326;color:#3a2600;font-size:13px;display:flex;align-items:center;justify-content:center;font-weight:900}'+
+'.sr-area{border:1px solid #d7dde7;border-radius:10px;padding:11px 13px;min-height:80px;outline:none;background:#f4f6fb}'+
+'.sr-area:focus{border-color:#e0a326;background:#fff}'+
+'.sr-doc table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:fixed}'+
+'.sr-doc thead th{background:#152449;color:#fff;font-weight:800;font-size:12px;padding:8px;text-align:right;border:1px solid #233a6e}'+
+'.sr-doc tbody td{border:1px solid #d7dde7;padding:7px 8px;vertical-align:top;outline:none}'+
+'.sr-doc tbody tr:nth-child(even) td{background:#f4f6fb}'+
+'.sr-doc td[contenteditable]:focus{background:#fff!important;box-shadow:inset 0 0 0 2px #e0a326}'+
+'.sr-doc td.num{text-align:center;font-weight:800;color:#5b6577;width:32px}'+
+'.sr-add{margin-top:8px;font-size:13px;font-weight:800;color:#b9821a;background:none;border:1.5px dashed #d7dde7;border-radius:8px;padding:7px 13px;cursor:pointer}'+
+'.sr-add:hover{border-color:#e0a326}'+
+'.sr-photos{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}'+
+'.sr-photo{border:1.5px dashed #d7dde7;border-radius:10px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;color:#b3bcca;font-size:12.5px;background:#f4f6fb}'+
+'.sr-sign{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px;padding-top:16px;border-top:1px solid #d7dde7}'+
+'.sr-sign .l{font-size:12px;color:#5b6577;font-weight:700;margin-bottom:24px}'+
+'.sr-sign .line{border-bottom:1.5px solid #1b2331}'+
+'.sr-sign .cap{font-size:11.5px;color:#5b6577;margin-top:4px}'+
+'.sr-foot{text-align:center;font-size:11px;color:#5b6577;margin-top:18px;padding-top:10px;border-top:1px solid #d7dde7}'+
+'@media print{body.sr-printing *{visibility:hidden!important}body.sr-printing #sr-doc,body.sr-printing #sr-doc *{visibility:visible!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body.sr-printing #sr-doc{position:absolute;top:0;right:0;left:0;width:100%;max-width:none;margin:0;border:0;border-radius:0;box-shadow:none}}'+
+'</style>';
+function srRowsHtml(cols,count){var out='';for(var r=1;r<=count;r++){var row='<tr><td class="num">'+r+'</td>';for(var i=1;i<cols;i++)row+='<td contenteditable></td>';out+=row+'</tr>';}return out;}
+function srRenumber(id){var b=document.querySelector('#'+id+' tbody');if(b)[].forEach.call(b.rows,function(r,i){r.cells[0].textContent=i+1;});}
+function srAddRow(id,cols){var b=document.querySelector('#'+id+' tbody');if(!b)return;var tr=document.createElement('tr');var h='<td class="num"></td>';for(var i=1;i<cols;i++)h+='<td contenteditable></td>';tr.innerHTML=h;b.appendChild(tr);srRenumber(id);if(tr.cells[1])tr.cells[1].focus();}
+function srDocHtml(){
+  return '<header class="sr-head">'+
+    '<img src="logo.png" alt="ארונשטיין" onerror="this.style.display=\'none\'">'+
+    '<div><div class="co">ארונשטיין — ניהול ופיקוח בנייה</div><div class="sub">ניהול וביצוע פרויקטים</div><div class="contact">☎ 052-5999897</div></div>'+
+    '<div class="sr-badge">דוח פיקוח · ביקור באתר</div>'+
+  '</header>'+
+  '<div class="sr-meta">'+
+    '<div class="cell"><div class="lbl">פרויקט</div><div class="val" contenteditable>קיבוץ שדות ים</div></div>'+
+    '<div class="cell"><div class="lbl">מבנה / אזור</div><div class="val" contenteditable></div></div>'+
+    '<div class="cell"><div class="lbl">תאריך ביקור</div><div class="val" contenteditable></div></div>'+
+    '<div class="cell"><div class="lbl">ביקור מס׳</div><div class="val" contenteditable></div></div>'+
+    '<div class="cell"><div class="lbl">עורך הדוח</div><div class="val" contenteditable>ארונשטיין</div></div>'+
+    '<div class="cell"><div class="lbl">נוכחים בביקור</div><div class="val" contenteditable></div></div>'+
+  '</div>'+
+  '<h2 class="s"><span class="n">1</span> תמונת מצב</h2>'+
+  '<div class="sr-area" contenteditable></div>'+
+  '<h2 class="s"><span class="n">2</span> ליקויים</h2>'+
+  '<table id="sr-defects"><thead><tr><th style="width:32px">מס׳</th><th>תיאור הליקוי</th><th style="width:92px">מיקום</th><th style="width:72px">חומרה</th><th style="width:100px">באחריות</th><th style="width:90px">לתיקון עד</th></tr></thead><tbody>'+srRowsHtml(6,3)+'</tbody></table>'+
+  '<button class="sr-add" onclick="srAddRow(\'sr-defects\',6)">➕ הוסף שורת ליקוי</button>'+
+  '<h2 class="s"><span class="n">3</span> הוראות להמשך</h2>'+
+  '<table id="sr-instructions"><thead><tr><th style="width:32px">מס׳</th><th>הוראה / משימה</th><th style="width:100px">באחריות</th><th style="width:90px">יעד לביצוע</th><th style="width:120px">הערות</th></tr></thead><tbody>'+srRowsHtml(5,3)+'</tbody></table>'+
+  '<button class="sr-add" onclick="srAddRow(\'sr-instructions\',5)">➕ הוסף שורת הוראה</button>'+
+  '<h2 class="s"><span class="n">4</span> תיעוד תמונות</h2>'+
+  '<div class="sr-photos"><div class="sr-photo">תמונה 1</div><div class="sr-photo">תמונה 2</div><div class="sr-photo">תמונה 3</div><div class="sr-photo">תמונה 4</div><div class="sr-photo">תמונה 5</div><div class="sr-photo">תמונה 6</div></div>'+
+  '<div class="sr-sign"><div><div class="l">חתימת המפקח</div><div class="line"></div><div class="cap">ארונשטיין — ניהול ופיקוח בנייה</div></div><div><div class="l">התקבל / נמסר לקבלן</div><div class="line"></div><div class="cap">שם וחתימה</div></div></div>'+
+  '<div class="sr-foot">ארונשטיין — ניהול ופיקוח בנייה · 052-5999897</div>';
+}
+function renderSupervisionReport(el){
+  el.innerHTML=SR_STYLE+
+    '<div class="page-header flex-between responsive-stack"><div><h1>'+ic('clipboard-check')+' דוח פיקוח</h1><p>מלא דיגיטלית בכל ביקור באתר — ואז הורד PDF לשליחה</p></div>'+
+    '<div class="flex-gap"><button class="btn btn-outline" style="width:auto" onclick="printSupervisionReport()">'+ic('download')+' הורד PDF</button></div></div>'+
+    '<div class="sr-wrap"><div class="sr-doc" id="sr-doc">'+srDocHtml()+'</div></div>';
+  refreshIcons(el);
+}
+async function printSupervisionReport(){
+  var el=document.getElementById('sr-doc');if(!el)return;
+  if(typeof showToast==='function')showToast('מייצר PDF...');
+  try{ await rasterizeElementToPdf(el,'דוח-פיקוח.pdf'); }
+  catch(e){ document.body.classList.add('sr-printing'); window.print(); setTimeout(function(){document.body.classList.remove('sr-printing');},2000); }
+}
+
 function showView(view,pid){
   closeMobileSidebar();
   var el=document.getElementById('main-content');
@@ -7770,6 +7853,7 @@ function showView(view,pid){
   else if(view==='activity-log')renderActivityLog(el);
   else if(view==='settings')renderSettings(el);
   else if(view==='weekly-form')renderWeeklyForm(el);
+  else if(view==='supervision-report')renderSupervisionReport(el);
   if(view!=='project'){
     updateWhatsAppFab(false);
     resetMobileTabMenu();
@@ -9948,6 +10032,7 @@ Object.assign(window,{
   openBudgetClientView,previewBudgetDraftClientView,closeBudgetClientView,printBudgetClientView,
   openGlobalSearch,onGlobalSearchInput,onGlobalSearchKeydown,navigateGlobalSearchResult,
   printWeeklyForm,renderWeeklyForm,onWeeklyProjectPick,saveWeeklyReportToProject,editWeeklyReport,
+  renderSupervisionReport,printSupervisionReport,srAddRow,
   onProjectStatusFilterChange
 });
 window.addEventListener('resize',function(){
