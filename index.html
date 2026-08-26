@@ -7659,8 +7659,25 @@ async function buildPdfFromElement(el){
     windowWidth:1024,windowHeight:Math.max(window.innerHeight||0,(el.scrollHeight||0)+200,1400)});
   var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
   var margin=10,pageW=210,pageH=297,imgW=pageW-margin*2,pxPerMm=canvas.width/imgW,pageChunkPx=Math.floor((pageH-margin*2)*pxPerMm),sY=0,pageNum=0;
+  var srcCtx=canvas.getContext('2d');
+  function smartChunk(y0){
+    var maxChunk=Math.min(pageChunkPx,canvas.height-y0);
+    if(y0+maxChunk>=canvas.height)return maxChunk;
+    var band=Math.min(Math.floor(maxChunk*0.32),maxChunk-60);
+    if(band<=0)return maxChunk;
+    try{
+      var top=y0+maxChunk-band;
+      var data=srcCtx.getImageData(0,top,canvas.width,band).data;
+      for(var yy=band-1;yy>=0;yy--){
+        var white=true,base=yy*canvas.width*4;
+        for(var x=0;x<canvas.width;x+=6){var i=base+x*4;if(data[i]<244||data[i+1]<244||data[i+2]<244){white=false;break;}}
+        if(white)return (top+yy)-y0;
+      }
+    }catch(e){/* tainted canvas — hard cut */}
+    return maxChunk;
+  }
   while(sY<canvas.height){
-    var chunkPx=Math.min(pageChunkPx,canvas.height-sY);
+    var chunkPx=smartChunk(sY);
     var pc=document.createElement('canvas');pc.width=canvas.width;pc.height=chunkPx;
     var ctx=pc.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,pc.width,pc.height);
     ctx.drawImage(canvas,0,sY,canvas.width,chunkPx,0,0,canvas.width,chunkPx);
