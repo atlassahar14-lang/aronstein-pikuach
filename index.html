@@ -4044,6 +4044,7 @@ async function saveMilestone(){
   else res=await supabase.from('milestones').insert(row);
   if(res.error){showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
   await refreshMilestonesCache();
+  if(!editingMilestoneId)await mirrorMilestoneToLinked(proj,row);
   closeModal('modal-milestone');
   editingMilestoneId=null;
   if(currentView==='milestones'){
@@ -9332,6 +9333,18 @@ async function mirrorDocsToLinked(proj,docs){
   docs.forEach(function(d){ var c=Object.assign({},d); c.id='d'+Date.now()+'_m'+Math.floor(Math.random()*1e6); lp.documents.push(c); });
   if(await saveData(data)){ logActivity('שיקוף מסמכים לפרויקט מקושר','→ '+lp.name); showToast('✓ נוסף גם לפרויקט '+lp.name); }
   else showToast('שגיאה בהוספה לפרויקט המקושר','error');
+}
+async function mirrorMilestoneToLinked(proj,row){
+  var linked=getLinkedProject(proj);
+  if(!linked)return;
+  if(!confirm('הפרויקט מקושר ל"'+(linked.name||'')+'".\nלהוסיף את אבן הדרך גם לשם?'))return;
+  var copy=Object.assign({},row,{project_id:linked.id});
+  var r=await supabase.from('milestones').insert(copy);
+  if(r.error){showToast('שגיאה בהוספה לפרויקט המקושר: '+formatSupabaseErrorHint(r.error.message),'error');return;}
+  await refreshMilestonesCache();
+  updateMilestoneAlertBanner();
+  logActivity('שיקוף אבן דרך לפרויקט מקושר','→ '+linked.name);
+  showToast('✓ נוסף גם לפרויקט '+linked.name);
 }
 function openNewProjectModal(){
   if(!requireAdmin())return;
