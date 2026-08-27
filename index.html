@@ -9346,6 +9346,18 @@ async function mirrorMilestoneToLinked(proj,row){
   logActivity('שיקוף אבן דרך לפרויקט מקושר','→ '+linked.name);
   showToast('✓ נוסף גם לפרויקט '+linked.name);
 }
+async function mirrorPhaseToLinked(proj,ph){
+  var linked=getLinkedProject(proj);
+  if(!linked)return;
+  if(!confirm('הפרויקט מקושר ל"'+(linked.name||'')+'".\nלהוסיף את השלב "'+(ph.name||'')+'" גם לשם?'))return;
+  var data=getData();
+  var lp=(data.projects||[]).find(function(p){return p.id===linked.id;});
+  if(!lp)return;
+  if(!lp.phases)lp.phases=[];
+  lp.phases.push(Object.assign({},ph,{id:'ph'+Date.now()+'_m'+Math.floor(Math.random()*1e6),depends_on:[]}));
+  if(await saveData(data)){ logActivity('שיקוף שלב לפרויקט מקושר','→ '+lp.name); showToast('✓ נוסף גם לפרויקט '+lp.name); }
+  else showToast('שגיאה בהוספה לפרויקט המקושר','error');
+}
 function openNewProjectModal(){
   if(!requireAdmin())return;
   editingProjectId=null;
@@ -9817,6 +9829,7 @@ async function savePhase(){
   closeModal('modal-phase');
   showToast(wasEditing?'השלב עודכן בהצלחה':'השלב נשמר בהצלחה');
   if(depAlerts.length)depAlerts.forEach(function(msg){showToast(msg,'error');});
+  if(!wasEditing)await mirrorPhaseToLinked(proj,ph);
   renderProjectDetail(document.getElementById('main-content'));
 }
 async function saveOverallProgress(){
