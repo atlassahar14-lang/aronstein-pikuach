@@ -1074,6 +1074,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     </div>
     <div class="form-group"><label>תקציב כולל (₪)</label><input type="number" id="proj-budget" placeholder="0"/></div>
     <div class="form-group"><label>סטטוס</label><select id="proj-status"><option value="pending">ממתין לתחילת עבודה</option><option value="active">בביצוע</option><option value="paused">מושהה</option><option value="done">הושלם</option></select></div>
+    <div class="form-group"><label>🔗 פרויקט מקושר (יישאל "לעשות גם שם?")</label><select id="proj-linked"><option value="">— ללא —</option></select></div>
     <div class="client-visibility-modal-section" id="proj-client-visibility-wrap">
       <div class="client-visibility-section-title"><i data-lucide="eye"></i> הגדרות תצוגה ללקוח</div>
       <p class="client-visibility-hint">בחר אילו מסכים יוצגו ללקוח בפרויקט זה. השינויים נשמרים עם לחיצה על "שמור פרויקט".</p>
@@ -9309,6 +9310,29 @@ function initDraggableModals(){
 }
 initDraggableModals();
 
+function populateLinkedProjectOptions(excludeId,selectedId){
+  var sel=document.getElementById('proj-linked');if(!sel)return;
+  var opts='<option value="">— ללא —</option>';
+  (getData().projects||[]).forEach(function(p){ if(p.id===excludeId)return; opts+='<option value="'+escHtml(p.id)+'">'+escHtml(p.name||p.clientName||'')+'</option>'; });
+  sel.innerHTML=opts; sel.value=selectedId||'';
+}
+function getLinkedProject(proj){ if(!proj||!proj.linkedProjectId)return null; return (getData().projects||[]).find(function(p){return p.id===proj.linkedProjectId;})||null; }
+function reconcileProjectLink(data,projId,newLinkedId){
+  (data.projects||[]).forEach(function(p){ if(p.id!==projId && p.linkedProjectId===projId && p.id!==newLinkedId)p.linkedProjectId=null; });
+  if(newLinkedId){ var t=(data.projects||[]).find(function(p){return p.id===newLinkedId;}); if(t)t.linkedProjectId=projId; }
+}
+async function mirrorDocsToLinked(proj,docs){
+  var linked=getLinkedProject(proj);
+  if(!linked||!docs||!docs.length)return;
+  if(!confirm('הפרויקט מקושר ל"'+(linked.name||'')+'".\nלהוסיף '+(docs.length>1?(docs.length+' המסמכים'):'המסמך')+' גם לשם?'))return;
+  var data=getData();
+  var lp=(data.projects||[]).find(function(p){return p.id===linked.id;});
+  if(!lp)return;
+  if(!lp.documents)lp.documents=[];
+  docs.forEach(function(d){ var c=Object.assign({},d); c.id='d'+Date.now()+'_m'+Math.floor(Math.random()*1e6); lp.documents.push(c); });
+  if(await saveData(data)){ logActivity('שיקוף מסמכים לפרויקט מקושר','→ '+lp.name); showToast('✓ נוסף גם לפרויקט '+lp.name); }
+  else showToast('שגיאה בהוספה לפרויקט המקושר','error');
+}
 function openNewProjectModal(){
   if(!requireAdmin())return;
   editingProjectId=null;
@@ -9318,6 +9342,7 @@ function openNewProjectModal(){
   document.getElementById('proj-status').value='active';
   populateProjectPersonPickers();
   populateProjectClientVisibilityForm(DEFAULT_CLIENT_VISIBILITY);
+  populateLinkedProjectOptions(null,'');
   openModal('modal-project');
   refreshIcons(document.getElementById('modal-project'));
 }
@@ -9377,6 +9402,7 @@ async function openEditProjectModal(id){
   }
   populateProjectPersonPickers();
   populateProjectClientVisibilityForm(getProjectClientVisibility(p));
+  populateLinkedProjectOptions(id,p.linkedProjectId||'');
   openModal('modal-project');
   refreshIcons(document.getElementById('modal-project'));
 }
@@ -9392,13 +9418,14 @@ async function saveProject(){
   var clientName=document.getElementById('proj-client-name').value.trim();
   var clientPhone=document.getElementById('proj-client-phone').value.trim();
   var data=getData();
-  var proj={name:document.getElementById('proj-name').value.trim(),address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,architect:document.getElementById('proj-architect').value.trim(),architectPhone:document.getElementById('proj-architect-phone').value.trim(),structuralEngineer:document.getElementById('proj-constructor').value.trim(),structuralEngineerPhone:document.getElementById('proj-constructor-phone').value.trim(),start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:Number(document.getElementById('proj-budget').value)||0,status:document.getElementById('proj-status').value,clientName:clientName,clientPhone:clientPhone};
+  var proj={name:document.getElementById('proj-name').value.trim(),address:document.getElementById('proj-addr').value,houseNumber:document.getElementById('proj-house').value.trim(),desc:document.getElementById('proj-desc').value,architect:document.getElementById('proj-architect').value.trim(),architectPhone:document.getElementById('proj-architect-phone').value.trim(),structuralEngineer:document.getElementById('proj-constructor').value.trim(),structuralEngineerPhone:document.getElementById('proj-constructor-phone').value.trim(),start:document.getElementById('proj-start').value,end:document.getElementById('proj-end').value,builtArea:document.getElementById('proj-built').value,propertyArea:document.getElementById('proj-property').value,budget:Number(document.getElementById('proj-budget').value)||0,status:document.getElementById('proj-status').value,clientName:clientName,clientPhone:clientPhone,linkedProjectId:(document.getElementById('proj-linked')?document.getElementById('proj-linked').value||null:null)};
   var clientVisibility=readProjectClientVisibilityFromForm();
   var newProjectId=null;
   if(editingProjectId){
     var idx=data.projects.findIndex(function(p){return p.id===editingProjectId;});
     if(idx<0){showToast('שגיאה: הפרויקט לא נמצא — רענן את העמוד','error');return;}
     data.projects[idx]=Object.assign({},data.projects[idx],proj,{client_visibility:clientVisibility});
+    reconcileProjectLink(data,editingProjectId,proj.linkedProjectId);
     var linked=getProjectLinkedClient(editingProjectId);
     if(linked){
       var profileRes=await supabase.from('profiles').update({name:clientName||linked.name,phone:clientPhone||null}).eq('id',linked.id);
@@ -9411,6 +9438,7 @@ async function saveProject(){
     var budgetPlan={};FIN_CATEGORIES.forEach(function(c){budgetPlan[c]=perCat;});
     newProjectId='proj'+Date.now();
     data.projects.push(Object.assign({},proj,{id:newProjectId,progress:0,budgetPlan:budgetPlan,phases:[],payments:[],documents:[],galleryPosts:[],updates:[],messages:[],client_visibility:clientVisibility}));
+    reconcileProjectLink(data,newProjectId,proj.linkedProjectId);
     logActivity('יצירת פרויקט','פרויקט חדש: '+proj.name);
   }
   if(!await saveData(data))return;
@@ -9925,7 +9953,7 @@ function uploadDocFile(event,cat){
   if(!files.length)return;
   var proj=getCurrentProject();if(!proj)return;
   (async function(){
-    var ok=0,fail=0,failMsgs=[];
+    var ok=0,fail=0,failMsgs=[];var addedDocs=[];
     for(var i=0;i<files.length;i++){
       var file=files[i];
       var check=validateDocUploadFile(file,cat);
@@ -9940,7 +9968,7 @@ function uploadDocFile(event,cat){
       if(!upload.ok){fail++;failMsgs.push((uploadFile.name||file.name)+': '+formatSupabaseErrorHint(upload.error));continue;}
       var data=getData();var p=getCurrentProject();if(!p)return;
       if(!p.documents)p.documents=[];
-      p.documents.push({
+      var _doc={
         id:docId,
         name:uploadFile.name||file.name,
         category:cat,
@@ -9948,14 +9976,17 @@ function uploadDocFile(event,cat){
         url:upload.data.url,
         path:upload.data.path,
         type:upload.data.type
-      });
+      };
+      p.documents.push(_doc);
       if(!await saveData(data)){fail++;failMsgs.push((uploadFile.name||file.name)+': שגיאה בשמירה');continue;}
-      ok++;
+      ok++;addedDocs.push(_doc);
     }
     renderProjectDetail(document.getElementById('main-content'));
     if(ok)logActivity('העלאת מסמכים','פרויקט: '+proj.name+' · '+ok+' קבצים ('+cat+')');
     if(fail){console.warn('doc upload failures',failMsgs);showToast('הועלו '+ok+' קבצים · '+fail+' נכשלו','error');}
     else showToast(ok>1?('✓ הועלו '+ok+' קבצים'):'✓ הקובץ הועלה');
+    if(ok)await mirrorDocsToLinked(proj,addedDocs);
+    renderProjectDetail(document.getElementById('main-content'));
   })();
 }
 async function addDocLink(cat){
@@ -9963,9 +9994,12 @@ async function addDocLink(cat){
   var name=prompt('שם המסמך:');if(!name)return;
   var url=prompt('הכנס לינק (Google Drive / Dropbox וכו\')\n\nחשוב: לינק שיתוף ציבורי!');if(!url)return;
   var data=getData();var proj=getCurrentProject();if(!proj)return;
-  proj.documents.push({id:'d'+Date.now(),name:name,category:cat,date:new Date().toLocaleDateString('he-IL'),url:url});
+  var _doc={id:'d'+Date.now(),name:name,category:cat,date:new Date().toLocaleDateString('he-IL'),url:url};
+  proj.documents.push(_doc);
   logActivity('הוספת מסמך (לינק)','פרויקט: '+proj.name+' · '+name);
   if(!await saveData(data))return;
+  renderProjectDetail(document.getElementById('main-content'));
+  await mirrorDocsToLinked(proj,[_doc]);
   renderProjectDetail(document.getElementById('main-content'));
 }
 async function addDocument(){
