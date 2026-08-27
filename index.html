@@ -4045,6 +4045,7 @@ async function saveMilestone(){
   if(res.error){showToast('שגיאה בשמירה: '+formatSupabaseErrorHint(res.error.message),'error');return;}
   await refreshMilestonesCache();
   if(!editingMilestoneId)await mirrorMilestoneToLinked(proj,row);
+  else await mirrorMilestoneEditToLinked(proj,row);
   closeModal('modal-milestone');
   editingMilestoneId=null;
   if(currentView==='milestones'){
@@ -9346,17 +9347,53 @@ async function mirrorMilestoneToLinked(proj,row){
   logActivity('שיקוף אבן דרך לפרויקט מקושר','→ '+linked.name);
   showToast('✓ נוסף גם לפרויקט '+linked.name);
 }
+async function mirrorMilestoneEditToLinked(proj,row){
+  var linked=getLinkedProject(proj);
+  if(!linked)return;
+  var twin=(milestonesCache||[]).find(function(m){return m.projectId===linked.id && (m.title||'').trim()===(row.title||'').trim();});
+  if(!twin)return;
+  if(!confirm('הפרויקט מקושר ל"'+(linked.name||'')+'".\nלעדכן את אבן הדרך "'+(row.title||'')+'" גם שם?'))return;
+  var upd={title:row.title,description:row.description,due_date:row.due_date,status:row.status,priority:row.priority,alert_days_before:row.alert_days_before};
+  var r=await supabase.from('milestones').update(upd).eq('id',twin.id);
+  if(r.error){showToast('שגיאה בעדכון הפרויקט המקושר: '+formatSupabaseErrorHint(r.error.message),'error');return;}
+  await refreshMilestonesCache();
+  updateMilestoneAlertBanner();
+  logActivity('שיקוף עדכון אבן דרך לפרויקט מקושר','→ '+linked.name);
+  showToast('✓ עודכן גם בפרויקט '+linked.name);
+}
 async function mirrorPhaseToLinked(proj,ph){
   var linked=getLinkedProject(proj);
   if(!linked)return;
   if(!confirm('הפרויקט מקושר ל"'+(linked.name||'')+'".\nלהוסיף את השלב "'+(ph.name||'')+'" גם לשם?'))return;
+  var sk=ph.syncKey||('sk'+Date.now()+Math.floor(Math.random()*1e6));
   var data=getData();
+  var sp=(data.projects||[]).find(function(p){return p.id===proj.id;});
+  if(sp){var op=(sp.phases||[]).find(function(x){return x.id===ph.id;});if(op)op.syncKey=sk;}
   var lp=(data.projects||[]).find(function(p){return p.id===linked.id;});
   if(!lp)return;
   if(!lp.phases)lp.phases=[];
-  lp.phases.push(Object.assign({},ph,{id:'ph'+Date.now()+'_m'+Math.floor(Math.random()*1e6),depends_on:[]}));
+  lp.phases.push(Object.assign({},ph,{id:'ph'+Date.now()+'_m'+Math.floor(Math.random()*1e6),syncKey:sk,depends_on:[]}));
   if(await saveData(data)){ logActivity('שיקוף שלב לפרויקט מקושר','→ '+lp.name); showToast('✓ נוסף גם לפרויקט '+lp.name); }
   else showToast('שגיאה בהוספה לפרויקט המקושר','error');
+}
+async function mirrorPhaseEditToLinked(proj,ph){
+  var linked=getLinkedProject(proj);
+  if(!linked)return;
+  var data=getData();
+  var sp=(data.projects||[]).find(function(p){return p.id===proj.id;});
+  var cur=sp?(sp.phases||[]).find(function(x){return x.id===ph.id;}):null;
+  var sk=cur?cur.syncKey:null;
+  var lp=(data.projects||[]).find(function(p){return p.id===linked.id;});
+  if(!lp||!lp.phases)return;
+  var twin=null;
+  if(sk)twin=lp.phases.find(function(x){return x.syncKey===sk;});
+  if(!twin)twin=lp.phases.find(function(x){return (x.name||'').trim()===(ph.name||'').trim();});
+  if(!twin)return;
+  if(!confirm('הפרויקט מקושר ל"'+(linked.name||'')+'".\nלעדכן את השלב "'+(ph.name||'')+'" גם שם?'))return;
+  ['name','start','end','progress','status','notes','planned_cost','subcontractor_id'].forEach(function(k){twin[k]=ph[k];});
+  if(sk&&!twin.syncKey)twin.syncKey=sk;
+  if(await saveData(data)){ logActivity('שיקוף עדכון שלב לפרויקט מקושר','→ '+lp.name); showToast('✓ עודכן גם בפרויקט '+lp.name); }
+  else showToast('שגיאה בעדכון הפרויקט המקושר','error');
 }
 function openNewProjectModal(){
   if(!requireAdmin())return;
@@ -9830,6 +9867,7 @@ async function savePhase(){
   showToast(wasEditing?'השלב עודכן בהצלחה':'השלב נשמר בהצלחה');
   if(depAlerts.length)depAlerts.forEach(function(msg){showToast(msg,'error');});
   if(!wasEditing)await mirrorPhaseToLinked(proj,ph);
+  else await mirrorPhaseEditToLinked(proj,ph);
   renderProjectDetail(document.getElementById('main-content'));
 }
 async function saveOverallProgress(){
