@@ -3270,7 +3270,7 @@ function renderGanttChartHtml(phases){
   return '<div class="card gantt-card">'+
     '<div class="gantt-card-head flex-between responsive-stack">'+
     '<div class="card-title">'+ic('calendar')+' לוח זמנים — Gantt</div>'+
-    (phases.length?'<div class="gantt-card-actions"><button type="button" class="btn btn-outline btn-sm" onclick="exportGanttToCsv()">'+ic('download')+' ייצוא ל-MS Project (CSV)</button></div>':'')+
+    (phases.length?'<div class="gantt-card-actions"><button type="button" class="btn btn-outline btn-sm" onclick="exportGanttToExcel()">'+ic('download')+' ייצוא ל-Excel</button> <button type="button" class="btn btn-outline btn-sm" onclick="exportGanttToCsv()">'+ic('download')+' MS Project (CSV)</button></div>':'')+
     '</div>'+
     '<div class="gantt-legend">'+
     '<span class="gantt-legend-item"><span class="gantt-legend-dot done"></span> הושלם</span>'+
@@ -3301,6 +3301,23 @@ function downloadTextFile(filename,content,mime){
   a.click();
   a.remove();
   setTimeout(function(){URL.revokeObjectURL(a.href);},500);
+}
+function exportGanttToExcel(){
+  var proj=getCurrentProject();if(!proj)return;
+  var phases=(proj.phases||[]);
+  if(!phases.length){showToast('אין שלבים לייצוא','error');return;}
+  if(typeof XLSX==='undefined'){showToast('ספריית Excel לא נטענה — רענן את העמוד','error');return;}
+  var aoa=[['Task Name','Start','Finish','Percent Complete','Status','Notes']];
+  phases.forEach(function(ph){
+    aoa.push([ph.name||'', ph.start?new Date(ph.start):'', ph.end?new Date(ph.end):'', (phaseProgressPct(ph.progress)||0)+'%', phaseStatusLabel(ph.status), ph.notes||'']);
+  });
+  var ws=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true});
+  for(var r=1;r<aoa.length;r++){ ['B','C'].forEach(function(c){ var cell=ws[c+(r+1)]; if(cell&&cell.t==='d')cell.z='dd/mm/yyyy'; }); }
+  ws['!cols']=[{wch:30},{wch:13},{wch:13},{wch:16},{wch:14},{wch:32}];
+  ws['!views']=[{RTL:true}];
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'לוח זמנים');
+  XLSX.writeFile(wb, sanitizeFileName(proj.name||'project').slice(0,48)+'-לוח-זמנים.xlsx', {cellDates:true});
 }
 function exportGanttToCsv(){
   if(!requireProjectAccess())return;
@@ -10174,7 +10191,7 @@ Object.assign(window,{
   openAddFinishSelectionModal,openEditFinishSelectionModal,saveFinishSelection,deleteFinishSelection,markFinishSelectionDone,saveFinishSelectionNotes,onFinishCategoryFilterChange,
   openAddPriceCategoryModal,savePriceCategory,onPriceCategoryFilterChange,
   openAddPriceOfferModal,openEditPriceOfferModal,savePriceOffer,deletePriceOffer,updatePriceOfferTotalPreview,openPriceOfferPdf,
-  saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,exportDailyLogsCsv,
+  saveUpdate,deleteUpdate,sendMessage,openNewUpdateModal,clearFilePreview,exportGanttToCsv,exportGanttToExcel,exportDailyLogsCsv,
   uploadDocFile,addDocLink,addDocument,uploadDoc,deleteDoc,openDocInAutodeskViewer,
   openNewGalleryPostModal,openEditGalleryPostModal,closeGalleryPostModal,onGalleryPostFilesSelected,setGalleryStageFilter,
   toggleRemoveGalleryImage,removePendingGalleryFile,saveGalleryPost,deleteGalleryPost,handleGalleryImageError,
