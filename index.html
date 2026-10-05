@@ -8233,9 +8233,10 @@ function renderDashboard(el){
           '<button class="btn btn-outline btn-sm" onclick="showView(\'project\',\''+item.projectId+'\');switchTab(\'timeline\')">'+ic('calendar')+' צפה בשלב</button></div>';
       }).join('')+'</div></div>';
   }
-  html+='<div class="card"><div class="section-actions"><div class="section-title">'+ic('construction')+' פרויקטים אחרונים</div><button class="btn btn-accent btn-sm admin-only-action" onclick="openNewProjectModal()">'+ic('plus')+' פרויקט חדש</button></div>'+
-    (projects.length===0?'<div class="empty-state"><div class="empty-icon">'+ic('construction')+'</div><p>אין פרויקטים עדיין — צור את הראשון</p></div>':
-    '<div class="projects-grid">'+sortProjectsByRecent(projects).slice(0,6).map(projectCardHTML).join('')+'</div>')+
+  var activeProjects=projects.filter(function(p){return p.status!=='done';});
+  html+='<div class="card"><div class="section-actions"><div class="section-title">'+ic('construction')+' פרויקטים בעבודה</div><button class="btn btn-accent btn-sm admin-only-action" onclick="openNewProjectModal()">'+ic('plus')+' פרויקט חדש</button></div>'+
+    (activeProjects.length===0?'<div class="empty-state"><div class="empty-icon">'+ic('construction')+'</div><p>אין פרויקטים בעבודה</p></div>':
+    '<div class="projects-grid">'+sortProjectsByRecent(activeProjects).slice(0,6).map(projectCardHTML).join('')+'</div>')+
     '</div>';
   el.innerHTML=html;
   refreshIcons(el);
