@@ -7665,7 +7665,7 @@ async function buildPdfFromElement(el){
   if(document.fonts&&document.fonts.ready)await document.fonts.ready;
   await new Promise(function(r){setTimeout(r,150);});
   var libs=await loadJsPdfLib();
-  var canvas=await libs.html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,
+  var canvas=await libs.html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,onclone:srStripEmptyPhotosInClone,
     windowWidth:1024,windowHeight:Math.max(window.innerHeight||0,(el.scrollHeight||0)+200,1400)});
   var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
   var margin=10,pageW=210,pageH=297,imgW=pageW-margin*2,pxPerMm=canvas.width/imgW,pageChunkPx=Math.floor((pageH-margin*2)*pxPerMm),sY=0,pageNum=0;
@@ -7840,6 +7840,7 @@ function srListAdd(id){var c=document.getElementById(id);if(!c)return;var tmp=do
 function srListRemove(btn){var row=btn.closest('.sr-li');if(!row)return;var c=row.parentNode;row.remove();if(c&&c.id)srListRenumber(c.id);}
 function srPrepCapture(){var doc=document.getElementById('sr-doc');if(!doc)return;var boxes=doc.querySelectorAll('.sr-photo');var anyImg=false;[].forEach.call(boxes,function(b){if(b.classList.contains('has-img'))anyImg=true;else{b.setAttribute('data-sr-hidden','1');b.style.display='none';}});if(!anyImg){var grid=doc.querySelector('.sr-photos');if(grid){grid.setAttribute('data-sr-hidden','1');grid.style.display='none';var h=grid.previousElementSibling;if(h&&h.tagName==='H2'){h.setAttribute('data-sr-hidden','1');h.style.display='none';}}}}
 function srEndCapture(){var doc=document.getElementById('sr-doc');if(!doc)return;[].forEach.call(doc.querySelectorAll('[data-sr-hidden]'),function(el){el.style.display='';el.removeAttribute('data-sr-hidden');});}
+function srStripEmptyPhotosInClone(cloneDoc){try{var cdoc=(cloneDoc||document).getElementById('sr-doc');if(!cdoc)return;var boxes=cdoc.querySelectorAll('.sr-photo');var any=false;[].forEach.call(boxes,function(b){if(b.classList.contains('has-img'))any=true;else if(b.parentNode)b.parentNode.removeChild(b);});if(!any){var grid=cdoc.querySelector('.sr-photos');if(grid){var h=grid.previousElementSibling;if(h&&h.tagName==='H2'&&h.parentNode)h.parentNode.removeChild(h);if(grid.parentNode)grid.parentNode.removeChild(grid);}}}catch(e){console.warn('srStripEmptyPhotosInClone',e);}}
 function srPickPhoto(box){var inp=box.querySelector('.sr-photo-input');if(inp)inp.click();}
 function srSetPhoto(box,src){box.classList.add('has-img');var img=box.querySelector('img.sr-photo-img');if(!img){img=document.createElement('img');img.className='sr-photo-img';box.appendChild(img);}img.src=src;var rm=box.querySelector('.sr-photo-rm');if(!rm){rm=document.createElement('button');rm.type='button';rm.className='sr-photo-rm';rm.textContent='✕';rm.title='הסר תמונה';rm.onclick=function(evt){evt.stopPropagation();srRemovePhoto(box);};box.appendChild(rm);}}
 function srPhotoChange(ev,input){var f=ev.target.files&&ev.target.files[0];if(!f)return;var box=input.closest('.sr-photo');box._srFile=f;var r=new FileReader();r.onload=function(e){srSetPhoto(box,e.target.result);};r.readAsDataURL(f);}
@@ -8081,7 +8082,7 @@ async function rasterizeElementToPdf(el,fileName){
   // Force a desktop-width render so the PDF uses the desktop layout even when exported
   // from a phone (otherwise html2canvas captures the cramped mobile layout).
   var renderWidth=1024;
-  var canvas=await libs.html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,
+  var canvas=await libs.html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,onclone:srStripEmptyPhotosInClone,
     windowWidth:renderWidth,windowHeight:Math.max(window.innerHeight||0,(el.scrollHeight||0)+200,1400)});
   var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
   var margin=10,pageW=210,pageH=297;
