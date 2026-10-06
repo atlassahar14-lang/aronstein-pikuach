@@ -7819,20 +7819,36 @@ var SR_STYLE='<style>'+
 '.sr-sign .cap{font-size:11.5px;color:#5b6577;margin-top:4px}'+
 '.sr-foot{text-align:center;font-size:11px;color:#5b6577;margin-top:18px;padding-top:10px;border-top:1px solid #d7dde7}'+
 '@media print{body.sr-printing *{visibility:hidden!important}body.sr-printing #sr-doc,body.sr-printing #sr-doc *{visibility:visible!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body.sr-printing #sr-doc{position:absolute;top:0;right:0;left:0;width:100%;max-width:none;margin:0;border:0;border-radius:0;box-shadow:none}body.sr-printing .sr-photo-rm,body.sr-printing .sr-photo-ph{display:none!important}}'+
+'.sr-list{display:flex;flex-direction:column;gap:6px}'+
+'.sr-li{display:flex;align-items:flex-start;gap:9px;border:1px solid #d7dde7;border-radius:9px;padding:8px 11px;background:#fff}'+
+'.sr-li-n{flex:0 0 auto;width:22px;height:22px;border-radius:6px;background:#eef2f9;color:#152449;font-weight:900;font-size:12.5px;display:flex;align-items:center;justify-content:center;margin-top:1px}'+
+'.sr-li-t{flex:1;min-height:22px;outline:none;font-size:14px;line-height:1.55}'+
+'.sr-li-t:focus{background:#fffdf3;border-radius:4px}'+
+'.sr-li-rm{flex:0 0 auto;border:0;background:none;color:#c25b5b;font-weight:900;cursor:pointer;font-size:14px;line-height:1;padding:2px 4px}'+
+'.sr-area:empty:before,.sr-li-t:empty:before{content:attr(data-ph);color:#9aa4b5;pointer-events:none}'+
+'.sr-area{min-height:44px}'+
+'.sr-doc.sr-capturing .sr-li-rm,body.sr-printing .sr-li-rm,.sr-doc.sr-capturing .sr-add,body.sr-printing .sr-add{display:none!important}'+
 '</style>';
 function srRowsHtml(cols,count){var out='';for(var r=1;r<=count;r++){var row='<tr><td class="num">'+r+'</td>';for(var i=1;i<cols;i++)row+='<td contenteditable></td>';out+=row+'</tr>';}return out;}
 function srRenumber(id){var b=document.querySelector('#'+id+' tbody');if(b)[].forEach.call(b.rows,function(r,i){r.cells[0].textContent=i+1;});}
 function srAddRow(id,cols){var b=document.querySelector('#'+id+' tbody');if(!b)return;var tr=document.createElement('tr');var h='<td class="num"></td>';for(var i=1;i<cols;i++)h+='<td contenteditable></td>';tr.innerHTML=h;b.appendChild(tr);srRenumber(id);if(tr.cells[1])tr.cells[1].focus();}
 function srPhotosHtml(){var out='';for(var i=1;i<=6;i++){out+='<div class="sr-photo" onclick="srPickPhoto(this)"><input type="file" accept="image/*" class="sr-photo-input" onchange="srPhotoChange(event,this)" style="display:none"><span class="sr-photo-ph">＋ הוסף תמונה</span></div>';}return out;}
+function srListRowHtml(){return '<div class="sr-li"><span class="sr-li-n"></span><div class="sr-li-t" contenteditable data-ph="כתוב סעיף..."></div><button class="sr-li-rm" onclick="srListRemove(this)" title="מחק">✕</button></div>';}
+function srListRowsHtml(count){var out='';for(var i=0;i<count;i++)out+=srListRowHtml();return out;}
+function srListRenumber(id){var c=document.getElementById(id);if(!c)return;[].forEach.call(c.querySelectorAll('.sr-li-n'),function(n,i){n.textContent=i+1;});}
+function srListAdd(id){var c=document.getElementById(id);if(!c)return;var tmp=document.createElement('div');tmp.innerHTML=srListRowHtml();var row=tmp.firstChild;c.appendChild(row);srListRenumber(id);var t=row.querySelector('.sr-li-t');if(t)t.focus();}
+function srListRemove(btn){var row=btn.closest('.sr-li');if(!row)return;var c=row.parentNode;row.remove();if(c&&c.id)srListRenumber(c.id);}
 function srPickPhoto(box){var inp=box.querySelector('.sr-photo-input');if(inp)inp.click();}
 function srSetPhoto(box,src){box.classList.add('has-img');var img=box.querySelector('img.sr-photo-img');if(!img){img=document.createElement('img');img.className='sr-photo-img';box.appendChild(img);}img.src=src;var rm=box.querySelector('.sr-photo-rm');if(!rm){rm=document.createElement('button');rm.type='button';rm.className='sr-photo-rm';rm.textContent='✕';rm.title='הסר תמונה';rm.onclick=function(evt){evt.stopPropagation();srRemovePhoto(box);};box.appendChild(rm);}}
 function srPhotoChange(ev,input){var f=ev.target.files&&ev.target.files[0];if(!f)return;var box=input.closest('.sr-photo');box._srFile=f;var r=new FileReader();r.onload=function(e){srSetPhoto(box,e.target.result);};r.readAsDataURL(f);}
 function srRemovePhoto(box){var img=box.querySelector('img.sr-photo-img');if(img)img.remove();var rm=box.querySelector('.sr-photo-rm');if(rm)rm.remove();box.classList.remove('has-img');box._srFile=null;var inp=box.querySelector('.sr-photo-input');if(inp)inp.value='';}
 var srRestore=null,srEditDocId=null;
 function onSrProjectPick(){var sel=document.getElementById('sr-project');var pid=sel?sel.value:'';var proj=(getData().projects||[]).find(function(p){return p.id===pid;});var nameCell=document.querySelector('#sr-doc .sr-meta .val');if(proj&&nameCell)nameCell.textContent=proj.name||proj.clientName||'';var chip=document.getElementById('sr-linkchip');if(chip)chip.style.display=pid?'inline-flex':'none';}
-function collectSrData(){var meta=[].map.call(document.querySelectorAll('#sr-doc .sr-meta .val'),function(e){return e.innerHTML;});var st=document.querySelector('#sr-doc .sr-area');function rows(id){return [].map.call(document.querySelectorAll('#'+id+' tbody tr'),function(tr){return [].slice.call(tr.cells,1).map(function(td){return td.innerHTML;});});}var photos=[].map.call(document.querySelectorAll('#sr-doc .sr-photo'),function(box){var img=box.querySelector('img.sr-photo-img');return img?img.src:'';});return {meta:meta,status:st?st.innerHTML:'',defects:rows('sr-defects'),instructions:rows('sr-instructions'),photos:photos};}
+function collectSrData(){var meta=[].map.call(document.querySelectorAll('#sr-doc .sr-meta .val'),function(e){return e.innerHTML;});var st=document.querySelector('#sr-doc .sr-area');function items(id){return [].map.call(document.querySelectorAll('#'+id+' .sr-li-t'),function(t){return t.innerHTML;});}var photos=[].map.call(document.querySelectorAll('#sr-doc .sr-photo'),function(box){var img=box.querySelector('img.sr-photo-img');return img?img.src:'';});return {meta:meta,status:st?st.innerHTML:'',statusList:items('sr-status'),instructions:items('sr-instructions'),photos:photos};}
+function srRowToText(row){return Array.isArray(row)?row.filter(function(c){return c&&String(c).trim();}).join(' · '):(row||'');}
+function applySrList(id,items){var c=document.getElementById(id);if(!c)return;var arr=(items&&items.length)?items:[''];c.innerHTML='';arr.forEach(function(txt){var tmp=document.createElement('div');tmp.innerHTML=srListRowHtml();var row=tmp.firstChild;var t=row.querySelector('.sr-li-t');if(t)t.innerHTML=srRowToText(txt);c.appendChild(row);});srListRenumber(id);}
 function applySrRows(id,cols,rowsData){var tbody=document.querySelector('#'+id+' tbody');if(!tbody)return;tbody.innerHTML='';var n=Math.max(rowsData.length,1);for(var r=0;r<n;r++){var tr=document.createElement('tr');var h='<td class="num">'+(r+1)+'</td>';for(var c=1;c<cols;c++)h+='<td contenteditable></td>';tr.innerHTML=h;tbody.appendChild(tr);var cells=rowsData[r]||[];for(var k=0;k<cells.length;k++){if(tr.cells[k+1])tr.cells[k+1].innerHTML=cells[k];}}}
-function applySrData(d){if(!d)return;var metaEls=document.querySelectorAll('#sr-doc .sr-meta .val');(d.meta||[]).forEach(function(v,i){if(metaEls[i])metaEls[i].innerHTML=v;});var area=document.querySelector('#sr-doc .sr-area');if(area)area.innerHTML=d.status||'';applySrRows('sr-defects',6,d.defects||[]);applySrRows('sr-instructions',5,d.instructions||[]);var boxes=document.querySelectorAll('#sr-doc .sr-photo');(d.photos||[]).forEach(function(src,i){if(src&&boxes[i])srSetPhoto(boxes[i],src);});}
+function applySrData(d){if(!d)return;var metaEls=document.querySelectorAll('#sr-doc .sr-meta .val');(d.meta||[]).forEach(function(v,i){if(metaEls[i])metaEls[i].innerHTML=v;});var area=document.querySelector('#sr-doc .sr-area');if(area)area.innerHTML=d.status||'';var statusItems=d.statusList||(d.defects||[]).map(srRowToText);applySrList('sr-status',statusItems);applySrList('sr-instructions',(d.instructions||[]).map(srRowToText));var boxes=document.querySelectorAll('#sr-doc .sr-photo');(d.photos||[]).forEach(function(src,i){if(src&&boxes[i])srSetPhoto(boxes[i],src);});}
 async function saveSupervisionReportToProject(){var sel=document.getElementById('sr-project');var pid=sel?sel.value:'';if(!pid){showToast('בחר פרויקט לקישור','error');return;}var data=getData();var proj=(data.projects||[]).find(function(p){return p.id===pid;});if(!proj){showToast('הפרויקט לא נמצא','error');return;}showToast('שומר דוח...');var docId=srEditDocId||('d'+Date.now());var docEl=document.getElementById('sr-doc');var metaEls=document.querySelectorAll('#sr-doc .sr-meta .val');var dateStr=(metaEls[2]?metaEls[2].textContent:'').trim()||new Date().toLocaleDateString('he-IL');var docName='דוח פיקוח - '+dateStr+'.pdf';var url='#',path='';try{docEl.classList.add('sr-capturing');var blob=await rasterizeElementToPdfBlob(docEl);docEl.classList.remove('sr-capturing');var pdfFile=new File([blob],docName,{type:'application/pdf'});var upd=await uploadMediaFile('documents/'+proj.id+'/'+docId,pdfFile);if(upd.ok){url=upd.data.url;path=upd.data.path;}}catch(e){docEl.classList.remove('sr-capturing');console.warn('sr pdf',e);}try{var boxes=document.querySelectorAll('#sr-doc .sr-photo');for(var i=0;i<boxes.length;i++){var box=boxes[i];var img=box.querySelector('img.sr-photo-img');if(box._srFile){var ext=((box._srFile.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,''))||'jpg';var up=await uploadMediaFile('supervision/'+proj.id+'/'+docId+'-'+i+'-'+Date.now()+'.'+ext,box._srFile);if(up.ok&&img){img.src=up.data.url;box._srFile=null;}}}}catch(e){console.warn('sr photos',e);}var srData=collectSrData();if(!proj.documents)proj.documents=[];var existing=srEditDocId?proj.documents.find(function(x){return x.id===srEditDocId;}):null;var isNew=!existing;if(existing){existing.name=docName;existing.date=dateStr;existing.srData=srData;if(url!=='#'){existing.url=url;existing.path=path;existing.type='application/pdf';}}else{existing={id:docId,name:docName,category:'דוח פיקוח',date:dateStr,url:url,srData:srData};if(url!=='#'){existing.path=path;existing.type='application/pdf';}proj.documents.push(existing);}logActivity('שמירת דוח פיקוח','פרויקט: '+proj.name);if(!await saveData(data)){if(isNew){var ri=proj.documents.indexOf(existing);if(ri>=0)proj.documents.splice(ri,1);}showToast('שגיאה בשמירה','error');return;}srEditDocId=existing.id;showToast('✓ נשמר לפרויקט '+proj.name+' תחת "דוח פיקוח"');}
 function editSupervisionReport(projId,docId){var proj=(getData().projects||[]).find(function(p){return p.id===projId;});if(!proj){showToast('הפרויקט לא נמצא','error');return;}var d=(proj.documents||[]).find(function(x){return x.id===docId;});if(!d||!d.srData){showToast('לא נמצאו נתונים לעריכה','error');return;}srRestore={projectId:projId,data:d.srData,editDocId:docId};showView('supervision-report');showToast('נטען דוח לעריכה — ערוך ולחץ "שמור לפרויקט"');}
 function collectAllSrReports(){var out=[];(getData().projects||[]).forEach(function(p){(p.documents||[]).forEach(function(d){if(d.category==='דוח פיקוח'||d.srData)out.push({proj:p,doc:d});});});out.sort(function(a,b){return String(b.doc.id||'').localeCompare(String(a.doc.id||''));});return out;}
@@ -7846,21 +7862,20 @@ function srDocHtml(){
   '</header>'+
   '<div class="sr-meta">'+
     '<div class="cell"><div class="lbl">שם הלקוח</div><div class="val" contenteditable></div></div>'+
-    '<div class="cell"><div class="lbl">מבנה / אזור</div><div class="val" contenteditable></div></div>'+
+    '<div class="cell"><div class="lbl">מיקום</div><div class="val" contenteditable></div></div>'+
     '<div class="cell"><div class="lbl">תאריך ביקור</div><div class="val" contenteditable></div></div>'+
     '<div class="cell"><div class="lbl">סוג העבודה</div><div class="val" contenteditable></div></div>'+
     '<div class="cell"><div class="lbl">עורך הדוח</div><div class="val" contenteditable>ארונשטיין</div></div>'+
-    '<div class="cell"><div class="lbl">נוכחים בביקור</div><div class="val" contenteditable></div></div>'+
+    '<div class="cell"><div class="lbl">נוכחים בסיור</div><div class="val" contenteditable></div></div>'+
   '</div>'+
-  '<h2 class="s"><span class="n">1</span> תמונת מצב</h2>'+
-  '<div class="sr-area" contenteditable></div>'+
-  '<h2 class="s"><span class="n">2</span> סטטוס מצב קיים</h2>'+
-  '<table id="sr-defects"><thead><tr><th style="width:32px">מס׳</th><th>תיאור הליקוי</th><th style="width:92px">מיקום</th><th style="width:72px">חומרה</th><th style="width:100px">באחריות</th><th style="width:90px">לתיקון עד</th></tr></thead><tbody>'+srRowsHtml(6,3)+'</tbody></table>'+
-  '<button class="sr-add" onclick="srAddRow(\'sr-defects\',6)">➕ הוסף שורת ליקוי</button>'+
-  '<h2 class="s"><span class="n">3</span> הוראות דגשים ליישום</h2>'+
-  '<table id="sr-instructions"><thead><tr><th style="width:32px">מס׳</th><th>הוראה / משימה</th><th style="width:100px">באחריות</th><th style="width:90px">יעד לביצוע</th><th style="width:120px">הערות</th></tr></thead><tbody>'+srRowsHtml(5,3)+'</tbody></table>'+
-  '<button class="sr-add" onclick="srAddRow(\'sr-instructions\',5)">➕ הוסף שורת הוראה</button>'+
-  '<h2 class="s"><span class="n">4</span> תיעוד תמונות</h2>'+
+  '<div class="sr-area" contenteditable data-ph="תיאור קצר של הביקור — לדוגמה: ביקור פיקוח באתר לפני יציקה."></div>'+
+  '<h2 class="s"><span class="n">1</span> סטטוס מצב קיים</h2>'+
+  '<div class="sr-list" id="sr-status">'+srListRowsHtml(3)+'</div>'+
+  '<button class="sr-add" onclick="srListAdd(\'sr-status\')">➕ הוסף שורה</button>'+
+  '<h2 class="s"><span class="n">2</span> הוראות דגשים ליישום</h2>'+
+  '<div class="sr-list" id="sr-instructions">'+srListRowsHtml(3)+'</div>'+
+  '<button class="sr-add" onclick="srListAdd(\'sr-instructions\')">➕ הוסף שורה</button>'+
+  '<h2 class="s"><span class="n">3</span> תיעוד תמונות</h2>'+
   '<div class="sr-photos">'+srPhotosHtml()+'</div>'+
   '<div class="sr-foot">ארונשטיין — ניהול ופיקוח בנייה · 052-5999897 · 052-6471756</div>';
 }
@@ -7875,6 +7890,7 @@ function renderSupervisionReport(el){
     '<div class="sr-linkbar"><div class="sr-linkrow"><label>'+ic('link')+' קשר לפרויקט:</label><select id="sr-project" onchange="onSrProjectPick()">'+projOpts+'</select><span class="sr-linkchip" id="sr-linkchip">'+ic('check')+' מקושר</span></div><div class="sr-linkhint">בחירת פרויקט תמלא את שם הפרויקט, והשמירה תיכנס למסמכי אותו פרויקט תחת "דוח פיקוח".</div></div>'+
     '<div class="sr-wrap"><div class="sr-doc" id="sr-doc">'+srDocHtml()+'</div></div>';
   refreshIcons(el);
+  srListRenumber('sr-status');srListRenumber('sr-instructions');
   if(srRestore){srEditDocId=srRestore.editDocId||null;var sel=document.getElementById('sr-project');if(sel)sel.value=srRestore.projectId||'';applySrData(srRestore.data);var chip=document.getElementById('sr-linkchip');if(chip)chip.style.display=(sel&&sel.value)?'inline-flex':'none';srRestore=null;}else{srEditDocId=null;}
 }
 async function printSupervisionReport(){
@@ -10198,7 +10214,7 @@ Object.assign(window,{
   openBudgetClientView,previewBudgetDraftClientView,closeBudgetClientView,printBudgetClientView,
   openGlobalSearch,onGlobalSearchInput,onGlobalSearchKeydown,navigateGlobalSearchResult,
   printWeeklyForm,renderWeeklyForm,onWeeklyProjectPick,saveWeeklyReportToProject,editWeeklyReport,
-  renderSupervisionReport,printSupervisionReport,srAddRow,srPickPhoto,srPhotoChange,srRemovePhoto,
+  renderSupervisionReport,printSupervisionReport,srAddRow,srListAdd,srListRemove,srPickPhoto,srPhotoChange,srRemovePhoto,
   saveSupervisionReportToProject,editSupervisionReport,onSrProjectPick,deleteSupervisionReport,
   onProjectStatusFilterChange
 });
