@@ -7859,11 +7859,61 @@ function srParseReportHtml(html){
 }
 function srImportFile(input){
   var f=input.files&&input.files[0];if(!f)return;
-  if(/\.pdf$/i.test(f.name||'')){showToast('לא ניתן לקרוא PDF לעריכה — העלה את קובץ ה-HTML של הדוח','error');input.value='';return;}
+  var name=(f.name||'').toLowerCase();
+  if(/\.pdf$/.test(name)){srImportPdf(f).catch(function(e){console.warn('sr pdf import',e);showToast('שגיאה בקריאת ה-PDF','error');});input.value='';return;}
   var reader=new FileReader();
   reader.onload=function(e){var html=e.target.result;input.value='';var data=null;try{data=srParseReportHtml(html);}catch(err){console.warn('sr import',err);}if(!data){showToast('לא זוהה דוח תקין בקובץ','error');return;}srRestore={projectId:'',data:data,editDocId:null};showView('supervision-report');showToast('הדוח נטען מהקובץ — ערוך את השינויים, קשר לפרויקט ולחץ "שמור לפרויקט"');};
   reader.onerror=function(){showToast('שגיאה בקריאת הקובץ','error');input.value='';};
   reader.readAsText(f,'utf-8');
+}
+var pdfJsPromise=null;
+function loadPdfJsLib(){
+  if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);
+  if(!pdfJsPromise){pdfJsPromise=new Promise(function(res,rej){
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload=function(){try{window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}catch(e){}res(window.pdfjsLib);};
+    s.onerror=function(){rej(new Error('pdfjs load failed'));};
+    document.head.appendChild(s);
+  });}
+  return pdfJsPromise;
+}
+async function srImportPdf(file){
+  showToast('קורא PDF...');
+  var lib=await loadPdfJsLib();
+  var buf=await file.arrayBuffer();
+  var doc=await lib.getDocument({data:new Uint8Array(buf)}).promise;
+  var items=[];
+  for(var p=1;p<=doc.numPages;p++){var page=await doc.getPage(p);var tc=await page.getTextContent();tc.items.forEach(function(it){if(it.str&&it.str.trim())items.push({s:it.str,x:it.transform[4],y:it.transform[5],p:p});});}
+  var data=srParsePdfItems(items);
+  if(!data){showToast('לא זוהה דוח תקין ב-PDF','error');return;}
+  srRestore={projectId:'',data:data,editDocId:null};
+  showView('supervision-report');
+  showToast('הדוח נטען מה-PDF — הוסף תמונות אם צריך, ערוך ושמור');
+}
+function srParsePdfItems(items){
+  var lmap={};items.forEach(function(it){var k=it.p+':'+Math.round(it.y);(lmap[k]=lmap[k]||[]).push(it);});
+  var lines=Object.keys(lmap).map(function(k){var pp=k.split(':');return {p:+pp[0],y:+pp[1],items:lmap[k].sort(function(a,b){return b.x-a.x;})};}).sort(function(a,b){return a.p-b.p||b.y-a.y;});
+  var J=function(l){return l.items.map(function(i){return i.s;}).join(' ').replace(/\s+/g,' ').trim();};
+  var clean=function(t){return String(t).replace(/\s+([,.;:])/g,'$1').replace(/\s+\+/g,'+').replace(/\(\s+/g,'(').replace(/\s+\)/g,')').replace(/\s+/g,' ').trim();};
+  var isNum=function(s){return /^\d{1,3}$/.test((s||'').trim());};
+  var findLabelRow=function(a,b){for(var i=0;i<lines.length;i++){var t=J(lines[i]);if(t.indexOf(a)>=0&&t.indexOf(b)>=0&&t.length<60)return i;}return -1;};
+  var meta=['','','','','ארונשטיין',''];
+  var i1=findLabelRow('שם הלקוח','תאריך');if(i1<0)i1=findLabelRow('פרויקט','תאריך');
+  if(i1>=0&&lines[i1+1]){var v=lines[i1+1].items.map(function(x){return x.s.trim();});meta[0]=v[0]||'';meta[1]=v[1]||'';meta[2]=v[2]||'';}
+  var i2=findLabelRow('סוג העבודה','עורך');if(i2<0)i2=findLabelRow('סוג עבודה','עורך');
+  if(i2>=0&&lines[i2+1]){var v2=lines[i2+1].items.map(function(x){return x.s.trim();});meta[3]=v2[0]||'';meta[4]=v2[1]||'';meta[5]=v2[2]||'';}
+  var secStart=function(name){var n=name.replace(/\s/g,'');for(var i=0;i<lines.length;i++){if(J(lines[i]).replace(/\s/g,'')===n)return i;}return -1;};
+  var s1=secStart('סטטוס מצב קיים');if(s1<0)s1=secStart('מצב ביצוע');
+  var s2=secStart('הוראות דגשים ליישום');if(s2<0)s2=secStart('הוראות ודגשים לטיפול');
+  var s3=secStart('תיעוד תמונות');
+  var status='';var from=(i2>=0?i2+2:0),to=(s1>=0?s1:lines.length);
+  for(var k=from;k<to;k++){var t=J(lines[k]);if(t&&!isNum(t)&&t.length>12){status=clean(t);break;}}
+  var listBetween=function(a,b){var out=[];var end=(b<0?lines.length:b);for(var i=a+1;i<end;i++){var it=lines[i].items;if(it.length>=2&&isNum(it[0].s)){out.push(clean(it.slice(1).map(function(x){return x.s;}).join(' ')));}}return out;};
+  var statusList=s1>=0?listBetween(s1,(s2>=0?s2:s3)):[];
+  var instructions=s2>=0?listBetween(s2,s3):[];
+  if(!meta[0]&&!status&&!statusList.length&&!instructions.length)return null;
+  return {meta:meta,status:status,statusList:statusList,instructions:instructions,photos:[]};
 }
 function srStripEmptyPhotosInClone(cloneDoc){try{var cdoc=(cloneDoc||document).getElementById('sr-doc');if(!cdoc)return;var boxes=cdoc.querySelectorAll('.sr-photo');var any=false;[].forEach.call(boxes,function(b){if(b.classList.contains('has-img'))any=true;else if(b.parentNode)b.parentNode.removeChild(b);});if(!any){var grid=cdoc.querySelector('.sr-photos');if(grid){var h=grid.previousElementSibling;if(h&&h.tagName==='H2'&&h.parentNode)h.parentNode.removeChild(h);if(grid.parentNode)grid.parentNode.removeChild(grid);}}}catch(e){console.warn('srStripEmptyPhotosInClone',e);}}
 function srPickPhoto(box){var inp=box.querySelector('.sr-photo-input');if(inp)inp.click();}
@@ -7916,7 +7966,7 @@ function renderSupervisionReport(el){
     '<div class="flex-gap"><button class="btn" style="background:var(--accent);color:#3a2600;width:auto" onclick="saveSupervisionReportToProject()">'+ic('save')+' שמור לפרויקט</button>'+
     '<button class="btn btn-outline" style="width:auto" onclick="printSupervisionReport()">'+ic('download')+' הורד PDF</button>'+
     '<button class="btn btn-outline" style="width:auto" onclick="document.getElementById(\'sr-import-file\').click()">'+ic('upload')+' העלה דוח מקובץ</button>'+
-    '<input type="file" id="sr-import-file" accept=".html,.htm" style="display:none" onchange="srImportFile(this)"></div></div>'+
+    '<input type="file" id="sr-import-file" accept=".pdf,.html,.htm" style="display:none" onchange="srImportFile(this)"></div></div>'+
     renderSrArchive()+
     '<div class="sr-linkbar"><div class="sr-linkrow"><label>'+ic('link')+' קשר לפרויקט:</label><select id="sr-project" onchange="onSrProjectPick()">'+projOpts+'</select><span class="sr-linkchip" id="sr-linkchip">'+ic('check')+' מקושר</span></div><div class="sr-linkhint">בחירת פרויקט תמלא את שם הפרויקט, והשמירה תיכנס למסמכי אותו פרויקט תחת "דוח פיקוח".</div></div>'+
     '<div class="sr-wrap"><div class="sr-doc" id="sr-doc">'+srDocHtml()+'</div></div>';
