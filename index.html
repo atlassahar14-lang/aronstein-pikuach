@@ -7661,7 +7661,7 @@ function applyWeeklyValues(vals){
   var fields=d.querySelectorAll('input,textarea,select');
   for(var i=0;i<fields.length;i++){ if(i<vals.length)fields[i].value=vals[i]; }
 }
-async function buildPdfFromElement(el){
+async function buildPdfFromElement(el,embedKw){
   if(document.fonts&&document.fonts.ready)await document.fonts.ready;
   await new Promise(function(r){setTimeout(r,150);});
   var libs=await loadJsPdfLib();
@@ -7695,9 +7695,10 @@ async function buildPdfFromElement(el){
     doc.addImage(pc.toDataURL('image/jpeg',0.92),'JPEG',margin,margin,imgW,chunkPx/pxPerMm);
     sY+=chunkPx;pageNum++;
   }
+  if(embedKw){try{doc.setProperties({keywords:embedKw});}catch(e){}}
   return doc;
 }
-async function rasterizeElementToPdfBlob(el){ var d=await buildPdfFromElement(el); return d.output('blob'); }
+async function rasterizeElementToPdfBlob(el,embedKw){ var d=await buildPdfFromElement(el,embedKw); return d.output('blob'); }
 async function saveWeeklyReportToProject(){
   var sel=document.getElementById('wf-project');
   var pid=sel?sel.value:'';
@@ -7883,6 +7884,7 @@ async function srImportPdf(file){
   var lib=await loadPdfJsLib();
   var buf=await file.arrayBuffer();
   var doc=await lib.getDocument({data:new Uint8Array(buf)}).promise;
+  try{var md=await doc.getMetadata();var kw=md&&md.info&&md.info.Keywords;var mm=kw&&String(kw).match(/SRDATA:(.+)/);if(mm){var sd=JSON.parse(decodeURIComponent(escape(atob(mm[1]))));srRestore={projectId:'',data:sd,editDocId:null};showView('supervision-report');showToast('הדוח נטען מה-PDF (כולל כל הנתונים) — ערוך ושמור');return;}}catch(e){console.warn('sr meta read',e);}
   var items=[];
   for(var p=1;p<=doc.numPages;p++){var page=await doc.getPage(p);var tc=await page.getTextContent();tc.items.forEach(function(it){if(it.str&&it.str.trim())items.push({s:it.str,x:it.transform[4],y:it.transform[5],p:p});});}
   if(!items.length){showToast('ה-PDF לא מכיל טקסט לחילוץ (כנראה תמונה/סריקה) — העלה PDF שהודפס מהדפדפן, או קובץ HTML','error');return;}
@@ -7931,6 +7933,7 @@ function srParsePdfItems(items){
   var instructions=s2>=0?listBetween(s2,s3):[];
   return {meta:meta,status:status,statusList:statusList,instructions:instructions,photos:[]};
 }
+function srMakeEmbedB64(){try{var d=collectSrData();var clean={meta:d.meta,status:d.status,statusList:d.statusList,instructions:d.instructions,photos:(d.photos||[]).map(function(u){return /^https?:/.test(u)?u:'';})};return 'SRDATA:'+btoa(unescape(encodeURIComponent(JSON.stringify(clean))));}catch(e){return '';}}
 function srStripEmptyPhotosInClone(cloneDoc){try{var cdoc=(cloneDoc||document).getElementById('sr-doc');if(!cdoc)return;var boxes=cdoc.querySelectorAll('.sr-photo');var any=false;[].forEach.call(boxes,function(b){if(b.classList.contains('has-img'))any=true;else if(b.parentNode)b.parentNode.removeChild(b);});if(!any){var grid=cdoc.querySelector('.sr-photos');if(grid){var h=grid.previousElementSibling;if(h&&h.tagName==='H2'&&h.parentNode)h.parentNode.removeChild(h);if(grid.parentNode)grid.parentNode.removeChild(grid);}}}catch(e){console.warn('srStripEmptyPhotosInClone',e);}}
 function srPickPhoto(box){var inp=box.querySelector('.sr-photo-input');if(inp)inp.click();}
 function srSetPhoto(box,src){box.classList.add('has-img');var img=box.querySelector('img.sr-photo-img');if(!img){img=document.createElement('img');img.className='sr-photo-img';box.appendChild(img);}img.src=src;var rm=box.querySelector('.sr-photo-rm');if(!rm){rm=document.createElement('button');rm.type='button';rm.className='sr-photo-rm';rm.textContent='✕';rm.title='הסר תמונה';rm.onclick=function(evt){evt.stopPropagation();srRemovePhoto(box);};box.appendChild(rm);}}
@@ -7943,7 +7946,7 @@ function srRowToText(row){return Array.isArray(row)?row.filter(function(c){retur
 function applySrList(id,items){var c=document.getElementById(id);if(!c)return;var arr=(items&&items.length)?items:[''];c.innerHTML='';arr.forEach(function(txt){var tmp=document.createElement('div');tmp.innerHTML=srListRowHtml();var row=tmp.firstChild;var t=row.querySelector('.sr-li-t');if(t)t.innerHTML=srRowToText(txt);c.appendChild(row);});srListRenumber(id);}
 function applySrRows(id,cols,rowsData){var tbody=document.querySelector('#'+id+' tbody');if(!tbody)return;tbody.innerHTML='';var n=Math.max(rowsData.length,1);for(var r=0;r<n;r++){var tr=document.createElement('tr');var h='<td class="num">'+(r+1)+'</td>';for(var c=1;c<cols;c++)h+='<td contenteditable></td>';tr.innerHTML=h;tbody.appendChild(tr);var cells=rowsData[r]||[];for(var k=0;k<cells.length;k++){if(tr.cells[k+1])tr.cells[k+1].innerHTML=cells[k];}}}
 function applySrData(d){if(!d)return;var metaEls=document.querySelectorAll('#sr-doc .sr-meta .val');(d.meta||[]).forEach(function(v,i){if(metaEls[i])metaEls[i].innerHTML=v;});var area=document.querySelector('#sr-doc .sr-area');if(area)area.innerHTML=d.status||'';var statusItems=d.statusList||(d.defects||[]).map(srRowToText);applySrList('sr-status',statusItems);applySrList('sr-instructions',(d.instructions||[]).map(srRowToText));var boxes=document.querySelectorAll('#sr-doc .sr-photo');(d.photos||[]).forEach(function(src,i){if(src&&boxes[i]){srSetPhoto(boxes[i],src);if(/^data:/.test(src)){var ext=(src.match(/^data:image\/([a-z0-9]+)/i)||[])[1]||'jpg';var fobj=dataURLtoFile(src,'photo-'+i+'-'+Date.now()+'.'+ext);if(fobj)boxes[i]._srFile=fobj;}}});}
-async function saveSupervisionReportToProject(){var sel=document.getElementById('sr-project');var pid=sel?sel.value:'';if(!pid){showToast('בחר פרויקט לקישור','error');return;}var data=getData();var proj=(data.projects||[]).find(function(p){return p.id===pid;});if(!proj){showToast('הפרויקט לא נמצא','error');return;}showToast('שומר דוח...');var docId=srEditDocId||('d'+Date.now());var docEl=document.getElementById('sr-doc');var metaEls=document.querySelectorAll('#sr-doc .sr-meta .val');var dateStr=(metaEls[2]?metaEls[2].textContent:'').trim()||new Date().toLocaleDateString('he-IL');var docName='דוח פיקוח - '+dateStr+'.pdf';var url='#',path='';try{docEl.classList.add('sr-capturing');srPrepCapture();var blob=await rasterizeElementToPdfBlob(docEl);srEndCapture();docEl.classList.remove('sr-capturing');var pdfFile=new File([blob],docName,{type:'application/pdf'});var upd=await uploadMediaFile('documents/'+proj.id+'/'+docId,pdfFile);if(upd.ok){url=upd.data.url;path=upd.data.path;}}catch(e){srEndCapture();docEl.classList.remove('sr-capturing');console.warn('sr pdf',e);}try{var boxes=document.querySelectorAll('#sr-doc .sr-photo');for(var i=0;i<boxes.length;i++){var box=boxes[i];var img=box.querySelector('img.sr-photo-img');if(box._srFile){var ext=((box._srFile.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,''))||'jpg';var up=await uploadMediaFile('supervision/'+proj.id+'/'+docId+'-'+i+'-'+Date.now()+'.'+ext,box._srFile);if(up.ok&&img){img.src=up.data.url;box._srFile=null;}}}}catch(e){console.warn('sr photos',e);}var srData=collectSrData();if(!proj.documents)proj.documents=[];var existing=srEditDocId?proj.documents.find(function(x){return x.id===srEditDocId;}):null;var isNew=!existing;if(existing){existing.name=docName;existing.date=dateStr;existing.srData=srData;if(url!=='#'){existing.url=url;existing.path=path;existing.type='application/pdf';}}else{existing={id:docId,name:docName,category:'דוח פיקוח',date:dateStr,url:url,srData:srData};if(url!=='#'){existing.path=path;existing.type='application/pdf';}proj.documents.push(existing);}logActivity('שמירת דוח פיקוח','פרויקט: '+proj.name);if(!await saveData(data)){if(isNew){var ri=proj.documents.indexOf(existing);if(ri>=0)proj.documents.splice(ri,1);}showToast('שגיאה בשמירה','error');return;}srEditDocId=existing.id;showToast('✓ נשמר לפרויקט '+proj.name+' תחת "דוח פיקוח"');}
+async function saveSupervisionReportToProject(){var sel=document.getElementById('sr-project');var pid=sel?sel.value:'';if(!pid){showToast('בחר פרויקט לקישור','error');return;}var data=getData();var proj=(data.projects||[]).find(function(p){return p.id===pid;});if(!proj){showToast('הפרויקט לא נמצא','error');return;}showToast('שומר דוח...');var docId=srEditDocId||('d'+Date.now());var docEl=document.getElementById('sr-doc');var metaEls=document.querySelectorAll('#sr-doc .sr-meta .val');var dateStr=(metaEls[2]?metaEls[2].textContent:'').trim()||new Date().toLocaleDateString('he-IL');var docName='דוח פיקוח - '+dateStr+'.pdf';var url='#',path='';var embedKw=srMakeEmbedB64();try{docEl.classList.add('sr-capturing');srPrepCapture();var blob=await rasterizeElementToPdfBlob(docEl,embedKw);srEndCapture();docEl.classList.remove('sr-capturing');var pdfFile=new File([blob],docName,{type:'application/pdf'});var upd=await uploadMediaFile('documents/'+proj.id+'/'+docId,pdfFile);if(upd.ok){url=upd.data.url;path=upd.data.path;}}catch(e){srEndCapture();docEl.classList.remove('sr-capturing');console.warn('sr pdf',e);}try{var boxes=document.querySelectorAll('#sr-doc .sr-photo');for(var i=0;i<boxes.length;i++){var box=boxes[i];var img=box.querySelector('img.sr-photo-img');if(box._srFile){var ext=((box._srFile.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,''))||'jpg';var up=await uploadMediaFile('supervision/'+proj.id+'/'+docId+'-'+i+'-'+Date.now()+'.'+ext,box._srFile);if(up.ok&&img){img.src=up.data.url;box._srFile=null;}}}}catch(e){console.warn('sr photos',e);}var srData=collectSrData();if(!proj.documents)proj.documents=[];var existing=srEditDocId?proj.documents.find(function(x){return x.id===srEditDocId;}):null;var isNew=!existing;if(existing){existing.name=docName;existing.date=dateStr;existing.srData=srData;if(url!=='#'){existing.url=url;existing.path=path;existing.type='application/pdf';}}else{existing={id:docId,name:docName,category:'דוח פיקוח',date:dateStr,url:url,srData:srData};if(url!=='#'){existing.path=path;existing.type='application/pdf';}proj.documents.push(existing);}logActivity('שמירת דוח פיקוח','פרויקט: '+proj.name);if(!await saveData(data)){if(isNew){var ri=proj.documents.indexOf(existing);if(ri>=0)proj.documents.splice(ri,1);}showToast('שגיאה בשמירה','error');return;}srEditDocId=existing.id;showToast('✓ נשמר לפרויקט '+proj.name+' תחת "דוח פיקוח"');}
 function editSupervisionReport(projId,docId){var proj=(getData().projects||[]).find(function(p){return p.id===projId;});if(!proj){showToast('הפרויקט לא נמצא','error');return;}var d=(proj.documents||[]).find(function(x){return x.id===docId;});if(!d||!d.srData){showToast('לא נמצאו נתונים לעריכה','error');return;}srRestore={projectId:projId,data:d.srData,editDocId:docId};showView('supervision-report');showToast('נטען דוח לעריכה — ערוך ולחץ "שמור לפרויקט"');}
 function duplicateSupervisionReport(projId,docId){var proj=(getData().projects||[]).find(function(p){return p.id===projId;});if(!proj){showToast('הפרויקט לא נמצא','error');return;}var d=(proj.documents||[]).find(function(x){return x.id===docId;});if(!d||!d.srData){showToast('לא נמצאו נתונים לשכפול','error');return;}var copy=JSON.parse(JSON.stringify(d.srData));srRestore={projectId:projId,data:copy,editDocId:null};showView('supervision-report');showToast('נוצר עותק זהה — ערוך רק את השינויים ולחץ "שמור לפרויקט" (יישמר כדוח חדש)');}
 function collectAllSrReports(){var out=[];(getData().projects||[]).forEach(function(p){(p.documents||[]).forEach(function(d){if(d.category==='דוח פיקוח'||d.srData)out.push({proj:p,doc:d});});});out.sort(function(a,b){return String(b.doc.id||'').localeCompare(String(a.doc.id||''));});return out;}
@@ -7993,9 +7996,10 @@ function renderSupervisionReport(el){
 async function printSupervisionReport(){
   var el=document.getElementById('sr-doc');if(!el)return;
   if(typeof showToast==='function')showToast('מייצר PDF...');
+  var embedKw=srMakeEmbedB64();
   el.classList.add('sr-capturing');
   srPrepCapture();
-  try{ await rasterizeElementToPdf(el,'דוח-פיקוח.pdf'); }
+  try{ await rasterizeElementToPdf(el,'דוח-פיקוח.pdf',embedKw); }
   catch(e){ document.body.classList.add('sr-printing'); window.print(); setTimeout(function(){document.body.classList.remove('sr-printing');},2000); }
   finally{ srEndCapture(); el.classList.remove('sr-capturing'); }
 }
@@ -8169,7 +8173,7 @@ function loadJsPdfLib(){
 // Rasterizes an existing DOM element to a multi-page A4 PDF (image-based).
 // Rasterizing (html2canvas → image) is what makes Hebrew/RTL render correctly —
 // jsPDF's text engine has no Hebrew font and produces garbled output.
-async function rasterizeElementToPdf(el,fileName){
+async function rasterizeElementToPdf(el,fileName,embedKw){
   if(document.fonts&&document.fonts.ready)await document.fonts.ready;
   await new Promise(function(r){setTimeout(r,150);});
   var libs=await loadJsPdfLib();
@@ -8196,6 +8200,7 @@ async function rasterizeElementToPdf(el,fileName){
     doc.addImage(pageCanvas.toDataURL('image/jpeg',0.92),'JPEG',margin,margin,imgW,chunkPx/pxPerMm);
     sY+=chunkPx;pageNum++;
   }
+  if(embedKw){try{doc.setProperties({keywords:embedKw});}catch(e){}}
   doc.save(fileName);
 }
 // Renders an HTML report string to PDF by rasterizing an off-screen element.
