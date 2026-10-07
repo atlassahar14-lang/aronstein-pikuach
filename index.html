@@ -6587,6 +6587,7 @@ function updateBudgetSummaryDisplay(){
   }
 }
 var budgetCollapsedCats={};
+var budgetCollapseDraftRef=null;
 function toggleBudgetCategory(enc,el){var cat=decodeURIComponent(enc);budgetCollapsedCats[cat]=!budgetCollapsedCats[cat];var sec=el&&el.closest?el.closest('.budget-category-section'):null;if(sec)sec.classList.toggle('collapsed',budgetCollapsedCats[cat]);}
 function budgetDescInput(el,id){onBudgetItemFieldChange(id,'description',el.value);el.style.height='auto';el.style.height=el.scrollHeight+'px';}
 function budgetGrowDescs(root){try{var ls=(root||document).querySelectorAll('.budget-desc-ta');[].forEach.call(ls,function(t){t.style.height='auto';t.style.height=t.scrollHeight+'px';});}catch(e){}}
@@ -6602,6 +6603,8 @@ function renderBudgetItemEditorRow(it){
 function renderBudgetBuilderEditorHtml(){
   var d=budgetBuilderDraft||createEmptyBudgetDraft();
   var cats=getBudgetDraftCategories();
+  // When a budget is first opened (new draft reference), start with all categories collapsed.
+  if(budgetCollapseDraftRef!==d){budgetCollapseDraftRef=d;budgetCollapsedCats={};cats.forEach(function(c){budgetCollapsedCats[c]=true;});}
   var totals=calcBudgetTotals(d.items,d.marginPercent);
   var catSections=cats.map(function(cat){
     var rows=(d.items||[]).filter(function(it){return it.category===cat;});
