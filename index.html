@@ -506,6 +506,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .budget-category-section.collapsed .budget-cat-caret{transform:rotate(-90deg)}
 .budget-category-section.collapsed .budget-category-body{display:none}
 .budget-cat-count{font-size:12px;color:var(--text-muted);background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1px 8px;flex:0 0 auto}
+.budget-toggle-all{display:flex;gap:8px;margin:16px 0 10px;flex-wrap:wrap}
 .budget-items-table{width:100%;border-collapse:collapse;table-layout:fixed}
 .budget-items-table th{text-align:right;padding:10px 12px;font-size:12px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);background:#fff}
 .budget-items-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
@@ -6589,6 +6590,7 @@ function updateBudgetSummaryDisplay(){
 var budgetCollapsedCats={};
 var budgetCollapseDraftRef=null;
 function toggleBudgetCategory(enc,el){var cat=decodeURIComponent(enc);budgetCollapsedCats[cat]=!budgetCollapsedCats[cat];var sec=el&&el.closest?el.closest('.budget-category-section'):null;if(sec)sec.classList.toggle('collapsed',budgetCollapsedCats[cat]);}
+function budgetSetAllCategories(collapse){try{getBudgetDraftCategories().forEach(function(c){budgetCollapsedCats[c]=collapse;});[].forEach.call(document.querySelectorAll('.budget-category-section'),function(sec){sec.classList.toggle('collapsed',collapse);});}catch(e){}}
 function budgetDescInput(el,id){onBudgetItemFieldChange(id,'description',el.value);el.style.height='auto';el.style.height=el.scrollHeight+'px';}
 function budgetGrowDescs(root){try{var ls=(root||document).querySelectorAll('.budget-desc-ta');[].forEach.call(ls,function(t){t.style.height='auto';t.style.height=t.scrollHeight+'px';});}catch(e){}}
 function renderBudgetItemEditorRow(it){
@@ -6635,6 +6637,8 @@ function renderBudgetBuilderEditorHtml(){
     '<div class="form-group"><label for="budget-client-name">שם לקוח</label><input type="text" id="budget-client-name" value="'+escHtml(d.clientName)+'" placeholder="שם הלקוח" oninput="onBudgetDraftFieldChange(\'clientName\',this.value)"/></div>'+
     '<div class="form-group"><label for="budget-project-address">כתובת פרויקט</label><input type="text" id="budget-project-address" value="'+escHtml(d.projectAddress)+'" placeholder="כתובת הפרויקט" oninput="onBudgetDraftFieldChange(\'projectAddress\',this.value)"/></div></div>'+
     '<div class="form-group" style="max-width:280px"><label for="budget-date">תאריך</label><input type="date" id="budget-date" value="'+escHtml(d.budgetDate)+'" onchange="onBudgetDraftFieldChange(\'budgetDate\',this.value)"/></div>'+
+    '<div class="budget-toggle-all"><button type="button" class="btn btn-outline btn-sm" onclick="budgetSetAllCategories(false)">'+ic('chevrons-down')+' פתח הכל</button>'+
+    '<button type="button" class="btn btn-outline btn-sm" onclick="budgetSetAllCategories(true)">'+ic('chevrons-up')+' סגור הכל</button></div>'+
     catSections+
     '<div class="budget-add-category-wrap" id="budget-add-category-wrap">'+
     '<input type="text" id="budget-new-category" placeholder="שם קטגוריה חדשה..." onkeydown="if(event.key===\'Enter\')addBudgetCustomCategory()"/>'+
@@ -10335,7 +10339,7 @@ Object.assign(window,{
   startNewBudgetDraft,openBudgetEdit,duplicateBudget,saveBudgetBuilder,deleteBudget,backToBudgetList,
   openBudgetExcelImportModal,closeBudgetExcelImportModal,confirmBudgetExcelImport,onBudgetExcelFileSelected,onBudgetExcelUseFileCatsToggle,onBudgetExcelSheetChange,
   openApproveBudgetModal,confirmApproveBudget,onApproveBudgetProjectChange,
-  addBudgetItemToCategory,removeBudgetItem,onBudgetDraftFieldChange,onBudgetItemFieldChange,budgetDescInput,toggleBudgetCategory,
+  addBudgetItemToCategory,removeBudgetItem,onBudgetDraftFieldChange,onBudgetItemFieldChange,budgetDescInput,toggleBudgetCategory,budgetSetAllCategories,
   onBudgetAddCategoryClick,addBudgetCustomCategory,onBudgetItemContactChange,
   openBudgetQuickSubcontractorModal,closeBudgetQuickSubcontractorModal,saveBudgetQuickSubcontractor,
   openBudgetClientView,previewBudgetDraftClientView,closeBudgetClientView,printBudgetClientView,
