@@ -503,7 +503,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .budget-items-table th{text-align:right;padding:10px 12px;font-size:12px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);background:#fff}
 .budget-items-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
 .budget-items-table tr:last-child td{border-bottom:none}
-.budget-items-table input,.budget-items-table select{width:100%;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;background:#fff}
+.budget-items-table input,.budget-items-table select,.budget-items-table textarea{width:100%;padding:8px 10px;border:2px solid var(--border);border-radius:8px;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;background:#fff}
+.budget-items-table td{vertical-align:top}
+.budget-desc-ta{resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.45;min-height:40px;field-sizing:content}
 .budget-items-table input[type=number]{direction:ltr;text-align:left}
 .budget-item-total{font-weight:700;color:var(--primary);white-space:nowrap;direction:ltr;text-align:left}
 .budget-summary-box{margin-top:20px;padding:20px;background:var(--bg);border:1px solid var(--border);border-radius:14px}
@@ -690,7 +692,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .table-scroll .punch-items-table{min-width:520px}
 .table-scroll .subcontractors-table{min-width:720px}
 .table-scroll .fin-analysis-table{min-width:640px}
-.budget-items-scroll .budget-items-table,.table-scroll .budget-items-table{min-width:920px}
+.budget-items-scroll .budget-items-table,.table-scroll .budget-items-table{min-width:620px}
 .table-scroll .budget-client-table{min-width:720px}
 .table-scroll-cards{overflow-x:visible}
 .table-scroll-cards .subcontractors-table,.table-scroll-cards .punch-items-table{min-width:0!important;width:100%}
@@ -6117,6 +6119,7 @@ function renderBudgetBuilderEditorInPlace(){
   if(!root||!budgetBuilderDraft)return;
   root.innerHTML=renderBudgetBuilderEditorHtml();
   refreshIcons(root);
+  budgetGrowDescs(root);
 }
 function addBudgetItemToCategory(categoryEnc){
   var category=typeof categoryEnc==='string'?decodeURIComponent(categoryEnc):categoryEnc;
@@ -6576,10 +6579,11 @@ function updateBudgetSummaryDisplay(){
     donutEl.innerHTML=renderBudgetDonutChartHtml(budgetBuilderDraft.items,budgetBuilderDraft.marginPercent,getBudgetDraftCategories());
   }
 }
+function budgetDescInput(el,id){onBudgetItemFieldChange(id,'description',el.value);el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+function budgetGrowDescs(root){try{var ls=(root||document).querySelectorAll('.budget-desc-ta');[].forEach.call(ls,function(t){t.style.height='auto';t.style.height=t.scrollHeight+'px';});}catch(e){}}
 function renderBudgetItemEditorRow(it){
   return '<tr>'+
-    '<td><input type="text" value="'+escHtml(it.description)+'" placeholder="תיאור פריט" oninput="onBudgetItemFieldChange(\''+it.id+'\',\'description\',this.value)"/></td>'+
-    '<td style="width:200px;min-width:180px"><select onchange="onBudgetItemContactChange(\''+it.id+'\',this)">'+renderBudgetSubcontractorOptions(it.contactId||'')+'</select></td>'+
+    '<td><textarea class="budget-desc-ta" rows="1" placeholder="תיאור פריט" oninput="budgetDescInput(this,\''+it.id+'\')">'+escHtml(it.description)+'</textarea></td>'+
     '<td style="width:96px"><select onchange="onBudgetItemFieldChange(\''+it.id+'\',\'unit\',this.value)">'+renderBudgetUnitOptions(it.unit)+'</select></td>'+
     '<td style="width:88px"><input type="number" min="0" step="0.01" value="'+it.quantity+'" oninput="onBudgetItemFieldChange(\''+it.id+'\',\'quantity\',this.value)"/></td>'+
     '<td style="width:120px"><input type="number" min="0" step="0.01" value="'+it.unitPrice+'" oninput="onBudgetItemFieldChange(\''+it.id+'\',\'unitPrice\',this.value)"/></td>'+
@@ -6598,7 +6602,7 @@ function renderBudgetBuilderEditorHtml(){
       '<span class="budget-category-title">'+escHtml(cat)+'</span>'+
       '<span class="budget-category-subtotal" data-budget-cat-subtotal="'+escHtml(cat)+'">'+fmtMoney(catSum)+'</span></div>'+
       (rows.length?'<div class="budget-items-scroll"><table class="budget-items-table"><thead><tr>'+
-      '<th>תיאור</th><th>איש קשר</th><th>יחידה</th><th>כמות</th><th>מחיר ליחידה</th><th>סה"כ</th><th></th></tr></thead><tbody>'+
+      '<th>תיאור</th><th>יחידה</th><th>כמות</th><th>מחיר ליחידה</th><th>סה"כ</th><th></th></tr></thead><tbody>'+
       rows.map(renderBudgetItemEditorRow).join('')+'</tbody></table></div>':'')+
       '<div style="padding:12px 16px;border-top:1px solid var(--border)">'+
       '<button type="button" class="btn btn-outline btn-sm" onclick="addBudgetItemToCategory(\''+encodeURIComponent(cat)+'\')">'+ic('plus')+' הוסף פריט</button></div></div>';
@@ -6739,6 +6743,7 @@ async function initBudgetBuilderView(){
   if(budgetBuilderMode==='edit'&&budgetBuilderDraft){
     root.innerHTML=renderBudgetBuilderEditorHtml();
     refreshIcons(root);
+    budgetGrowDescs(root);
     return;
   }
   var loaded=await refreshAllStandaloneBudgets();
@@ -6851,9 +6856,9 @@ function renderBudgetClientBodyHtml(budget,items){
     var catItems=items.filter(function(it){return it.category===cat;});
     if(!catItems.length)return;
     var catSum=catItems.reduce(function(s,it){return s+calcBudgetLineTotal(it.quantity,it.unitPrice);},0);
-    tableRows+='<tr class="cat-row"><td colspan="5">'+escHtml(cat)+'</td><td class="num">'+fmtMoney(catSum)+'</td></tr>';
+    tableRows+='<tr class="cat-row"><td colspan="4">'+escHtml(cat)+'</td><td class="num">'+fmtMoney(catSum)+'</td></tr>';
     catItems.forEach(function(it){
-      tableRows+='<tr><td>'+escHtml(it.description)+'</td><td>'+escHtml(budgetItemContactLabel(it))+'</td><td>'+escHtml(normalizeBudgetUnit(it.unit))+'</td>'+
+      tableRows+='<tr><td>'+escHtml(it.description)+'</td><td>'+escHtml(normalizeBudgetUnit(it.unit))+'</td>'+
         '<td class="num">'+it.quantity+'</td>'+
         '<td class="num">'+fmtMoney(it.unitPrice)+'</td><td class="num">'+fmtMoney(calcBudgetLineTotal(it.quantity,it.unitPrice))+'</td></tr>';
     });
@@ -6868,8 +6873,8 @@ function renderBudgetClientBodyHtml(budget,items){
     '<span><strong>תאריך:</strong> '+formatSubcontractorDate(budget.budgetDate)+'</span>'+
     '</div></div>'+
     '<div class="table-scroll"><table class="budget-client-table"><thead><tr>'+
-    '<th>תיאור</th><th>איש קשר</th><th>יחידה</th><th>כמות</th><th>מחיר ליחידה</th><th>סה"כ</th></tr></thead><tbody>'+
-    (tableRows||'<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">אין פריטים</td></tr>')+
+    '<th>תיאור</th><th>יחידה</th><th>כמות</th><th>מחיר ליחידה</th><th>סה"כ</th></tr></thead><tbody>'+
+    (tableRows||'<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">אין פריטים</td></tr>')+
     '</tbody></table></div>'+
     '<div class="budget-client-totals">'+
     '<div class="budget-summary-row total"><span>סה"כ (ללא מע"מ)</span><strong>'+fmtMoney(t.total)+'</strong></div></div>'+
@@ -10313,7 +10318,7 @@ Object.assign(window,{
   startNewBudgetDraft,openBudgetEdit,duplicateBudget,saveBudgetBuilder,deleteBudget,backToBudgetList,
   openBudgetExcelImportModal,closeBudgetExcelImportModal,confirmBudgetExcelImport,onBudgetExcelFileSelected,onBudgetExcelUseFileCatsToggle,onBudgetExcelSheetChange,
   openApproveBudgetModal,confirmApproveBudget,onApproveBudgetProjectChange,
-  addBudgetItemToCategory,removeBudgetItem,onBudgetDraftFieldChange,onBudgetItemFieldChange,
+  addBudgetItemToCategory,removeBudgetItem,onBudgetDraftFieldChange,onBudgetItemFieldChange,budgetDescInput,
   onBudgetAddCategoryClick,addBudgetCustomCategory,onBudgetItemContactChange,
   openBudgetQuickSubcontractorModal,closeBudgetQuickSubcontractorModal,saveBudgetQuickSubcontractor,
   openBudgetClientView,previewBudgetDraftClientView,closeBudgetClientView,printBudgetClientView,
