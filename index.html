@@ -507,6 +507,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .budget-category-section.collapsed .budget-category-body{display:none}
 .budget-cat-count{font-size:12px;color:var(--text-muted);background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1px 8px;flex:0 0 auto}
 .budget-toggle-all{display:flex;gap:8px;margin:16px 0 10px;flex-wrap:wrap}
+.budget-summary-cards{margin-bottom:16px}
+.budget-summary-cards .dash-metric-value{font-variant-numeric:tabular-nums}
+.budget-donut-card{max-width:560px}
 .budget-topsum{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:18px;background:linear-gradient(135deg,#152449,#233a6e);color:#fff;border-radius:16px;padding:14px 24px;margin-bottom:16px;box-shadow:0 10px 28px rgba(21,36,73,.22);flex-wrap:wrap}
 .budget-topsum-label{font-size:13px;font-weight:600;opacity:.85;letter-spacing:.2px}
 .budget-topsum-value{font-size:32px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums;margin-top:2px}
@@ -6568,13 +6571,15 @@ function onBudgetItemFieldChange(itemId,field,value){
   if(el)el.textContent=fmtMoney(calcBudgetLineTotal(it.quantity,it.unitPrice));
   updateBudgetSummaryDisplay();
 }
+var BUDGET_VAT_RATE=0.18;
+function budgetDisplayTotals(items,marginPercent){var t=calcBudgetTotals(items,marginPercent);var vat=Math.round(t.beforeVat*BUDGET_VAT_RATE);return {beforeVat:t.beforeVat,vat:vat,withVat:t.beforeVat+vat};}
 function updateBudgetSummaryDisplay(){
   if(!budgetBuilderDraft)return;
-  var t=calcBudgetTotals(budgetBuilderDraft.items,budgetBuilderDraft.marginPercent);
+  var disp=budgetDisplayTotals(budgetBuilderDraft.items,budgetBuilderDraft.marginPercent);
   var map={
-    'budget-before-vat':fmtMoney(t.beforeVat),
-    'budget-vat':fmtMoney(t.vat),
-    'budget-grand-total':fmtMoney(t.total)
+    'budget-before-vat':fmtMoney(disp.beforeVat),
+    'budget-vat':fmtMoney(disp.vat),
+    'budget-grand-total':fmtMoney(disp.withVat)
   };
   Object.keys(map).forEach(function(id){
     var el=document.getElementById(id);
@@ -6612,6 +6617,7 @@ function renderBudgetBuilderEditorHtml(){
   // When a budget is first opened (new draft reference), start with all categories collapsed.
   if(budgetCollapseDraftRef!==d){budgetCollapseDraftRef=d;budgetCollapsedCats={};cats.forEach(function(c){budgetCollapsedCats[c]=true;});}
   var totals=calcBudgetTotals(d.items,d.marginPercent);
+  var disp=budgetDisplayTotals(d.items,d.marginPercent);
   var catSections=cats.map(function(cat){
     var rows=(d.items||[]).filter(function(it){return it.category===cat;});
     var catSum=rows.reduce(function(s,it){return s+calcBudgetLineTotal(it.quantity,it.unitPrice);},0);
@@ -6636,12 +6642,11 @@ function renderBudgetBuilderEditorHtml(){
     '<div class="flex-gap"><button type="button" class="btn btn-outline btn-sm" onclick="openBudgetExcelImportModal()">📊 ייבוא מאקסל</button>'+
     '<button type="button" class="btn btn-outline btn-sm" onclick="previewBudgetDraftClientView()">'+ic('file-text')+' ייצוא ל-PDF</button>'+
     '<button type="button" class="btn btn-primary btn-sm" onclick="saveBudgetBuilder()">'+ic('save')+' שמור תקציב</button></div></div>'+
-    '<div class="budget-topsum">'+
-      '<div class="budget-topsum-main">'+
-        '<div class="budget-topsum-label">סה"כ לתקציב (ללא מע"מ)</div>'+
-        '<div class="budget-topsum-value" id="budget-grand-total">'+fmtMoney(totals.total)+'</div>'+
-      '</div>'+
-      '<div class="budget-topsum-meta">'+(cats.length)+' קטגוריות · '+((d.items||[]).length)+' סעיפים</div>'+
+    '<div class="dash-metrics budget-summary-cards">'+
+      '<div class="dash-metric-card accent"><div class="dash-metric-icon">'+ic('coins')+'</div><div class="dash-metric-value" id="budget-grand-total">'+fmtMoney(disp.withVat)+'</div><div class="dash-metric-label">סה"כ לתשלום (כולל מע"מ)</div></div>'+
+      '<div class="dash-metric-card"><div class="dash-metric-icon">'+ic('wallet')+'</div><div class="dash-metric-value" id="budget-before-vat">'+fmtMoney(disp.beforeVat)+'</div><div class="dash-metric-label">סכום לפני מע"מ</div></div>'+
+      '<div class="dash-metric-card"><div class="dash-metric-icon">'+ic('percent')+'</div><div class="dash-metric-value" id="budget-vat">'+fmtMoney(disp.vat)+'</div><div class="dash-metric-label">מע"מ (18%)</div></div>'+
+      '<div class="dash-metric-card success"><div class="dash-metric-icon">'+ic('layers')+'</div><div class="dash-metric-value">'+(cats.length)+' · '+((d.items||[]).length)+'</div><div class="dash-metric-label">קטגוריות · סעיפים</div></div>'+
     '</div>'+
     '<div class="card mb-24 budget-donut-card"><div class="card-title">'+ic('pie-chart')+' חלוקת תקציב לפי קטגוריות</div>'+
     '<div id="budget-category-donut">'+renderBudgetDonutChartHtml(d.items,d.marginPercent,cats)+'</div></div>'+
@@ -6877,6 +6882,7 @@ async function deleteBudget(id){
 }
 function renderBudgetClientBodyHtml(budget,items){
   var t=calcBudgetTotals(items,budget.marginPercent);
+  var cdisp=budgetDisplayTotals(items,budget.marginPercent);
   var cats=getBudgetCategoriesFromItems(items);
   var donutHtml=renderBudgetDonutChartHtml(items,budget.marginPercent||0,cats);
   var tableRows='';
@@ -6909,7 +6915,9 @@ function renderBudgetClientBodyHtml(budget,items){
     (tableRows||'<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">אין פריטים</td></tr>')+
     '</tbody></table></div>'+
     '<div class="budget-client-totals">'+
-    '<div class="budget-summary-row total"><span>סה"כ (ללא מע"מ)</span><strong>'+fmtMoney(t.total)+'</strong></div></div>'+
+    '<div class="budget-summary-row"><span>סכום לפני מע"מ</span><strong>'+fmtMoney(cdisp.beforeVat)+'</strong></div>'+
+    '<div class="budget-summary-row"><span>מע"מ (18%)</span><strong>'+fmtMoney(cdisp.vat)+'</strong></div>'+
+    '<div class="budget-summary-row total"><span>סה"כ לתשלום (כולל מע"מ)</span><strong>'+fmtMoney(cdisp.withVat)+'</strong></div></div>'+
     '<div class="budget-client-donut">'+donutHtml+'</div>'+
     (budget.notes?'<div class="budget-client-notes"><strong>הערות:</strong> '+escHtml(budget.notes)+'</div>':'');
 }
