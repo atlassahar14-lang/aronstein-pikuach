@@ -507,6 +507,10 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .budget-category-section.collapsed .budget-category-body{display:none}
 .budget-cat-count{font-size:12px;color:var(--text-muted);background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1px 8px;flex:0 0 auto}
 .budget-toggle-all{display:flex;gap:8px;margin:16px 0 10px;flex-wrap:wrap}
+.budget-topsum{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:18px;background:linear-gradient(135deg,#152449,#233a6e);color:#fff;border-radius:16px;padding:14px 24px;margin-bottom:16px;box-shadow:0 10px 28px rgba(21,36,73,.22);flex-wrap:wrap}
+.budget-topsum-label{font-size:13px;font-weight:600;opacity:.85;letter-spacing:.2px}
+.budget-topsum-value{font-size:32px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums;margin-top:2px}
+.budget-topsum-meta{font-size:13px;font-weight:600;opacity:.9;background:rgba(255,255,255,.14);padding:6px 12px;border-radius:20px;white-space:nowrap}
 .budget-items-table{width:100%;border-collapse:collapse;table-layout:fixed}
 .budget-items-table th{text-align:right;padding:10px 12px;font-size:12px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);background:#fff}
 .budget-items-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
@@ -6632,6 +6636,15 @@ function renderBudgetBuilderEditorHtml(){
     '<div class="flex-gap"><button type="button" class="btn btn-outline btn-sm" onclick="openBudgetExcelImportModal()">📊 ייבוא מאקסל</button>'+
     '<button type="button" class="btn btn-outline btn-sm" onclick="previewBudgetDraftClientView()">'+ic('file-text')+' ייצוא ל-PDF</button>'+
     '<button type="button" class="btn btn-primary btn-sm" onclick="saveBudgetBuilder()">'+ic('save')+' שמור תקציב</button></div></div>'+
+    '<div class="budget-topsum">'+
+      '<div class="budget-topsum-main">'+
+        '<div class="budget-topsum-label">סה"כ לתקציב (ללא מע"מ)</div>'+
+        '<div class="budget-topsum-value" id="budget-grand-total">'+fmtMoney(totals.total)+'</div>'+
+      '</div>'+
+      '<div class="budget-topsum-meta">'+(cats.length)+' קטגוריות · '+((d.items||[]).length)+' סעיפים</div>'+
+    '</div>'+
+    '<div class="card mb-24 budget-donut-card"><div class="card-title">'+ic('pie-chart')+' חלוקת תקציב לפי קטגוריות</div>'+
+    '<div id="budget-category-donut">'+renderBudgetDonutChartHtml(d.items,d.marginPercent,cats)+'</div></div>'+
     '<div class="card mb-24"><div class="card-title">'+ic('calculator')+' '+(editingBudgetId?'עריכת תקציב':'תקציב חדש')+'</div>'+
     '<div class="budget-builder-editor form-row">'+
     '<div class="form-group"><label for="budget-client-name">שם לקוח</label><input type="text" id="budget-client-name" value="'+escHtml(d.clientName)+'" placeholder="שם הלקוח" oninput="onBudgetDraftFieldChange(\'clientName\',this.value)"/></div>'+
@@ -6645,9 +6658,7 @@ function renderBudgetBuilderEditorHtml(){
     '<button type="button" class="btn btn-outline btn-sm" onclick="onBudgetAddCategoryClick()">'+ic('plus')+' הוסף קטגוריה</button></div>'+
     '<div class="form-group" style="margin-top:20px"><label for="budget-notes">הערות (אופציונלי)</label>'+
     '<textarea id="budget-notes" placeholder="הערות שיופיעו בהצעה..." oninput="onBudgetDraftFieldChange(\'notes\',this.value)">'+escHtml(d.notes)+'</textarea></div>'+
-    '<div class="budget-summary-box">'+
-    '<div class="budget-summary-row total"><span>סה"כ (ללא מע"מ)</span><strong id="budget-grand-total">'+fmtMoney(totals.total)+'</strong></div>'+
-    '<div id="budget-category-donut">'+renderBudgetDonutChartHtml(d.items,d.marginPercent,cats)+'</div></div></div></div>';
+    '</div></div>';
 }
 function renderBudgetBuilderListHtml(budgets,loadedOk){
   var html='<div class="section-actions"><div class="section-title">'+ic('calculator')+' בניית תקציב</div>'+
