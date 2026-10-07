@@ -6137,7 +6137,9 @@ function isBudgetExcelHeaderRow(desc){
   var d=String(desc||'').trim();
   if(!d)return true;
   var lower=d.toLowerCase();
-  return BUDGET_EXCEL_HEADER_WORDS.some(function(w){return lower===w.toLowerCase()||lower.indexOf(w.toLowerCase())===0;});
+  // Exact match always; prefix match only for words of 4+ chars, so short tokens like
+  // "מס" / "#" don't falsely swallow real categories ("מסירה", "מספרה"...).
+  return BUDGET_EXCEL_HEADER_WORDS.some(function(w){var lw=w.toLowerCase();return lower===lw||(lw.length>=4&&lower.indexOf(lw)===0);});
 }
 function isBudgetExcelSkipDescription(desc){
   var d=String(desc||'').trim();
