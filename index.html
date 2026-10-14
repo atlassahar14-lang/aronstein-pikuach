@@ -6602,8 +6602,8 @@ function updateBudgetSummaryDisplay(){
 }
 var budgetCollapsedCats={};
 var budgetCollapseDraftRef=null;
-function toggleBudgetCategory(enc,el){var cat=decodeURIComponent(enc);budgetCollapsedCats[cat]=!budgetCollapsedCats[cat];var sec=el&&el.closest?el.closest('.budget-category-section'):null;if(sec)sec.classList.toggle('collapsed',budgetCollapsedCats[cat]);}
-function budgetSetAllCategories(collapse){try{getBudgetDraftCategories().forEach(function(c){budgetCollapsedCats[c]=collapse;});[].forEach.call(document.querySelectorAll('.budget-category-section'),function(sec){sec.classList.toggle('collapsed',collapse);});}catch(e){}}
+function toggleBudgetCategory(enc,el){var cat=decodeURIComponent(enc);budgetCollapsedCats[cat]=!budgetCollapsedCats[cat];var sec=el&&el.closest?el.closest('.budget-category-section'):null;if(sec){sec.classList.toggle('collapsed',budgetCollapsedCats[cat]);if(!budgetCollapsedCats[cat])budgetGrowDescs(sec);}}
+function budgetSetAllCategories(collapse){try{getBudgetDraftCategories().forEach(function(c){budgetCollapsedCats[c]=collapse;});[].forEach.call(document.querySelectorAll('.budget-category-section'),function(sec){sec.classList.toggle('collapsed',collapse);});if(!collapse)budgetGrowDescs(document);}catch(e){}}
 function budgetDescInput(el,id){onBudgetItemFieldChange(id,'description',el.value);el.style.height='auto';el.style.height=el.scrollHeight+'px';}
 function budgetGrowDescs(root){try{var ls=(root||document).querySelectorAll('.budget-desc-ta');[].forEach.call(ls,function(t){t.style.height='auto';t.style.height=t.scrollHeight+'px';});}catch(e){}}
 function renderBudgetItemEditorRow(it){
