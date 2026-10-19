@@ -6202,6 +6202,19 @@ function detectBudgetExcelColumns(sheet,range){
     totalCol:cols.total==null?null:cols.total};
 }
 // Parses ONE worksheet into budget rows. Returns {ok:false} when the sheet holds no valid lines.
+// A desc-only row is treated as a CATEGORY only when its text looks like a real budget
+// category name — so disclaimer/note rows (incl. the long notes at the end of the sheet)
+// are NOT mistaken for categories and dropped.
+function isBudgetCategoryName(desc){
+  var d=String(desc||'').trim().replace(/\s+/g,' ');
+  if(!d)return false;
+  if(BUDGET_BUILDER_CATEGORIES.indexOf(d)>=0)return true;   // exact known category (any length)
+  if(/^(הערות|חוסרים|דגשים)/.test(d))return true;
+  if(d.length>28)return false;
+  if(/^עבודות\s+\S{1,16}$/.test(d))return true;
+  if(['מטבח','נגרות','מסירה','שונות','אחר','בריכת שחיה','בריכת שחייה','קירור וחימום','חשמל','איטום','גבס','טייח','אלומיניום','צבע','גינון','פיתוח','שלד','ריצוף וחיפוי'].indexOf(d)>=0)return true;
+  return false;
+}
 function parseBudgetExcelSheet(sheet){
   if(!sheet||!sheet['!ref'])return {ok:false};
   var range=XLSX.utils.decode_range(sheet['!ref']);
@@ -6221,18 +6234,18 @@ function parseBudgetExcelSheet(sheet){
     var unitPrice=parseExcelCellNumber(priceCell&&priceCell.v);
     // A row counts as having a "total" cell if that cell exists at all (even value 0).
     var hasTotalCell=totalCell!=null&&totalCell.v!=null&&String(totalCell.v).trim()!=='';
-    // A "category header" is a pure text row: no unit, no quantity, no price, and NO total
-    // cell. Note/disclaimer rows carry a total of 0, so they are excluded here.
-    var isCategoryHeader=(unitVal===''||isBudgetExcelHeaderRow(unitVal))&&qty==null&&unitPrice==null&&!hasTotalCell;
     if(r===startRow){
-      if(!isBudgetExcelHeaderRow(desc)&&desc.length>2)currentCategory=desc; // first category
+      if(isBudgetCategoryName(desc))currentCategory=desc; // first category sits on the header row
       continue;
     }
-    if(isCategoryHeader){
-      if(!isBudgetExcelHeaderRow(desc)&&desc.length>2)currentCategory=desc;
+    var hasPrice=unitPrice!=null&&unitPrice>0;
+    var isSumRow=/^סה/.test(unitVal)||/^סה["'׳״]?כ/.test(desc);
+    if(!hasPrice){
+      if(isSumRow)continue;                                  // skip "סה״כ ..." subtotal rows
+      if(isBudgetCategoryName(desc)){currentCategory=desc;continue;} // real section header
+      rows.push({description:desc,category:currentCategory,unit:'',quantity:0,unitPrice:0,isNote:true}); // meaningful note (no price)
       continue;
     }
-    if(unitPrice==null||unitPrice<=0)continue; // a real line needs a unit price
     if(qty==null||qty<0)qty=0;                 // optional/estimate rows keep their price, qty 0
     rows.push({description:desc,category:currentCategory,
       unit:normalizeBudgetUnit(unitVal||BUDGET_DEFAULT_UNIT),quantity:qty,unitPrice:unitPrice});
