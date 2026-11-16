@@ -7763,6 +7763,55 @@ async function buildPdfFromElement(el,embedKw){
   return doc;
 }
 async function rasterizeElementToPdfBlob(el,embedKw){ var d=await buildPdfFromElement(el,embedKw); return d.output('blob'); }
+// Delivers a generated PDF blob reliably. After the async render the click's
+// user-activation may have expired, so a programmatic download can be silently
+// blocked — we therefore ALSO show a modal with a direct download button the
+// user taps (a fresh gesture that always works).
+function deliverPdfBlob(blob,fileName){
+  var url=URL.createObjectURL(blob);
+  try{var a=document.createElement('a');a.href=url;a.download=fileName;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(function(){if(a.parentNode)a.parentNode.removeChild(a);},0);}catch(e){}
+  showPdfReadyModal(url,fileName);
+  setTimeout(function(){try{URL.revokeObjectURL(url);}catch(e){}},180000);
+}
+function showPdfReadyModal(url,fileName){
+  var ov=document.getElementById('pdf-ready-ov');if(ov&&ov.parentNode)ov.parentNode.removeChild(ov);
+  ov=document.createElement('div');ov.id='pdf-ready-ov';
+  ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(15,20,35,.55);display:flex;align-items:center;justify-content:center;padding:20px';
+  var card=document.createElement('div');
+  card.style.cssText='background:#fff;border-radius:16px;max-width:360px;width:100%;padding:24px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.3);direction:rtl;font-family:inherit';
+  card.innerHTML='<div style="font-size:40px;line-height:1;margin-bottom:10px">✅</div>'+
+    '<div style="font-weight:800;font-size:19px;color:#152449;margin-bottom:6px">ה-PDF מוכן</div>'+
+    '<div style="color:#5b6577;font-size:14px;margin-bottom:18px">אם ההורדה לא התחילה אוטומטית, לחץ על הכפתור:</div>';
+  var a=document.createElement('a');a.href=url;a.download=fileName;a.textContent='⬇  הורד PDF';
+  a.style.cssText='display:block;background:#e0a326;color:#fff;font-weight:800;font-size:16px;text-decoration:none;padding:13px;border-radius:10px;margin-bottom:10px';
+  a.addEventListener('click',function(){setTimeout(function(){if(ov.parentNode)ov.parentNode.removeChild(ov);},400);});
+  var open=document.createElement('a');open.href=url;open.target='_blank';open.rel='noopener';open.textContent='פתח בכרטיסייה חדשה';
+  open.style.cssText='display:block;color:#152449;font-size:14px;text-decoration:underline;margin-bottom:14px';
+  var close=document.createElement('button');close.type='button';close.textContent='סגור';
+  close.style.cssText='background:none;border:0;color:#9aa4b2;font-size:14px;cursor:pointer';
+  close.onclick=function(){if(ov.parentNode)ov.parentNode.removeChild(ov);};
+  card.appendChild(a);card.appendChild(open);card.appendChild(close);ov.appendChild(card);
+  ov.addEventListener('click',function(e){if(e.target===ov&&ov.parentNode)ov.parentNode.removeChild(ov);});
+  document.body.appendChild(ov);
+}
+// Converts cross-origin photo <img> (Supabase URLs on a reloaded report) to
+// data: URIs before html2canvas, so the canvas is never tainted and the photos
+// actually appear in the PDF. Returns a restore() to put the original src back.
+async function srInlinePhotosForCapture(){
+  var imgs=document.querySelectorAll('#sr-doc img.sr-photo-img');var changed=[];
+  for(var i=0;i<imgs.length;i++){
+    var img=imgs[i];var src=img.getAttribute('src')||'';
+    if(/^https?:/i.test(src)){
+      try{
+        var resp=await fetch(src,{mode:'cors',cache:'force-cache'});if(!resp.ok)continue;
+        var blob=await resp.blob();
+        var durl=await new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result);};r.onerror=rej;r.readAsDataURL(blob);});
+        changed.push([img,src]);img.src=durl;
+      }catch(e){/* keep original src on failure */}
+    }
+  }
+  return function restore(){changed.forEach(function(p){p[0].src=p[1];});};
+}
 async function saveWeeklyReportToProject(){
   var sel=document.getElementById('wf-project');
   var pid=sel?sel.value:'';
@@ -8066,9 +8115,19 @@ async function printSupervisionReport(){
   var embedKw=srMakeEmbedB64();
   el.classList.add('sr-capturing');
   srPrepCapture();
-  try{ await rasterizeElementToPdf(el,'דוח-פיקוח.pdf',embedKw); }
-  catch(e){ document.body.classList.add('sr-printing'); window.print(); setTimeout(function(){document.body.classList.remove('sr-printing');},2000); }
-  finally{ srEndCapture(); el.classList.remove('sr-capturing'); }
+  var restorePhotos=null;
+  try{
+    restorePhotos=await srInlinePhotosForCapture();
+    var blob=await rasterizeElementToPdfBlob(el,embedKw);
+    deliverPdfBlob(blob,'דוח-פיקוח.pdf');
+  }catch(e){
+    console.error('sr pdf',e);
+    showToast('שגיאה ביצירת ה-PDF: '+((e&&e.message)||e)+' — נפתח חלון הדפסה כגיבוי','error');
+    document.body.classList.add('sr-printing'); window.print(); setTimeout(function(){document.body.classList.remove('sr-printing');},2000);
+  }finally{
+    if(restorePhotos)restorePhotos();
+    srEndCapture(); el.classList.remove('sr-capturing');
+  }
 }
 
 function showView(view,pid){
