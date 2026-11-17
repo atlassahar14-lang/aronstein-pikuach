@@ -7737,15 +7737,16 @@ async function buildPdfFromElement(el,embedKw){
   function smartChunk(y0){
     var maxChunk=Math.min(pageChunkPx,canvas.height-y0);
     if(y0+maxChunk>=canvas.height)return maxChunk;
-    var band=Math.min(Math.floor(maxChunk*0.32),maxChunk-60);
-    if(band<=0)return maxChunk;
+    // Scan the whole page (down to ~35% full) for the lowest fully-white row, so
+    // a page break never lands inside a photo, a 2-row photo block, or a content
+    // card — it is pushed to just above the block instead of cutting through it.
+    var minKeep=Math.max(60,Math.floor(maxChunk*0.35));
     try{
-      var top=y0+maxChunk-band;
-      var data=srcCtx.getImageData(0,top,canvas.width,band).data;
-      for(var yy=band-1;yy>=0;yy--){
+      var data=srcCtx.getImageData(0,y0,canvas.width,maxChunk).data;
+      for(var yy=maxChunk-1;yy>=minKeep;yy--){
         var white=true,base=yy*canvas.width*4;
-        for(var x=0;x<canvas.width;x+=6){var i=base+x*4;if(data[i]<244||data[i+1]<244||data[i+2]<244){white=false;break;}}
-        if(white)return (top+yy)-y0;
+        for(var x=0;x<canvas.width;x+=6){var i=base+x*4;if(data[i]<245||data[i+1]<245||data[i+2]<245){white=false;break;}}
+        if(white)return yy;
       }
     }catch(e){/* tainted canvas — hard cut */}
     return maxChunk;
