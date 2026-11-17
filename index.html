@@ -7741,11 +7741,14 @@ async function buildPdfFromElement(el,embedKw){
     // a page break never lands inside a photo, a 2-row photo block, or a content
     // card — it is pushed to just above the block instead of cutting through it.
     var minKeep=Math.max(60,Math.floor(maxChunk*0.35));
+    // Scan only the INTERIOR width — the .sr-doc has a 1px border, so sampling
+    // from x=0 would hit a non-white pixel on every row and never find a break.
+    var x0=Math.floor(canvas.width*0.06),x1=Math.floor(canvas.width*0.94);
     try{
       var data=srcCtx.getImageData(0,y0,canvas.width,maxChunk).data;
       for(var yy=maxChunk-1;yy>=minKeep;yy--){
         var white=true,base=yy*canvas.width*4;
-        for(var x=0;x<canvas.width;x+=6){var i=base+x*4;if(data[i]<245||data[i+1]<245||data[i+2]<245){white=false;break;}}
+        for(var x=x0;x<x1;x+=5){var i=base+x*4;if(data[i]<245||data[i+1]<245||data[i+2]<245){white=false;break;}}
         if(white)return yy;
       }
     }catch(e){/* tainted canvas — hard cut */}
