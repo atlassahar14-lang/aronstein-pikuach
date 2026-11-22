@@ -5995,17 +5995,22 @@ function syncBudgetItemsCacheFromDraft(budgetId){
 }
 async function refreshBudgetItems(budgetId){
   if(!budgetId)return {ok:false};
-  var res=await supabase.from('budget_items').select('*').eq('budget_id',budgetId).order('sort_order',{ascending:true}).order('created_at',{ascending:true});
-  if(res.error){
-    console.warn('refreshBudgetItems retry without order',res.error);
-    res=await supabase.from('budget_items').select('*').eq('budget_id',budgetId);
+  // Paginate past Supabase's 1000-row cap so large budgets load in full.
+  var all=[],from=0,page=1000,lastErr=null;
+  for(;;){
+    var res=await supabase.from('budget_items').select('*').eq('budget_id',budgetId).order('sort_order',{ascending:true}).order('created_at',{ascending:true}).range(from,from+page-1);
+    if(res.error){res=await supabase.from('budget_items').select('*').eq('budget_id',budgetId).range(from,from+page-1);}
+    if(res.error){lastErr=res.error;break;}
+    var data=res.data||[];all=all.concat(data);
+    if(data.length<page)break;
+    from+=page;
   }
-  if(res.error){
-    console.error('refreshBudgetItems',res.error);
-    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
-    return {ok:false,error:res.error.message};
+  if(lastErr){
+    console.error('refreshBudgetItems',lastErr);
+    if(await checkSupabaseSessionError(lastErr))return {ok:false,sessionExpired:true};
+    return {ok:false,error:lastErr.message};
   }
-  budgetItemsByBudget[budgetId]=(res.data||[]).map(mapBudgetItemRow);
+  budgetItemsByBudget[budgetId]=all.map(mapBudgetItemRow);
   return {ok:true};
 }
 async function refreshAllBudgetItemsCache(){
@@ -6014,19 +6019,26 @@ async function refreshAllBudgetItemsCache(){
     return {ok:true};
   }
   var ids=budgetsCache.map(function(b){return b.id;});
-  var res=await supabase.from('budget_items').select('*').in('budget_id',ids).order('sort_order',{ascending:true}).order('created_at',{ascending:true});
-  if(res.error){
-    console.warn('refreshAllBudgetItemsCache retry without order',res.error);
-    res=await supabase.from('budget_items').select('*').in('budget_id',ids);
+  // Paginate past Supabase's 1000-row cap. A single .in() query returns only the
+  // first 1000 rows, so items of newer/larger budgets were silently dropped and
+  // their cards under-counted (e.g. showed "12 פריטים" instead of the real total).
+  var all=[],from=0,page=1000,lastErr=null;
+  for(;;){
+    var res=await supabase.from('budget_items').select('*').in('budget_id',ids).order('sort_order',{ascending:true}).order('created_at',{ascending:true}).range(from,from+page-1);
+    if(res.error){res=await supabase.from('budget_items').select('*').in('budget_id',ids).range(from,from+page-1);}
+    if(res.error){lastErr=res.error;break;}
+    var data=res.data||[];all=all.concat(data);
+    if(data.length<page)break;
+    from+=page;
   }
-  if(res.error){
-    console.error('refreshAllBudgetItemsCache',res.error);
-    if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
-    return {ok:false,error:res.error.message};
+  if(lastErr){
+    console.error('refreshAllBudgetItemsCache',lastErr);
+    if(await checkSupabaseSessionError(lastErr))return {ok:false,sessionExpired:true};
+    return {ok:false,error:lastErr.message};
   }
   var grouped={};
   ids.forEach(function(id){grouped[id]=[];});
-  (res.data||[]).forEach(function(r){
+  all.forEach(function(r){
     var row=mapBudgetItemRow(r);
     if(!grouped[row.budgetId])grouped[row.budgetId]=[];
     grouped[row.budgetId].push(row);
