@@ -10471,7 +10471,7 @@ Object.assign(window,{
   onProjectStatusFilterChange
 });
 // bridge for js/client-plan.js (a classic script cannot see this module's functions)
-window.__app={isAdmin:isAdmin,requireAdmin:requireAdmin,getData:getData,saveData:saveData,showToast:showToast,logActivity:logActivity,renderProjectDetail:renderProjectDetail,getCurrentProject:getCurrentProject,setTab:function(t){currentTab=t;}};
+window.__app={isAdmin:isAdmin,requireAdmin:requireAdmin,getData:getData,saveData:saveData,showToast:showToast,logActivity:logActivity,renderProjectDetail:renderProjectDetail,getCurrentProject:getCurrentProject,setTab:function(t){currentTab=t;},getBudgetItems:getBudgetItems,refreshBudgetItems:refreshBudgetItems,getFinishSelectionsForProject:getFinishSelectionsForProject,refreshFinishSelectionsCache:refreshFinishSelectionsCache,supabase:supabase,vatRate:BUDGET_VAT_RATE};
 window.addEventListener('resize',function(){
   if(window.innerWidth>=1181)closeMobileSidebar();
   if(finCharts.pie)finCharts.pie.resize();
