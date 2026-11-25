@@ -3957,6 +3957,26 @@ async function renderMilestonesScreen(el){
       proj=getCurrentProject();
     }
   }
+  if(!proj&&isAdmin()){
+    el.innerHTML='<div class="page-header"><h1>🚩 אבני דרך</h1><p>טוען...</p></div>';
+    await refreshMilestonesCache();
+    var today=new Date();today.setHours(0,0,0,0);
+    var rowsMs=(getData().projects||[]).map(function(p){var l=getMilestonesForProject(p.id),pend=l.filter(function(m){return m.status!=='done';});
+      var late=pend.filter(function(m){var d=parsePhaseDate(m.dueDate);return d&&d<today;}).length;return {p:p,pend:pend.length,late:late,done:l.length-pend.length};})
+      .sort(function(a,b){return b.late-a.late||b.pend-a.pend;});
+    el.innerHTML='<div class="page-header"><h1>🚩 אבני דרך</h1><p>בחר פרויקט</p></div>'+
+      (rowsMs.length?'<div class="ms-proj-list" style="display:grid;gap:10px">'+rowsMs.map(function(r){
+        return '<button type="button" class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:right;cursor:pointer;width:100%;padding:14px 16px;font:inherit;border:1px solid var(--border)" onclick="showView(\'milestones\',\''+r.p.id+'\')">'+
+          '<span style="font-weight:700">'+escHtml(r.p.name||'')+'</span>'+
+          '<span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+
+          (r.late?'<span class="badge" style="background:#fee2e2;color:#b91c1c">'+r.late+' באיחור</span>':'')+
+          '<span class="badge badge-blue">'+r.pend+' ממתינות</span>'+
+          '<span class="badge" style="background:#dcfce7;color:#166534">'+r.done+' הושלמו</span></span></button>';
+      }).join('')+'</div>':'<div class="empty-state card"><p>אין פרויקטים</p></div>');
+    refreshIcons(el);
+    updateMilestoneAlertBanner();
+    return;
+  }
   if(!proj){
     el.innerHTML='<div class="page-header"><h1>🚩 אבני דרך</h1><p>בחר פרויקט כדי לצפות באבני דרך</p></div>'+
       '<div class="empty-state card"><div class="empty-icon">'+ic('flag')+'</div><p>אין פרויקט פעיל</p>'+
