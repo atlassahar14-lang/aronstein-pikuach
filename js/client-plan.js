@@ -63,7 +63,7 @@ function cpModel(p){
   var byPhKey={};phases.forEach(function(x){if(x.key)byPhKey[x.key]=x;});
   var payDate=function(pay){var ph=pay.cp_phase&&byPhKey[pay.cp_phase];if(ph&&pay.status==='pending'&&pay.cp_frac!=null)return new Date(ph.a.getTime()+Math.round((ph.b-ph.a)*pay.cp_frac));return cpParse(pay.date);};
   var pays=[],paidTotal=0;
-  (p.payments||[]).forEach(function(pay){var d=payDate(pay);if(!d)return;var amt=Number(pay.amount)||0;
+  (p.payments||[]).forEach(function(pay){if(pay.awaiting_approval)return;var d=payDate(pay);if(!d)return;var amt=Number(pay.amount)||0;
     if(pay.status!=='pending'){paidTotal+=amt;var key=d.getFullYear()*12+d.getMonth(),m=months.find(function(q){return q.key===key;});if(m)m.paid+=amt;}
     pays.push({d:d,w:weekOf(d),t:pay.desc||'',to:pay.to||'',v:amt,done:pay.status!=='pending',frame:!!pay.cp_frame,pct:pay.cp_pct||null});});
   pays.sort(function(a,b){return a.d-b.d;});

@@ -2923,7 +2923,7 @@ function getProjectTabDefs(messagesTabBadge){
     ['overview','סקירה','layout-dashboard',''],
     ['plan','תקציב וזמנים','calendar-range',''],
     ['timeline','לוח זמנים','calendar',''],
-    ['budget','מעקב תשלומים','banknote',''],
+    ['budget','מעקב תשלומים','banknote',(window.exPendingBadge?window.exPendingBadge():'')],
     ['docs','מסמכים','folder',''],
     ['gallery','גלריה','camera',''],
     ['finish-selections','בחירות גמרים','palette',''],
@@ -2966,6 +2966,7 @@ function readProjectClientVisibilityFromForm(){
 }
 function paymentIsClientVisible(pay){
   if(!pay)return false;
+  if(pay.added_by==='client')return true;
   if(pay.approved===true||pay.confirmed===true)return true;
   var status=String(pay.status||'').toLowerCase();
   if(status==='confirmed'||status==='approved'||status==='מאושר')return true;
@@ -10477,7 +10478,7 @@ Object.assign(window,{
   onProjectStatusFilterChange
 });
 // bridge for js/client-plan.js (a classic script cannot see this module's functions)
-window.__app={isAdmin:isAdmin,requireAdmin:requireAdmin,getData:getData,saveData:saveData,showToast:showToast,logActivity:logActivity,renderProjectDetail:renderProjectDetail,getCurrentProject:getCurrentProject,setTab:function(t){currentTab=t;},getUser:function(){return currentUser;},getBudgetItems:getBudgetItems,refreshBudgetItems:refreshBudgetItems,getFinishSelectionsForProject:getFinishSelectionsForProject,refreshFinishSelectionsCache:refreshFinishSelectionsCache,supabase:supabase,vatRate:BUDGET_VAT_RATE};
+window.__app={isAdmin:isAdmin,requireAdmin:requireAdmin,getData:getData,saveData:saveData,showToast:showToast,logActivity:logActivity,renderProjectDetail:renderProjectDetail,getCurrentProject:getCurrentProject,setTab:function(t){currentTab=t;},getUser:function(){return currentUser;},notifyAdmin:notifyAdminClientQuestion,getBudgetItems:getBudgetItems,refreshBudgetItems:refreshBudgetItems,getFinishSelectionsForProject:getFinishSelectionsForProject,refreshFinishSelectionsCache:refreshFinishSelectionsCache,supabase:supabase,vatRate:BUDGET_VAT_RATE};
 window.addEventListener('resize',function(){
   if(window.innerWidth>=1181)closeMobileSidebar();
   if(finCharts.pie)finCharts.pie.resize();

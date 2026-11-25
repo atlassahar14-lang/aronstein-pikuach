@@ -37,6 +37,7 @@ var EX_CSS='<style id="ex-css">'+
 '.ex-act .ex-save{background:var(--primary,#1B2B5E);color:#fff;border-color:var(--primary,#1B2B5E)}.ex-act .ex-save[disabled]{opacity:.6}'+
 '.ex-fab{position:fixed;left:calc(18px + env(safe-area-inset-left,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:900;background:var(--accent,#e8a020);color:#fff;border:0;border-radius:999px;padding:14px 20px;font:inherit;font-size:16px;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.2);cursor:pointer;display:flex;align-items:center;gap:6px}'+
 '.ex-badge{display:inline-block;font-size:11.5px;font-weight:600;border-radius:10px;padding:1px 8px;margin-inline-start:6px;background:#fef3c7;color:#92400e;vertical-align:1px}'+
+'.ex-badge.ok{background:#dcfce7;color:#166534}'+
 '.ex-sub{display:block;font-size:12px;color:var(--text-muted,#6b7a8d);font-weight:400}'+
 '</style>';
 function exOpen(){
@@ -56,7 +57,7 @@ function exOpen(){
     '<div class="ex-f"><label for="ex-to">למי שולם? (לא חובה)</label><input id="ex-to" type="text" placeholder="שם הקבלן או החנות" autocomplete="off"></div>'+
     '<div class="ex-err" id="ex-err" role="alert"></div>'+
     '<div class="ex-act"><button type="button" onclick="exClose()">ביטול</button><button type="button" class="ex-save" id="ex-save" onclick="exSave()">שמירת ההוצאה</button></div>'+
-    '<p class="ex-sub" style="margin-top:10px">המע"מ מחושב לפי '+r+'%. ההוצאה נכנסת ל"מעקב תשלומים" ונספרת בתקציב.</p>'+
+    '<p class="ex-sub" style="margin-top:10px">המע"מ מחושב לפי '+r+'%. ההוצאה נכנסת ל"מעקב תשלומים" ונספרת בתקציב '+(exA().isAdmin&&exA().isAdmin()?'מיד':'אחרי אישור המפקח')+'.</p>'+
     '</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);exCalc();
   setTimeout(function(){var d=document.getElementById('ex-desc');if(d)d.focus();},50);
@@ -83,12 +84,13 @@ async function exSave(){
   if(!proj){err.textContent='הפרויקט לא נמצא. רענן את העמוד ונסה שוב.';btn.disabled=false;btn.textContent='שמירת ההוצאה';return;}
   var u=(A.getUser&&A.getUser())||{},isAdm=A.isAdmin&&A.isAdmin();
   proj.payments=proj.payments||[];
-  proj.payments.push({id:'ex'+Date.now(),desc:desc,amount:x.total,amount_before_vat:x.before,vat_amount:x.vat,vat_mode:x.mode,date:date,to:to,category:cat,status:'approved',
+  proj.payments.push({id:'ex'+Date.now(),desc:desc,amount:x.total,amount_before_vat:x.before,vat_amount:x.vat,vat_mode:x.mode,date:date,to:to,category:cat,status:isAdm?'approved':'pending',awaiting_approval:!isAdm,
     added_by:isAdm?'admin':'client',added_by_id:u.id||'',added_by_name:u.name||'',added_at:new Date().toISOString()});
   var ok=await A.saveData(data);
   if(!ok){btn.disabled=false;btn.textContent='שמירת ההוצאה';err.textContent='השמירה נכשלה. בדוק חיבור לאינטרנט ונסה שוב.';return;}
   if(isAdm&&A.logActivity)A.logActivity('הוספת הוצאה','פרויקט: '+proj.name+' · '+desc+' · '+exNis(x.total));
-  exClose();if(A.showToast)A.showToast('ההוצאה נשמרה: '+exNis(x.total));
+  if(!isAdm&&A.notifyAdmin)A.notifyAdmin(u.name||'לקוח',proj.name,'הוצאה חדשה ממתינה לאישור: '+desc+' · '+exNis(x.total)+' · '+cat);
+  exClose();if(A.showToast)A.showToast(isAdm?'ההוצאה נשמרה: '+exNis(x.total):'ההוצאה נשלחה לאישור המפקח: '+exNis(x.total));
   A.renderProjectDetail(document.getElementById('main-content'));
 }
 async function exDelete(id){
@@ -98,14 +100,28 @@ async function exDelete(id){
   proj.payments=proj.payments.filter(function(q){return q.id!==id;});
   if(!await A.saveData(data))return;A.showToast&&A.showToast('ההוצאה נמחקה');A.renderProjectDetail(document.getElementById('main-content'));
 }
-function exCanDelete(pay){var A=exA();if(A.isAdmin&&A.isAdmin())return false;var u=(A.getUser&&A.getUser())||{};return pay.added_by==='client'&&(!pay.added_by_id||pay.added_by_id===u.id);}
+function exCanDelete(pay){var A=exA();if(A.isAdmin&&A.isAdmin())return false;var u=(A.getUser&&A.getUser())||{};return pay.added_by==='client'&&!!pay.awaiting_approval&&(!pay.added_by_id||pay.added_by_id===u.id);}
 // Small pieces the payments list uses.
 function exBadgeHtml(pay){
   if(!pay||!pay.added_by)return '';
-  var who=pay.added_by==='client'?'<span class="ex-badge">נוסף ע"י הלקוח</span>':'';
+  var adm=exA().isAdmin&&exA().isAdmin();
+  var who=pay.added_by!=='client'?'':pay.awaiting_approval?'<span class="ex-badge">'+(adm?'ממתין לאישור שלך':'ממתין לאישור המפקח')+'</span>':'<span class="ex-badge ok">נוסף ע"י הלקוח · אושר</span>';
   var vat=pay.amount_before_vat!=null?'<span class="ex-sub">'+(pay.vat_mode==='excl'?'הוזן לפני מע"מ':'הוזן כולל מע"מ')+' · לפני מע"מ '+exNis(pay.amount_before_vat)+'</span>':'';
   return who+vat;
 }
-function exActionsHtml(pay){return exCanDelete(pay)?'<button type="button" class="btn btn-outline btn-sm" onclick="exDelete(\''+pay.id+'\')" aria-label="מחיקת ההוצאה">מחיקה</button>':'';}
+async function exApprove(id){
+  var A=exA();if(!A.isAdmin||!A.isAdmin())return;
+  var data=A.getData(),cur=A.getCurrentProject(),proj=cur&&data.projects.find(function(q){return q.id===cur.id;});if(!proj)return;
+  var pay=(proj.payments||[]).find(function(q){return q.id===id;});if(!pay)return;var u=(A.getUser&&A.getUser())||{};
+  pay.status='approved';pay.awaiting_approval=false;pay.approved_at=new Date().toISOString();pay.approved_by=u.name||'';
+  if(!await A.saveData(data))return;
+  if(A.logActivity)A.logActivity('אישור הוצאת לקוח','פרויקט: '+proj.name+' · '+pay.desc+' · '+exNis(pay.amount));
+  A.showToast&&A.showToast('ההוצאה אושרה ונספרה בתקציב');A.renderProjectDetail(document.getElementById('main-content'));
+}
+function exPendingCount(p){return ((p&&p.payments)||[]).filter(function(x){return x.awaiting_approval;}).length;}
+function exPendingBadge(){var A=exA();if(!A.isAdmin||!A.isAdmin()||!A.getCurrentProject)return '';var n=exPendingCount(A.getCurrentProject());return n?'<span class="tab-badge show" title="'+n+' הוצאות ממתינות לאישור"></span>':'';}
+function exActionsHtml(pay){
+  var A=exA();if(A.isAdmin&&A.isAdmin()&&pay&&pay.awaiting_approval)return '<button type="button" class="btn btn-primary btn-sm" onclick="exApprove(\''+pay.id+'\')">אישור ההוצאה</button>';
+  return exCanDelete(pay)?'<button type="button" class="btn btn-outline btn-sm" onclick="exDelete(\''+pay.id+'\')" aria-label="מחיקת ההוצאה">מחיקה</button>':'';}
 function exFabHtml(){if(!document.getElementById('ex-css'))document.head.insertAdjacentHTML('beforeend',EX_CSS);return '<button type="button" class="ex-fab" onclick="exOpen()" aria-label="הוספת הוצאה"><span style="font-size:20px;line-height:1">+</span> הוספת הוצאה</button>';}
 /* ===== end expenses ===== */
