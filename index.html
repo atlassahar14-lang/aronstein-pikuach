@@ -8668,7 +8668,7 @@ function renderProjectDetail(el){
     '</div></div></div>';
 
   // CLIENT PLAN TAB
-  if(isAdminUser||isClientTabVisible(p,'plan'))html+=renderClientPlanTabHtml(p,isAdminUser,currentTab);
+  if(isAdminUser||isClientTabVisible(p,'plan')){try{if(typeof window.renderClientPlanTabHtml==='function')html+=window.renderClientPlanTabHtml(p,isAdminUser,currentTab);}catch(cpErr){console.error('client plan tab',cpErr);html+='<div id="tab-plan" class="tab-content '+(currentTab==='plan'?'active':'')+'"><p>שגיאה בטעינת לשונית התקציב והזמנים</p></div>';}}
 
   // TIMELINE TAB
   if(isAdminUser||isClientTabVisible(p,'timeline'))html+='<div id="tab-timeline" class="tab-content '+(currentTab==='timeline'?'active':'')+'">'+
@@ -10471,6 +10471,8 @@ Object.assign(window,{
   saveSupervisionReportToProject,editSupervisionReport,duplicateSupervisionReport,srImportFile,onSrProjectPick,deleteSupervisionReport,
   onProjectStatusFilterChange
 });
+// bridge for js/client-plan.js (a classic script cannot see this module's functions)
+window.__app={isAdmin:isAdmin,requireAdmin:requireAdmin,getData:getData,saveData:saveData,showToast:showToast,logActivity:logActivity,renderProjectDetail:renderProjectDetail,getCurrentProject:getCurrentProject,setTab:function(t){currentTab=t;}};
 window.addEventListener('resize',function(){
   if(window.innerWidth>=1181)closeMobileSidebar();
   if(finCharts.pie)finCharts.pie.resize();

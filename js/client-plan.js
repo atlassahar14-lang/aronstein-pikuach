@@ -3,6 +3,9 @@
    sections[{name,total,inc,qty[],tag,alloc[{phase|week,amount}],spread_all}], frame_payments{...items[{pct,what,week}]},
    decisions[{week,what,why}], not_included[]}. Amounts in the plan are before VAT; the page shows them with VAT.
    Stage dates follow the project's own phases (linked by cp_key), so editing a phase in "לוח זמנים" moves this page too. */
+function cpA(){return window.__app||{};}
+function cpEsc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function cpIc(n){return '<i data-lucide="'+n+'"></i>';}
 var CP_DAY=864e5,cpState=null,cpTimer=0;
 function cpNis(x){return Math.round(Number(x)||0).toLocaleString('en-US')+' ₪';}
 function cpDate(d){return d.getDate()+'.'+(d.getMonth()+1)+'.'+d.getFullYear();}
@@ -79,24 +82,24 @@ function cpChartSvg(M){
     s+='<path class="cp-b" data-i="'+i+'" d="M'+(x+5)+','+(VH-mb)+'v'+(-Math.max(h-4,0))+'q0,-4 4,-4h'+(pw-8)+'q4,0 4,4v'+Math.max(h-4,0)+'z" fill="var(--primary)" opacity=".85"/>';
     if(hasPaid){var hp=VH-mb-Y(m.paid);s+='<path d="M'+(x+5+pw+2)+','+(VH-mb)+'v'+(-Math.max(hp-3,0))+'q0,-3 3,-3h'+(bw-10-pw-2-6)+'q3,0 3,3v'+Math.max(hp-3,0)+'z" fill="var(--success)"/>';}
     s+='<text x="'+(x+bw/2)+'" y="'+(VH-mb+16)+'" text-anchor="middle" font-size="10.5" fill="var(--text-muted)">'+MN[m.d.getMonth()]+"' "+String(m.d.getFullYear()).slice(2)+'</text>';
-    s+='<rect x="'+x+'" y="'+mt+'" width="'+bw+'" height="'+(VH-mt-mb)+'" fill="transparent" tabindex="0" style="cursor:pointer" onmouseenter="cpTip('+i+',this)" onfocus="cpTip('+i+',this)" onmouseleave="cpTip(-1)" onblur="cpTip(-1)" onclick="cpShow('+m.w0+')"><title>'+escHtml(m.d.toLocaleDateString('he-IL',{month:'long',year:'numeric'}))+'</title></rect>';
+    s+='<rect x="'+x+'" y="'+mt+'" width="'+bw+'" height="'+(VH-mt-mb)+'" fill="transparent" tabindex="0" style="cursor:pointer" onmouseenter="cpTip('+i+',this)" onfocus="cpTip('+i+',this)" onmouseleave="cpTip(-1)" onblur="cpTip(-1)" onclick="cpShow('+m.w0+')"><title>'+cpEsc(m.d.toLocaleDateString('he-IL',{month:'long',year:'numeric'}))+'</title></rect>';
   });
   return s+'</svg>';
 }
 function renderClientPlanTabHtml(p,isAdminUser,activeTab){
   var html='<div id="tab-plan" class="tab-content '+(activeTab==='plan'?'active':'')+'">'+CP_CSS;
-  if(isAdminUser)html+='<div class="cp-admin"><label class="btn btn-outline btn-sm" style="cursor:pointer">'+ic('upload')+' ייבוא תכנית לקוח (JSON)<input type="file" accept=".json,application/json" style="display:none" onchange="cpImport(this)"></label>'+
-    (p.client_plan?'<button type="button" class="btn btn-outline btn-sm" onclick="cpRemove()">'+ic('trash-2')+' הסרת התכנית</button><span class="cp-mut">הלקוח רואה את הלשונית הזו. תאריכי השלבים נלקחים מלשונית "לוח זמנים".</span>':'<span class="cp-mut">ייבוא קובץ תכנית (JSON מהמחשב) יוצר את השלבים בלוח הזמנים ואת דף התקציב ללקוח.</span>')+'</div>';
+  if(isAdminUser)html+='<div class="cp-admin"><label class="btn btn-outline btn-sm" style="cursor:pointer">'+cpIc('upload')+' ייבוא תכנית לקוח (JSON)<input type="file" accept=".json,application/json" style="display:none" onchange="cpImport(this)"></label>'+
+    (p.client_plan?'<button type="button" class="btn btn-outline btn-sm" onclick="cpRemove()">'+cpIc('trash-2')+' הסרת התכנית</button><span class="cp-mut">הלקוח רואה את הלשונית הזו. תאריכי השלבים נלקחים מלשונית "לוח זמנים".</span>':'<span class="cp-mut">ייבוא קובץ תכנית (JSON מהמחשב) יוצר את השלבים בלוח הזמנים ואת דף התקציב ללקוח.</span>')+'</div>';
   var M=cpModel(p);cpState=M;
-  if(!M){return html+'<div class="empty-state"><div class="empty-icon">'+ic('calendar-range')+'</div><p>עוד אין תקציב ולוח זמנים ללקוח בפרויקט הזה</p></div></div>';}
+  if(!M){return html+'<div class="empty-state"><div class="empty-icon">'+cpIc('calendar-range')+'</div><p>עוד אין תקציב ולוח זמנים ללקוח בפרויקט הזה</p></div></div>';}
   var plan=M.plan,vat=M.vat,end=new Date(M.phases[M.phases.length-1].b.getTime());
   var w=Math.min(Math.max(1,M.now),M.W);
   html+='<div class="cp-kpi"><div><b>'+cpNis(M.totalVat)+'</b><span>עלות כוללת · '+cpNis(M.total)+' לפני מע"מ</span></div>'+
     '<div><b>'+M.W+' שבועות</b><span>כ-'+Math.round(M.W/4.33)+' חודשי עבודה</span></div>'+
     '<div><b>'+cpDate(M.phases[0].a)+'</b><span>התחלה · מסירה משוערת '+cpDate(end)+'</span></div></div>';
-  html+='<p class="cp-mut" style="margin:-6px 0 12px">לפי '+escHtml(plan.estimate||'האומדן')+' · כל הסכומים כוללים מע"מ '+Math.round(vat*100)+'% · לוח הזמנים מתעדכן לפי ההתקדמות באתר</p>';
+  html+='<p class="cp-mut" style="margin:-6px 0 12px">לפי '+cpEsc(plan.estimate||'האומדן')+' · כל הסכומים כוללים מע"מ '+Math.round(vat*100)+'% · לוח הזמנים מתעדכן לפי ההתקדמות באתר</p>';
   html+='<div class="cp-h">שבוע אחרי שבוע</div><p class="cp-lead">גררו את הסרגל: רואים איך הבית נראה באותו שבוע, מה עושים באתר, כמה כבר הושקע ומה צריך להחליט בקרוב.</p><div class="cp-card">'+
-    (plan.model_url?'<iframe class="cp-model" id="cp-model" src="'+escHtml(plan.model_url)+'?stage='+cpStageOfWeek(M,w)+'" title="מודל הבית לפי שלבים" onload="cpShow(document.getElementById(\'cp-r\').value)"></iframe>':'')+
+    (plan.model_url?'<iframe class="cp-model" id="cp-model" src="'+cpEsc(plan.model_url)+'?stage='+cpStageOfWeek(M,w)+'" title="מודל הבית לפי שלבים" onload="cpShow(document.getElementById(\'cp-r\').value)"></iframe>':'')+
     '<div class="cp-wk"><input id="cp-r" type="range" min="1" max="'+M.W+'" value="'+w+'" aria-label="שבוע בפרויקט" oninput="cpStop();cpShow(this.value)"><button type="button" class="btn btn-outline btn-sm" id="cp-play" onclick="cpPlay()">הפעלה</button><button type="button" class="btn btn-outline btn-sm" onclick="cpStop();cpShow('+w+')">היום</button></div>'+
     '<div class="cp-now"><div><div class="cp-mut" id="cp-wd"></div><h3 id="cp-wn"></h3><p id="cp-ww"></p><div class="cp-mut" id="cp-wst" style="margin-top:6px"></div></div>'+
     '<div><div class="cp-mut">מתוכנן להיות מושקע עד סוף השבוע</div><div class="cp-big" id="cp-wc"></div><div class="cp-meter"><i id="cp-wm"></i></div><div class="cp-mut" id="cp-wp"></div><div class="cp-nx"><div id="cp-nd"></div><div id="cp-np"></div></div></div></div></div>';
@@ -104,25 +107,25 @@ function renderClientPlanTabHtml(p,isAdminUser,activeTab){
   html+='<div class="cp-h">כמה כסף צריך בכל חודש</div><p class="cp-lead">ההוצאה המתוכננת לפי חודש הביצוע. השלד משולם לפי אבני הדרך בחוזה, ולכן יש בו קפיצות; שאר העבודות לפי ההתקדמות.</p>'+
     '<div class="cp-card cp-chart" id="cp-chart">'+(anyPaid?'<div class="cp-leg"><span><i style="background:var(--primary)"></i>מתוכנן</span><span><i style="background:var(--success)"></i>שולם בפועל</span></div>':'')+cpChartSvg(M)+'<div class="cp-tip" id="cp-tip" role="status"></div></div>';
   html+='<div class="cp-wrap"><table class="cp-tbl"><thead><tr><th>חודש</th><th>מה עושים</th><th>מתוכנן בחודש</th><th>מצטבר</th>'+(anyPaid?'<th>שולם בפועל</th>':'')+'</tr></thead><tbody>';
-  var run=0;M.months.forEach(function(m,i){run+=m.v;html+='<tr data-cpm="'+i+'"><td>'+m.d.toLocaleDateString('he-IL',{month:'long',year:'numeric'})+'</td><td>'+escHtml(m.ph.join(', '))+'</td><td style="white-space:nowrap">'+cpNis(m.v)+'</td><td style="white-space:nowrap">'+cpNis(run)+'</td>'+(anyPaid?'<td style="white-space:nowrap">'+(m.paid?cpNis(m.paid):'')+'</td>':'')+'</tr>';});
+  var run=0;M.months.forEach(function(m,i){run+=m.v;html+='<tr data-cpm="'+i+'"><td>'+m.d.toLocaleDateString('he-IL',{month:'long',year:'numeric'})+'</td><td>'+cpEsc(m.ph.join(', '))+'</td><td style="white-space:nowrap">'+cpNis(m.v)+'</td><td style="white-space:nowrap">'+cpNis(run)+'</td>'+(anyPaid?'<td style="white-space:nowrap">'+(m.paid?cpNis(m.paid):'')+'</td>':'')+'</tr>';});
   html+='</tbody></table></div>';
   var order=plan.sections.map(function(s,i){return i;}).sort(function(a,b){return plan.sections[b].total-plan.sections[a].total;}),topPct=plan.sections[order[0]].total/M.total;
   html+='<div class="cp-h">על מה הולך הכסף</div><p class="cp-lead">לחצו על פרק כדי לראות מה כלול בו ומתי משלמים עליו. "קומפלט" הוא מחיר כולל לכל העבודה; "הערכה" הוא סעיף שעוד אין לו תוכנית סופית.</p><div>';
   order.forEach(function(i){var s=plan.sections[i],pct=s.total/M.total,ws=[];for(var x=1;x<=M.W;x++)if(M.secWeeks[i][x]>1)ws.push(x);
     var when=ws.length?('שבועות '+ws[0]+'–'+ws[ws.length-1]):'';
-    html+='<details class="cp-sec"><summary><span class="cp-sn">'+escHtml(s.name)+(s.tag?'<span class="cp-tag">'+escHtml(s.tag)+'</span>':'')+'</span><span class="cp-sv">'+cpNis(s.total*(1+vat))+'</span><span class="cp-bar" aria-hidden="true"><i style="width:'+(pct/topPct*100)+'%"></i></span><span class="cp-sp">'+(pct*100).toFixed(1)+'%</span></summary>'+
-      '<div class="cp-sd"><p>'+escHtml(s.inc||'')+'</p>'+((s.qty||[]).length?'<ul>'+s.qty.map(function(q){return '<li>'+escHtml(q)+'</li>';}).join('')+'</ul>':'')+(when?'<p class="cp-mut">מתי משלמים: '+when+(s.spread_all?' (לאורך כל הפרויקט)':'')+'</p>':'')+'</div></details>';});
+    html+='<details class="cp-sec"><summary><span class="cp-sn">'+cpEsc(s.name)+(s.tag?'<span class="cp-tag">'+cpEsc(s.tag)+'</span>':'')+'</span><span class="cp-sv">'+cpNis(s.total*(1+vat))+'</span><span class="cp-bar" aria-hidden="true"><i style="width:'+(pct/topPct*100)+'%"></i></span><span class="cp-sp">'+(pct*100).toFixed(1)+'%</span></summary>'+
+      '<div class="cp-sd"><p>'+cpEsc(s.inc||'')+'</p>'+((s.qty||[]).length?'<ul>'+s.qty.map(function(q){return '<li>'+cpEsc(q)+'</li>';}).join('')+'</ul>':'')+(when?'<p class="cp-mut">מתי משלמים: '+when+(s.spread_all?' (לאורך כל הפרויקט)':'')+'</p>':'')+'</div></details>';});
   html+='</div><div class="cp-sum"><span>סה"כ כולל מע"מ</span><span>'+cpNis(M.totalVat)+'</span></div>';
   var fp=plan.frame_payments;
-  if(fp){html+='<div class="cp-h">תשלומי השלד לפי החוזה</div><p class="cp-lead">בחוזה עם '+escHtml(fp.contractor||'קבלן השלד')+(fp.contract_date?' ('+escHtml(fp.contract_date)+')':'')+' השלד משולם בשלבים, רק אחרי שהשלב גמור ונבדק בפיקוח'+(fp.days?'. החוזה קובע '+fp.days+' יום לשלד':'')+'. הסכומים לפי '+cpNis(fp.amount*(1+vat))+' כולל מע"מ.</p>'+
+  if(fp){html+='<div class="cp-h">תשלומי השלד לפי החוזה</div><p class="cp-lead">בחוזה עם '+cpEsc(fp.contractor||'קבלן השלד')+(fp.contract_date?' ('+cpEsc(fp.contract_date)+')':'')+' השלד משולם בשלבים, רק אחרי שהשלב גמור ונבדק בפיקוח'+(fp.days?'. החוזה קובע '+fp.days+' יום לשלד':'')+'. הסכומים לפי '+cpNis(fp.amount*(1+vat))+' כולל מע"מ.</p>'+
     '<div class="cp-wrap"><table class="cp-tbl"><thead><tr><th>שלב</th><th>אחוז</th><th>סכום</th><th>מתי (לפי התכנון)</th></tr></thead><tbody>'+
-    M.pays.map(function(q){return '<tr><td>'+escHtml(q.t)+'</td><td>'+q.pct+'%</td><td style="white-space:nowrap">'+cpNis(q.v)+'</td><td style="white-space:nowrap">שבוע '+q.w+' · '+cpDate(M.dateOfWeek(q.w))+'</td></tr>';}).join('')+'</tbody></table></div>';}
+    M.pays.map(function(q){return '<tr><td>'+cpEsc(q.t)+'</td><td>'+q.pct+'%</td><td style="white-space:nowrap">'+cpNis(q.v)+'</td><td style="white-space:nowrap">שבוע '+q.w+' · '+cpDate(M.dateOfWeek(q.w))+'</td></tr>';}).join('')+'</tbody></table></div>';}
   if(M.dec.length){html+='<div class="cp-h">מה אתם צריכים להחליט, ועד מתי</div><p class="cp-lead">החלטה שמגיעה באיחור עוצרת את האתר. אלה המועדים האחרונים ששומרים על לוח הזמנים.</p><ul class="cp-dec" id="cp-dec">'+
-    M.dec.map(function(d){return '<li data-w="'+d.week+'"><b>'+(d.week?'עד שבוע '+d.week:'לפני ההתחלה')+'</b><span class="cp-mut">'+cpDate(M.dateOfWeek(Math.max(1,d.week)))+'</span><div>'+escHtml(d.what)+'<small>'+escHtml(d.why||'')+'</small></div></li>';}).join('')+'</ul>';}
+    M.dec.map(function(d){return '<li data-w="'+d.week+'"><b>'+(d.week?'עד שבוע '+d.week:'לפני ההתחלה')+'</b><span class="cp-mut">'+cpDate(M.dateOfWeek(Math.max(1,d.week)))+'</span><div>'+cpEsc(d.what)+'<small>'+cpEsc(d.why||'')+'</small></div></li>';}).join('')+'</ul>';}
   html+='<div class="cp-h">שלבי הבנייה</div><div class="cp-wrap"><table class="cp-tbl"><thead><tr><th>שלב</th><th>תאריכים</th><th>מצב</th><th>מה עושים</th></tr></thead><tbody>'+
-    M.phases.map(function(ph,i){var st=ph.status==='done'?'הושלם':ph.status==='active'?'בביצוע '+ph.progress+'%':'ממתין';return '<tr data-cpp="'+i+'"><td>'+escHtml(ph.name)+'</td><td style="white-space:nowrap">'+cpDate(ph.a)+' – '+cpDate(ph.b)+'</td><td><span class="cp-st '+(ph.status||'pending')+'">'+st+'</span></td><td>'+escHtml(ph.what)+'</td></tr>';}).join('')+'</tbody></table></div>';
-  if((plan.not_included||[]).length)html+='<div class="cp-h">מה לא כלול בסכום</div><div class="cp-card"><ul style="margin:0;padding-inline-start:18px">'+plan.not_included.map(function(x){return '<li>'+escHtml(x)+'</li>';}).join('')+'</ul></div>';
-  html+='<p class="cp-mut">הסכומים לפי האומדן של ארונשטיין'+(plan.index?', '+escHtml(plan.index):'')+'. החלוקה לחודשים מניחה שכל קבלן מקבל תשלום לפי קצב העבודה שלו.</p>';
+    M.phases.map(function(ph,i){var st=ph.status==='done'?'הושלם':ph.status==='active'?'בביצוע '+ph.progress+'%':'ממתין';return '<tr data-cpp="'+i+'"><td>'+cpEsc(ph.name)+'</td><td style="white-space:nowrap">'+cpDate(ph.a)+' – '+cpDate(ph.b)+'</td><td><span class="cp-st '+(ph.status||'pending')+'">'+st+'</span></td><td>'+cpEsc(ph.what)+'</td></tr>';}).join('')+'</tbody></table></div>';
+  if((plan.not_included||[]).length)html+='<div class="cp-h">מה לא כלול בסכום</div><div class="cp-card"><ul style="margin:0;padding-inline-start:18px">'+plan.not_included.map(function(x){return '<li>'+cpEsc(x)+'</li>';}).join('')+'</ul></div>';
+  html+='<p class="cp-mut">הסכומים לפי האומדן של ארונשטיין'+(plan.index?', '+cpEsc(plan.index):'')+'. החלוקה לחודשים מניחה שכל קבלן מקבל תשלום לפי קצב העבודה שלו.</p>';
   return html+'</div>';
 }
 function cpShow(w){
@@ -132,8 +135,8 @@ function cpShow(w){
   $('cp-wn').textContent=last?'הבית גמור':cur.map(function(x){return x.name;}).join(' + ');$('cp-ww').textContent=ph.what;
   $('cp-wst').textContent=cur.map(function(x){return x.status==='done'?x.name+': הושלם':x.status==='active'?x.name+': בביצוע, '+x.progress+'%':'';}).filter(Boolean).join(' · ');
   var c=M.cum[w];$('cp-wc').textContent=cpNis(c);$('cp-wm').style.width=(c/M.totalVat*100)+'%';$('cp-wp').textContent=Math.round(c/M.totalVat*100)+'% מהתקציב · נשאר '+cpNis(M.totalVat-c);
-  var d=M.dec.filter(function(x){return x.week>=w;})[0];$('cp-nd').innerHTML=d?'<b>ההחלטה הבאה:</b> '+escHtml(d.what)+' (עד שבוע '+d.week+')':'<b>כל ההחלטות התקבלו</b>';
-  var q=M.pays.filter(function(x){return x.w>=w;})[0];$('cp-np').innerHTML=M.pays.length?(q?'<b>תשלום השלד הבא:</b> '+cpNis(q.v)+', '+escHtml(q.t)+' (שבוע '+q.w+')':'<b>תשלומי השלד הסתיימו</b>'):'';
+  var d=M.dec.filter(function(x){return x.week>=w;})[0];$('cp-nd').innerHTML=d?'<b>ההחלטה הבאה:</b> '+cpEsc(d.what)+' (עד שבוע '+d.week+')':'<b>כל ההחלטות התקבלו</b>';
+  var q=M.pays.filter(function(x){return x.w>=w;})[0];$('cp-np').innerHTML=M.pays.length?(q?'<b>תשלום השלד הבא:</b> '+cpNis(q.v)+', '+cpEsc(q.t)+' (שבוע '+q.w+')':'<b>תשלומי השלד הסתיימו</b>'):'';
   document.querySelectorAll('#cp-dec li').forEach(function(li){var x=+li.dataset.w;li.classList.toggle('past',x<w&&!(x===0&&w===1));li.classList.toggle('soon',x>=w&&x<w+6);});
   M.months.forEach(function(m,i){var on=w>=m.w0&&w<=m.w1;var b=document.querySelector('#cp-chart .cp-b[data-i="'+i+'"]');if(b)b.setAttribute('opacity',on?'1':'.55');var tr=document.querySelector('tr[data-cpm="'+i+'"]');if(tr)tr.classList.toggle('cp-hi',on);});
   M.phases.forEach(function(x,i){var tr=document.querySelector('tr[data-cpp="'+i+'"]');if(tr)tr.classList.toggle('cp-hi',cur.indexOf(x)>=0&&!last);});
@@ -143,14 +146,14 @@ function cpStop(){clearInterval(cpTimer);cpTimer=0;var b=document.getElementById
 function cpPlay(){if(cpTimer)return cpStop();var r=document.getElementById('cp-r');if(!r||!cpState)return;document.getElementById('cp-play').textContent='עצירה';if(+r.value>=cpState.W)cpShow(1);
   cpTimer=setInterval(function(){var w=+r.value;if(w>=cpState.W||!document.getElementById('cp-r'))return cpStop();cpShow(w+1);},matchMedia('(prefers-reduced-motion: reduce)').matches?1500:450);}
 function cpTip(i,el){var t=document.getElementById('cp-tip');if(!t)return;if(i<0||!cpState){t.style.opacity=0;return;}var m=cpState.months[i];
-  t.innerHTML='<b>'+m.d.toLocaleDateString('he-IL',{month:'long',year:'numeric'})+'</b><br>מתוכנן '+cpNis(m.v)+(m.paid?' · שולם '+cpNis(m.paid):'')+'<br>'+escHtml(m.ph.join(', '));
+  t.innerHTML='<b>'+m.d.toLocaleDateString('he-IL',{month:'long',year:'numeric'})+'</b><br>מתוכנן '+cpNis(m.v)+(m.paid?' · שולם '+cpNis(m.paid):'')+'<br>'+cpEsc(m.ph.join(', '));
   var R=document.getElementById('cp-chart').getBoundingClientRect(),B=el.getBoundingClientRect();t.style.opacity=1;
   t.style.left=Math.min(Math.max(B.left-R.left+B.width/2-t.offsetWidth/2,0),R.width-t.offsetWidth)+'px';t.style.top=Math.max(B.top-R.top+B.height*0.25-t.offsetHeight,0)+'px';}
 async function cpImport(input){
-  if(!requireAdmin())return;var file=input.files&&input.files[0];input.value='';if(!file)return;
-  var plan;try{plan=JSON.parse(await file.text());}catch(e){showToast('הקובץ אינו JSON תקין','error');return;}
-  if(!plan||!Array.isArray(plan.phases)||!Array.isArray(plan.sections)||!cpParse(plan.start)){showToast('בקובץ חסרים שלבים, פרקים או תאריך התחלה','error');return;}
-  var data=getData(),proj=data.projects.find(function(x){return x.id===currentProjectId;});if(!proj)return;
+  if(!cpA().requireAdmin||!cpA().requireAdmin())return;var file=input.files&&input.files[0];input.value='';if(!file)return;
+  var plan;try{plan=JSON.parse(await file.text());}catch(e){cpA().showToast('הקובץ אינו JSON תקין','error');return;}
+  if(!plan||!Array.isArray(plan.phases)||!Array.isArray(plan.sections)||!cpParse(plan.start)){cpA().showToast('בקובץ חסרים שלבים, פרקים או תאריך התחלה','error');return;}
+  var data=cpA().getData(),cur=cpA().getCurrentProject(),proj=cur&&data.projects.find(function(x){return x.id===cur.id;});if(!proj)return;
   proj.phases=proj.phases||[];
   var newCount=0,linked=0;
   plan.phases.forEach(function(ph,i){
@@ -162,13 +165,13 @@ async function cpImport(input){
   });
   if(!confirm('לייבא את התכנית "'+(plan.estimate||file.name)+'"?\n'+newCount+' שלבים חדשים יתווספו ללוח הזמנים, '+linked+' שלבים קיימים יקושרו.'))return;
   proj.client_plan=plan;
-  logActivity('ייבוא תכנית לקוח','פרויקט: '+proj.name+' · '+(plan.estimate||file.name));
-  if(!await saveData(data))return;
-  showToast('התכנית יובאה');currentTab='plan';renderProjectDetail(document.getElementById('main-content'));
+  cpA().logActivity('ייבוא תכנית לקוח','פרויקט: '+proj.name+' · '+(plan.estimate||file.name));
+  if(!await cpA().saveData(data))return;
+  cpA().showToast('התכנית יובאה');cpA().setTab('plan');cpA().renderProjectDetail(document.getElementById('main-content'));
 }
 async function cpRemove(){
-  if(!requireAdmin())return;if(!confirm('להסיר את דף התקציב והזמנים מהפרויקט? השלבים בלוח הזמנים נשארים.'))return;
-  var data=getData(),proj=data.projects.find(function(x){return x.id===currentProjectId;});if(!proj)return;
-  delete proj.client_plan;if(!await saveData(data))return;showToast('התכנית הוסרה');renderProjectDetail(document.getElementById('main-content'));
+  if(!cpA().requireAdmin||!cpA().requireAdmin())return;if(!confirm('להסיר את דף התקציב והזמנים מהפרויקט? השלבים בלוח הזמנים נשארים.'))return;
+  var data=cpA().getData(),cur=cpA().getCurrentProject(),proj=cur&&data.projects.find(function(x){return x.id===cur.id;});if(!proj)return;
+  delete proj.client_plan;if(!await cpA().saveData(data))return;cpA().showToast('התכנית הוסרה');cpA().renderProjectDetail(document.getElementById('main-content'));
 }
 /* ===== end client_plan ===== */
