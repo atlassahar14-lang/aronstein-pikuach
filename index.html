@@ -2672,7 +2672,7 @@ const PUNCH_FORM_DRAFT_PREFIX='punch_form_draft_';
 var punchDraftAutosaveTimer=null,punchPendingPhotoUpload=null;
 var offlinePunchSyncInProgress=false;
 var subcontractorSpecialtyFilter='',showDailyLogForm=false;
-var paymentStatusFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='',activityLogTypeFilter='',galleryStageFilter='',finishSelectionsCategoryFilter='',priceComparisonCategoryFilter='';
+var paymentStatusFilter='',paymentCategoryFilter='',paymentSortOrder='desc',dailyLogWeatherFilter='',punchStatusFilter='',punchUrgencyFilter='',activityLogTypeFilter='',galleryStageFilter='',finishSelectionsCategoryFilter='',priceComparisonCategoryFilter='';
 var toastTimer=null;
 var budgetsCache=[],budgetItemsByBudget={},budgetBuilderMode='list',editingBudgetId=null;
 var budgetBuilderDraft=null,budgetPendingContactItemId=null,budgetBuilderInitInflight=null;
@@ -2752,6 +2752,7 @@ const DEFAULT_PROJECT_FINISH_SELECTIONS=[
 ];
 function resetListFilters(){
   paymentStatusFilter='';
+  paymentCategoryFilter='';
   paymentSortOrder='desc';
   dailyLogWeatherFilter='';
   punchStatusFilter='';
@@ -3000,6 +3001,7 @@ function filterAndSortPayments(payments){
   var list=getPaymentsForView(payments||[]);
   if(paymentStatusFilter==='approved')list=list.filter(paymentIsApproved);
   else if(paymentStatusFilter==='pending')list=list.filter(function(p){return !paymentIsApproved(p);});
+  if(paymentCategoryFilter)list=list.filter(function(p){return String(p.category||'').trim()===paymentCategoryFilter;});
   list=list.slice().sort(function(a,b){
     var da=parsePhaseDate(a.date),db=parsePhaseDate(b.date);
     var ta=da?da.getTime():0,tb=db?db.getTime():0;
@@ -8553,6 +8555,10 @@ function renderPaymentFilterBarHtml(){
     '<option value="approved"'+(paymentStatusFilter==='approved'?' selected':'')+'>מאושר</option>'+
     '<option value="pending"'+(paymentStatusFilter==='pending'?' selected':'')+'>ממתין</option>'+
     '</select>'+
+    (function(){var proj=getCurrentProject(),cats=[];getPaymentsForView((proj&&proj.payments)||[]).forEach(function(p){var c=String(p.category||'').trim();if(c&&cats.indexOf(c)<0)cats.push(c);});
+      if(paymentCategoryFilter&&cats.indexOf(paymentCategoryFilter)<0)cats.push(paymentCategoryFilter);cats.sort(function(a,b){return a.localeCompare(b,'he');});
+      return '<label for="pay-category-filter">קטגוריה:</label><select id="pay-category-filter" onchange="onPaymentFilterChange()"><option value="">כל הקטגוריות</option>'+
+        cats.map(function(c){return '<option value="'+escHtml(c)+'"'+(paymentCategoryFilter===c?' selected':'')+'>'+escHtml(c)+'</option>';}).join('')+'</select>';})()+
     '<label for="pay-sort-order">מיון תאריך:</label>'+
     '<select id="pay-sort-order" onchange="onPaymentFilterChange()">'+
     '<option value="desc"'+(paymentSortOrder==='desc'?' selected':'')+'>חדש → ישן</option>'+
@@ -8585,7 +8591,9 @@ function renderBudgetPaymentsContentHtml(proj){
 function onPaymentFilterChange(){
   var statusEl=document.getElementById('pay-status-filter');
   var sortEl=document.getElementById('pay-sort-order');
+  var catEl=document.getElementById('pay-category-filter');
   paymentStatusFilter=statusEl?statusEl.value:'';
+  paymentCategoryFilter=catEl?catEl.value:'';
   paymentSortOrder=sortEl?sortEl.value:'desc';
   refreshBudgetPaymentsList();
 }
