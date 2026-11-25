@@ -1062,6 +1062,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="js/client-plan.js"></script>
 
 <!-- Modal: Project -->
 <div class="modal-overlay" id="modal-project">
@@ -2699,7 +2700,8 @@ const DEFAULT_CLIENT_VISIBILITY={
   subcontractors:false,
   daily_logs:false,
   documents:true,
-  suppliers:true
+  suppliers:true,
+  plan:true
 };
 const CLIENT_VISIBILITY_LABELS=[
   ['budget','תקציב'],
@@ -2710,7 +2712,8 @@ const CLIENT_VISIBILITY_LABELS=[
   ['subcontractors','קבלני משנה'],
   ['daily_logs','יומן עבודה'],
   ['documents','מסמכים'],
-  ['suppliers','ספקים']
+  ['suppliers','ספקים'],
+  ['plan','תקציב וזמנים']
 ];
 const CLIENT_TAB_TO_VISIBILITY={
   budget:'budget',
@@ -2718,7 +2721,8 @@ const CLIENT_TAB_TO_VISIBILITY={
   gallery:'gallery',
   punch:'defects',
   'daily-log':'daily_logs',
-  docs:'documents'
+  docs:'documents',
+  plan:'plan'
 };
 const DEFAULT_PROJECT_MILESTONES=[
   {title:'היתר בניה',priority:'high'},
@@ -2916,6 +2920,7 @@ function normalizeClientTab(tab){
 function getProjectTabDefs(messagesTabBadge){
   var tabDefs=[
     ['overview','סקירה','layout-dashboard',''],
+    ['plan','תקציב וזמנים','calendar-range',''],
     ['timeline','לוח זמנים','calendar',''],
     ['budget','מעקב תשלומים','banknote',''],
     ['budget-analysis','ניתוח כספי','scale',''],
@@ -7286,7 +7291,7 @@ function renderSidebar(){
   refreshIcons(nav);
 }
 
-var TAB_LABELS={overview:'סקירה',suppliers:'ספקים',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-builder':'בניית תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה','finish-selections':'בחירות גמרים','price-comparisons':'השוואת מחירים',punch:'ליקויים','daily-log':'יומן עבודה',updates:'עדכונים',messages:'שאלות'};
+var TAB_LABELS={overview:'סקירה',plan:'תקציב וזמנים',suppliers:'ספקים',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-builder':'בניית תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה','finish-selections':'בחירות גמרים','price-comparisons':'השוואת מחירים',punch:'ליקויים','daily-log':'יומן עבודה',updates:'עדכונים',messages:'שאלות'};
 var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',milestones:'אבני דרך','budget-builder':'בניית תקציב','weekly-form':'טופס שבועי','supervision-report':'דוח פיקוח',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
@@ -8661,6 +8666,9 @@ function renderProjectDetail(el){
     '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+budgetUtilPct+'%;background:var(--success)"></div></div></div>'+
     '<div class="flex-between" style="font-size:13px"><span style="color:var(--text-muted)">נותר:</span><span style="font-weight:700;color:var(--warning)">'+fmtMoney(remaining)+'</span></div>'+
     '</div></div></div>';
+
+  // CLIENT PLAN TAB
+  if(isAdminUser||isClientTabVisible(p,'plan'))html+=renderClientPlanTabHtml(p,isAdminUser,currentTab);
 
   // TIMELINE TAB
   if(isAdminUser||isClientTabVisible(p,'timeline'))html+='<div id="tab-timeline" class="tab-content '+(currentTab==='timeline'?'active':'')+'">'+
