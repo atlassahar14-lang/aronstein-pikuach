@@ -963,9 +963,8 @@ img,svg,video,canvas{max-width:100%;height:auto}
 }
 /* Phones: project action buttons two per row instead of a full-width stack. */
 @media(max-width:640px){
-  .responsive-stack>.flex-gap{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}
-  .responsive-stack>.flex-gap>.btn{width:100%;min-width:0!important;padding:10px 8px;font-size:14px;justify-content:center}
-  .responsive-stack>.flex-gap>.btn:last-child:nth-child(odd){grid-column:1/-1}
+  .responsive-stack>.flex-gap{display:flex!important;flex-wrap:wrap;gap:8px}
+  .responsive-stack>.flex-gap>.btn{flex:1 1 calc(50% - 4px);width:auto;min-width:0!important;padding:10px 8px;font-size:14px;justify-content:center}
 }
 @media(pointer:coarse){
   .modal-header{cursor:default}

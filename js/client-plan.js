@@ -94,7 +94,7 @@ var CP_CSS='<style>'+
 '.cp-dec{list-style:none;margin:0;padding:0;background:var(--card);border:1px solid var(--border);border-radius:12px}.cp-dec li{display:grid;grid-template-columns:110px 90px 1fr;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border)}.cp-dec li:last-child{border:0}.cp-dec small{display:block;color:var(--text-muted);font-size:12.5px}.cp-dec li.soon{background:#fff7e6}.cp-dec li.past{opacity:.55}'+
 '.cp-st{font-size:12px;border-radius:10px;padding:1px 8px;white-space:nowrap}.cp-st.done{background:#dcfce7;color:#166534}.cp-st.active{background:#fef3c7;color:#92400e}.cp-st.pending{background:var(--bg);color:var(--text-muted)}'+
 '.cp-admin{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}'+
-'@media (max-width:700px){.cp-kpi{grid-template-columns:1fr}.cp-now{grid-template-columns:1fr}.cp-sec summary{grid-template-columns:1fr auto}.cp-dec li{grid-template-columns:1fr auto}.cp-dec li div{grid-column:1/-1}}'+
+'@media (max-width:700px){.cp-kpi{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.cp-kpi>div{padding:10px 8px;border-radius:10px}.cp-kpi b{font-size:clamp(14px,4.4vw,19px)}.cp-kpi span{font-size:11px;line-height:1.35;display:block}.cp-model{aspect-ratio:4/3;max-height:340px}.cp-now{grid-template-columns:1fr}.cp-sec summary{grid-template-columns:1fr auto}.cp-dec li{grid-template-columns:1fr auto}.cp-dec li div{grid-column:1/-1}}'+
 '</style>';
 function cpStageOfWeek(M,w){var n=0;M.phases.forEach(function(ph,i){if(ph.w0<=w)n=i+1;});return Math.max(1,n);}
 function cpChartSvg(M){
@@ -120,7 +120,9 @@ function renderClientPlanTabHtml(p,isAdminUser,activeTab,atWeek){
   if(isAdminUser){
     html+='<div class="cp-admin"><label class="btn btn-outline btn-sm" style="cursor:pointer">'+cpIc('upload')+' ייבוא תכנית לקוח (JSON)<input type="file" accept=".json,application/json" style="display:none" onchange="cpImport(this)"></label>'+
       (p.client_plan&&!p.client_plan.linked?'<button type="button" class="btn btn-primary btn-sm" onclick="cpLinkCurrent()">'+cpIc('link')+' קישור התכנית ללשוניות</button>':'')+
-      (p.client_plan?'<button type="button" class="btn btn-outline btn-sm" onclick="cpRemove()">'+cpIc('trash-2')+' הסרת התכנית</button>':'')+'</div>';
+      (p.client_plan?'<button type="button" class="btn btn-outline btn-sm" onclick="cpRemove()">'+cpIc('trash-2')+' הסרת התכנית</button>':'')+
+      (p.client_plan?'<label class="btn btn-outline btn-sm" style="cursor:pointer">'+cpIc('box')+(p.client_plan.model_path?' החלפת מודל השלבים':' העלאת מודל שלבים (HTML)')+'<input type="file" accept=".html,text/html" style="display:none" onchange="cpUploadModel(this,\'model\')"></label>'+
+        '<label class="btn btn-outline btn-sm" style="cursor:pointer">'+cpIc('rotate-3d')+(p.client_plan.walk_path?' החלפת סיור התלת-ממד':' העלאת סיור תלת-ממד (HTML)')+'<input type="file" accept=".html,text/html" style="display:none" onchange="cpUploadModel(this,\'walk\')"></label>':'')+'</div>';
     if(M){
       var src=M.source==='budget'?'התקציב המאושר "'+cpEsc(M.sourceName)+'" (בניית תקציב)':M.source==='plan'?'התכנית שיובאה, כי עוד לא אושר לפרויקט תקציב ב"בניית תקציב"':'סכום העלויות בשלבים';
       html+='<div class="cp-card cp-mut" style="font-size:13px;line-height:1.7"><b style="color:var(--text)">מאיפה הדף לוקח את הנתונים:</b> שלבים, תאריכים ועלות לכל שלב מ"לוח זמנים" · תשלומים מ"מעקב תשלומים" · החלטות מ"בחירות גמרים" · התקציב מ'+src+'.';
@@ -137,7 +139,8 @@ function renderClientPlanTabHtml(p,isAdminUser,activeTab,atWeek){
     '<div><b>'+cpDate(M.phases[0].a)+'</b><span>התחלה · מסירה משוערת '+cpDate(end)+'</span></div></div>';
   html+='<p class="cp-mut" style="margin:-6px 0 12px">לפי '+cpEsc(M.sourceName||'לוח הזמנים')+' · כל הסכומים כוללים מע"מ '+Math.round(vat*100)+'%'+(M.paidTotal?' · שולם עד היום '+cpNis(M.paidTotal):'')+' · מתעדכן לפי ההתקדמות באתר</p>';
   html+='<div class="cp-h">שבוע אחרי שבוע</div><p class="cp-lead">גררו את הסרגל: מה עושים באתר בכל שבוע, כמה כבר הושקע ומה צריך להחליט בקרוב.</p><div class="cp-card">'+
-    (plan.model_url?'<iframe class="cp-model" id="cp-model" src="'+cpEsc(plan.model_url)+'?stage='+cpStageOfWeek(M,w)+'" title="מודל הבית לפי שלבים" onload="cpShow(document.getElementById(\'cp-r\').value)"></iframe>':'')+
+    (plan.model_path?'<iframe class="cp-model" id="cp-model" sandbox="allow-scripts" title="מודל הבית לפי שלבים"></iframe><div class="cp-mut" id="cp-model-msg" style="text-align:center">טוען את מודל הבית...</div>':plan.model_url?'<iframe class="cp-model" id="cp-model" src="'+cpEsc(plan.model_url)+'?stage='+cpStageOfWeek(M,w)+'" title="מודל הבית לפי שלבים" onload="cpShow(document.getElementById(\'cp-r\').value)"></iframe>':'')+
+    (plan.walk_path?'<button type="button" class="btn btn-primary" style="width:100%;margin:10px 0 4px;justify-content:center" onclick="cpOpenWalk()">'+cpIc('rotate-3d')+' סיור תלת-ממד בבית</button>':'')+
     '<div class="cp-wk"><input id="cp-r" type="range" min="1" max="'+M.W+'" value="'+w+'" aria-label="שבוע בפרויקט" oninput="cpStop();cpShow(this.value)"><button type="button" class="btn btn-outline btn-sm" id="cp-play" onclick="cpPlay()">הפעלה</button><button type="button" class="btn btn-outline btn-sm" onclick="cpStop();cpShow(cpState.now)">היום</button></div>'+
     '<div class="cp-now"><div><div class="cp-mut" id="cp-wd"></div><h3 id="cp-wn"></h3><p id="cp-ww"></p><div class="cp-mut" id="cp-wst" style="margin-top:6px"></div></div>'+
     '<div><div class="cp-mut">מתוכנן להיות מושקע עד סוף השבוע</div><div class="cp-big" id="cp-wc"></div><div class="cp-meter"><i id="cp-wm"></i></div><div class="cp-mut" id="cp-wp"></div><div class="cp-nx"><div id="cp-nd"></div><div id="cp-np"></div></div></div></div></div>';
@@ -165,7 +168,7 @@ function renderClientPlanTabHtml(p,isAdminUser,activeTab,atWeek){
     M.phases.map(function(ph,i){var st=ph.status==='done'?'הושלם':ph.status==='active'?'בביצוע '+ph.progress+'%':'ממתין';return '<tr data-cpp="'+i+'"><td>'+cpEsc(ph.name)+'</td><td style="white-space:nowrap">'+cpDate(ph.a)+' – '+cpDate(ph.b)+'</td><td><span class="cp-st '+(ph.status||'pending')+'">'+st+'</span></td><td>'+cpEsc(ph.what)+'</td></tr>';}).join('')+'</tbody></table></div>';
   if((plan.not_included||[]).length)html+='<div class="cp-h">מה לא כלול בסכום</div><div class="cp-card"><ul style="margin:0;padding-inline-start:18px">'+plan.not_included.map(function(x){return '<li>'+cpEsc(x)+'</li>';}).join('')+'</ul></div>';
   html+='<p class="cp-mut">'+(plan.index?'המחירים כפופים ל'+cpEsc(plan.index)+'. ':'')+'החלוקה לחודשים מניחה שכל קבלן מקבל תשלום לפי קצב העבודה שלו.</p>';
-  setTimeout(function(){cpShow(w);},0);
+  setTimeout(function(){cpShow(w);if(plan.model_path)cpLoadModelInto('cp-model',plan.model_path,'cp-model-msg');},0);
   return html+'</div>';
 }
 function cpShow(w){
@@ -239,6 +242,56 @@ async function cpLinkCurrent(){
   if(!await A.saveData(P.data))return;
   A.showToast(cpLinkMsg(o),o.decErr?'error':undefined);A.setTab('plan');A.renderProjectDetail(document.getElementById('main-content'));
 }
+/* ----- 3D model of the house, stored privately per project (project-blueprints/<projectId>/model/...) ----- */
+var CP_MODEL_BUCKET='project-blueprints',cpModelCache={};
+async function cpModelText(path){
+  if(cpModelCache[path])return cpModelCache[path];
+  var A=cpA();var r=await A.supabase.storage.from(CP_MODEL_BUCKET).createSignedUrl(path,3600);
+  if(r.error||!r.data)throw new Error((r.error&&r.error.message)||'אין גישה לקובץ');
+  var res=await fetch(r.data.signedUrl);if(!res.ok)throw new Error('הקובץ לא נטען ('+res.status+')');
+  var t=await res.text();cpModelCache[path]=t;return t;
+}
+// The model page is put into a sandboxed frame from its text, so the browser shows it as a page whatever type the storage serves it as.
+async function cpLoadModelInto(frameId,path,msgId){
+  var f=document.getElementById(frameId),msg=msgId&&document.getElementById(msgId);if(!f)return;
+  try{var t=await cpModelText(path);f=document.getElementById(frameId);if(!f)return;
+    f.addEventListener('load',function(){var r=document.getElementById('cp-r');if(r&&frameId==='cp-model')cpShow(r.value);});
+    f.srcdoc=t;if(msg)msg.remove();}
+  catch(e){if(msg)msg.textContent='לא ניתן לטעון את המודל כרגע: '+e.message;}
+}
+async function cpUploadModel(input,kind){
+  var A=cpA();if(!A.requireAdmin||!A.requireAdmin())return;var file=input.files&&input.files[0];input.value='';if(!file)return;
+  if(!/\.html?$/i.test(file.name)){A.showToast('יש לבחור קובץ HTML של המודל','error');return;}
+  if(file.size>19*1024*1024){A.showToast('הקובץ גדול מ-19MB','error');return;}
+  var P=cpProj();if(!P.proj||!P.proj.client_plan)return;
+  var path=P.proj.id+'/model/'+(kind==='walk'?'walk':'stages')+'.html';
+  A.showToast('מעלה את המודל...');
+  var up=await A.supabase.storage.from(CP_MODEL_BUCKET).upload(path,file,{upsert:true,contentType:'text/html'});
+  if(up.error){A.showToast('ההעלאה נכשלה: '+up.error.message,'error');return;}
+  delete cpModelCache[path];
+  if(kind==='walk')P.proj.client_plan.walk_path=path;else P.proj.client_plan.model_path=path;
+  P.proj.client_plan.model_updated=new Date().toISOString();
+  if(!await A.saveData(P.data))return;
+  A.logActivity&&A.logActivity('העלאת מודל תלת-ממד','פרויקט: '+P.proj.name+' · '+(kind==='walk'?'סיור':'מודל שלבים'));
+  A.showToast(kind==='walk'?'סיור התלת-ממד עלה. הלקוח יראה כפתור "סיור תלת-ממד בבית".':'מודל השלבים עלה. הוא מופיע בראש "שבוע אחרי שבוע".');
+  A.setTab('plan');A.renderProjectDetail(document.getElementById('main-content'));
+}
+function cpOpenWalk(){
+  var plan=cpState&&cpState.plan;if(!plan||!plan.walk_path)return;
+  cpCloseWalk();
+  var ov=document.createElement('div');ov.id='cp-walk-ov';
+  ov.style.cssText='position:fixed;inset:0;z-index:4000;background:#0f172a;display:flex;flex-direction:column';
+  ov.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;color:#fff;font-weight:700;direction:rtl"><span>סיור תלת-ממד בבית</span>'+
+    '<button type="button" onclick="cpCloseWalk()" style="background:#fff;color:#0f172a;border:0;border-radius:10px;padding:10px 16px;font:inherit;font-weight:700;cursor:pointer">סגירה ✕</button></div>'+
+    '<div id="cp-walk-msg" style="color:#cbd5e1;text-align:center;padding:30px">טוען את הבית...</div>'+
+    '<iframe id="cp-walk" sandbox="allow-scripts allow-pointer-lock" title="סיור תלת-ממד בבית" style="flex:1;width:100%;border:0;background:#d9e2ea"></iframe>';
+  document.body.appendChild(ov);document.documentElement.style.overflow='hidden';
+  cpLoadModelInto('cp-walk',plan.walk_path,'cp-walk-msg');
+}
+function cpCloseWalk(){var ov=document.getElementById('cp-walk-ov');if(ov)ov.remove();document.documentElement.style.overflow='';}
+window.addEventListener('message',function(e){var m=e.data||{};if(m.type==='walk-close')cpCloseWalk();
+  if(m.type==='walk-ready'){var f=document.getElementById('cp-walk'),r=document.getElementById('cp-r');if(f&&f.contentWindow&&r&&cpState){try{f.contentWindow.postMessage({type:'week',week:+r.value},'*');}catch(x){}}}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.getElementById('cp-walk-ov'))cpCloseWalk();});
 async function cpRemove(){
   var A=cpA();if(!A.requireAdmin||!A.requireAdmin())return;if(!confirm('להסיר את טקסטי התכנית מהפרויקט? השלבים, התשלומים וההחלטות נשארים בלשוניות שלהם.'))return;
   var P=cpProj();if(!P.proj)return;delete P.proj.client_plan;if(!await A.saveData(P.data))return;A.showToast('התכנית הוסרה');A.renderProjectDetail(document.getElementById('main-content'));
