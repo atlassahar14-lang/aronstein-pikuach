@@ -124,4 +124,67 @@ function exActionsHtml(pay){
   var A=exA();if(A.isAdmin&&A.isAdmin()&&pay&&pay.awaiting_approval)return '<button type="button" class="btn btn-primary btn-sm" onclick="exApprove(\''+pay.id+'\')">אישור ההוצאה</button>';
   return exCanDelete(pay)?'<button type="button" class="btn btn-outline btn-sm" onclick="exDelete(\''+pay.id+'\')" aria-label="מחיקת ההוצאה">מחיקה</button>':'';}
 function exFabHtml(){if(!document.getElementById('ex-css'))document.head.insertAdjacentHTML('beforeend',EX_CSS);return '<button type="button" class="ex-fab" onclick="exOpen()" aria-label="הוספת הוצאה"><span style="font-size:20px;line-height:1">+</span> הוספת הוצאה</button>';}
+/* ----- Export the payments, grouped by category: Excel and PDF ----- */
+function exReportData(){
+  var A=exA(),p=A.getCurrentProject&&A.getCurrentProject();if(!p)return null;
+  var list=(A.filterPayments?A.filterPayments(p.payments):(p.payments||[])).slice();
+  if(!list.length)return {p:p,groups:[],total:0};
+  var order=exCategories(p),by={},groups=[];
+  list.forEach(function(pay){var c=String(pay.category||'').trim()||'ללא קטגוריה';if(!by[c]){by[c]={name:c,rows:[],total:0,before:0,vat:0,split:true};groups.push(by[c]);}
+    var g=by[c];g.rows.push(pay);var t=Number(pay.amount)||0;
+    if(exStatus(pay)!=='מאושר')return;
+    g.total+=t;
+    if(pay.amount_before_vat!=null){g.before+=Number(pay.amount_before_vat)||0;g.vat+=Number(pay.vat_amount)||0;}else g.split=false;});
+  groups.sort(function(a,b){var ia=order.indexOf(a.name),ib=order.indexOf(b.name);return (ia<0?999:ia)-(ib<0?999:ib)||a.name.localeCompare(b.name,'he');});
+  groups.forEach(function(g){g.rows.sort(function(a,b){return String(a.date).localeCompare(String(b.date));});});
+  return {p:p,groups:groups,total:groups.reduce(function(s,g){return s+g.total;},0)};
+}
+function exStatus(pay){return pay.awaiting_approval?'ממתין לאישור (לא נספר)':String(pay.status||'').toLowerCase()==='pending'?'ממתין (לא נספר)':'מאושר';}
+function exWho(pay){return pay.added_by==='client'?'לקוח':pay.added_by==='admin'?'מפקח':'מפקח';}
+function exDateStr(s){var m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?(+m[3])+'.'+(+m[2])+'.'+m[1]:String(s||'');}
+function exFileName(p,ext){return 'הוצאות-לפי-קטגוריות-'+String(p.name||'פרויקט').replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,'-').slice(0,40)+'.'+ext;}
+function exExportExcel(){
+  var A=exA(),D=exReportData();if(!D)return;
+  if(!D.groups.length){A.showToast&&A.showToast('אין תשלומים לייצוא','error');return;}
+  if(!window.XLSX){A.showToast&&A.showToast('רכיב האקסל לא נטען. רענן את העמוד ונסה שוב.','error');return;}
+  var today=exDateStr(new Date().toISOString());
+  var rows=[['הוצאות לפי קטגוריות: '+(D.p.name||'')],['הופק בתאריך '+today+' · ארונשטיין פיקוח וניהול'],[],
+    ['קטגוריה','תאריך','תיאור','למי שולם','לפני מע"מ','מע"מ','סה"כ','סטטוס','הוזן ע"י']];
+  D.groups.forEach(function(g){
+    g.rows.forEach(function(pay,i){rows.push([i?'':g.name,exDateStr(pay.date),pay.desc||'',pay.to||'',pay.amount_before_vat!=null?Number(pay.amount_before_vat):'',pay.vat_amount!=null?Number(pay.vat_amount):'',Number(pay.amount)||0,exStatus(pay),exWho(pay)]);});
+    rows.push(['סה"כ '+g.name,'','','',g.split?Math.round(g.before*100)/100:'',g.split?Math.round(g.vat*100)/100:'',Math.round(g.total*100)/100,'','']);rows.push([]);
+  });
+  rows.push(['סה"כ כללי','','','','','',Math.round(D.total*100)/100,'','']);
+  rows.push([]);rows.push(['לפני מע"מ ומע"מ מופיעים רק בהוצאות שהוזנו דרך "הוספת הוצאה". הסה"כ הוא הסכום ששולם בפועל.']);
+  var ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:24},{wch:12},{wch:34},{wch:20},{wch:13},{wch:11},{wch:13},{wch:14},{wch:10}];
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:8}},{s:{r:1,c:0},e:{r:1,c:8}}];
+  var sum=[['סיכום לפי קטגוריות: '+(D.p.name||'')],[],['קטגוריה','מספר תשלומים','סה"כ ששולם','אחוז מהסה"כ']];
+  D.groups.forEach(function(g){sum.push([g.name,g.rows.length,Math.round(g.total*100)/100,D.total?Math.round(g.total/D.total*1000)/10+'%':'']);});
+  sum.push(['סה"כ',D.groups.reduce(function(s,g){return s+g.rows.length;},0),Math.round(D.total*100)/100,'100%']);
+  var ws2=XLSX.utils.aoa_to_sheet(sum);ws2['!cols']=[{wch:28},{wch:14},{wch:16},{wch:14}];
+  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws2,'סיכום');XLSX.utils.book_append_sheet(wb,ws,'פירוט לפי קטגוריות');
+  wb.Workbook={Views:[{RTL:true}]};
+  XLSX.writeFile(wb,exFileName(D.p,'xlsx'));A.showToast&&A.showToast('קובץ האקסל ירד');
+}
+async function exExportPdf(){
+  var A=exA(),D=exReportData();if(!D)return;
+  if(!D.groups.length){A.showToast&&A.showToast('אין תשלומים לייצוא','error');return;}
+  if(!A.reportPdf){A.showToast&&A.showToast('יצוא PDF לא זמין. רענן את העמוד.','error');return;}
+  var n=function(x){return Math.round(Number(x)||0).toLocaleString('he-IL')+' ₪';};
+  var th='padding:7px 8px;border-bottom:2px solid #152449;text-align:right;font-size:12px;color:#152449',td='padding:6px 8px;border-bottom:1px solid #e3e7ee;font-size:12.5px;text-align:right;vertical-align:top';
+  var html='<div style="direction:rtl;font-family:Assistant,Heebo,Arial,sans-serif;color:#1a2332;padding:36px 40px;width:794px;box-sizing:border-box;background:#fff">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #b9821a;padding-bottom:10px;margin-bottom:18px"><div><div style="font-size:24px;font-weight:800;color:#152449">הוצאות לפי קטגוריות</div><div style="font-size:15px;margin-top:2px">'+exEsc(D.p.name||'')+'</div></div>'+
+    '<div style="text-align:left;font-size:12px;color:#5b6577">ארונשטיין פיקוח וניהול<br>הופק '+exDateStr(new Date().toISOString())+'</div></div>'+
+    '<div style="font-size:15px;font-weight:700;color:#152449;margin:0 0 6px">סיכום</div><table style="width:100%;border-collapse:collapse;margin-bottom:22px"><tr><th style="'+th+'">קטגוריה</th><th style="'+th+'">תשלומים</th><th style="'+th+'">סה"כ ששולם</th><th style="'+th+'">אחוז</th></tr>'+
+    D.groups.map(function(g){return '<tr><td style="'+td+'">'+exEsc(g.name)+'</td><td style="'+td+'">'+g.rows.length+'</td><td style="'+td+'">'+n(g.total)+'</td><td style="'+td+'">'+(D.total?Math.round(g.total/D.total*1000)/10:0)+'%</td></tr>';}).join('')+
+    '<tr><td style="'+td+';font-weight:800">סה"כ</td><td style="'+td+';font-weight:800">'+D.groups.reduce(function(s,g){return s+g.rows.length;},0)+'</td><td style="'+td+';font-weight:800">'+n(D.total)+'</td><td style="'+td+'">100%</td></tr></table>';
+  D.groups.forEach(function(g){
+    html+='<div style="break-inside:avoid;margin-bottom:16px"><div style="display:flex;justify-content:space-between;background:#152449;color:#fff;padding:7px 10px;border-radius:6px 6px 0 0;font-weight:700;font-size:14px"><span>'+exEsc(g.name)+'</span><span>'+n(g.total)+'</span></div>'+
+      '<table style="width:100%;border-collapse:collapse"><tr><th style="'+th+'">תאריך</th><th style="'+th+'">תיאור</th><th style="'+th+'">למי שולם</th><th style="'+th+'">לפני מע"מ</th><th style="'+th+'">סה"כ</th><th style="'+th+'">סטטוס</th></tr>'+
+      g.rows.map(function(pay){return '<tr><td style="'+td+';white-space:nowrap">'+exDateStr(pay.date)+'</td><td style="'+td+'">'+exEsc(pay.desc||'')+(pay.added_by==='client'?' <span style="font-size:10.5px;color:#92400e">(לקוח)</span>':'')+'</td><td style="'+td+'">'+exEsc(pay.to||'')+'</td><td style="'+td+';white-space:nowrap">'+(pay.amount_before_vat!=null?n(pay.amount_before_vat):'—')+'</td><td style="'+td+';white-space:nowrap;font-weight:700">'+n(pay.amount)+'</td><td style="'+td+'">'+exStatus(pay)+'</td></tr>';}).join('')+'</table></div>';
+  });
+  html+='<div style="font-size:11px;color:#5b6577;margin-top:10px">"לפני מע"מ" מופיע בהוצאות שהוזנו דרך "הוספת הוצאה". הסה"כ הוא הסכום ששולם בפועל.</div></div>';
+  A.showToast&&A.showToast('מייצר PDF...');
+  try{await A.reportPdf(html,exFileName(D.p,'pdf'));}catch(e){console.error('exExportPdf',e);A.showToast&&A.showToast('שגיאה ביצוא PDF','error');}
+}
 /* ===== end expenses ===== */

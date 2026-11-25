@@ -8556,6 +8556,8 @@ function renderPaymentFilterBarHtml(){
     '<option value="asc"'+(paymentSortOrder==='asc'?' selected':'')+'>ישן → חדש</option>'+
     '</select>'+
     '<div class="list-filter-actions">'+
+    '<button type="button" class="btn btn-outline btn-sm" onclick="exExportExcel()">'+ic('sheet')+' ייצוא לאקסל</button>'+
+    '<button type="button" class="btn btn-outline btn-sm" onclick="exExportPdf()">'+ic('file-text')+' ייצוא ל-PDF</button>'+
     '<button type="button" class="btn btn-outline btn-sm" onclick="exportPaymentsCsv()">'+ic('download')+' ייצוא ל-CSV</button>'+
     '</div></div>';
 }
@@ -10479,7 +10481,7 @@ Object.assign(window,{
   onProjectStatusFilterChange
 });
 // bridge for js/client-plan.js (a classic script cannot see this module's functions)
-window.__app={isAdmin:isAdmin,requireAdmin:requireAdmin,getData:getData,saveData:saveData,showToast:showToast,logActivity:logActivity,renderProjectDetail:renderProjectDetail,getCurrentProject:getCurrentProject,setTab:function(t){currentTab=t;},getUser:function(){return currentUser;},notifyAdmin:notifyAdminClientQuestion,getBudgetItems:getBudgetItems,refreshBudgetItems:refreshBudgetItems,getFinishSelectionsForProject:getFinishSelectionsForProject,refreshFinishSelectionsCache:refreshFinishSelectionsCache,supabase:supabase,vatRate:BUDGET_VAT_RATE};
+window.__app={isAdmin:isAdmin,requireAdmin:requireAdmin,getData:getData,saveData:saveData,showToast:showToast,logActivity:logActivity,renderProjectDetail:renderProjectDetail,getCurrentProject:getCurrentProject,setTab:function(t){currentTab=t;},getUser:function(){return currentUser;},filterPayments:filterAndSortPayments,reportPdf:renderReportHtmlToPdf,notifyAdmin:notifyAdminClientQuestion,getBudgetItems:getBudgetItems,refreshBudgetItems:refreshBudgetItems,getFinishSelectionsForProject:getFinishSelectionsForProject,refreshFinishSelectionsCache:refreshFinishSelectionsCache,supabase:supabase,vatRate:BUDGET_VAT_RATE};
 window.addEventListener('resize',function(){
   if(window.innerWidth>=1181)closeMobileSidebar();
   if(finCharts.pie)finCharts.pie.resize();
