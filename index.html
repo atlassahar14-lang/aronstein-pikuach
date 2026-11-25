@@ -8628,6 +8628,7 @@ function renderProjectDetail(el){
   if(isAdminUser||isClientVisibilityEnabled(p,'suppliers'))html+='<button class="btn btn-outline btn-sm" onclick="openSuppliersModal()">'+ic('users')+' ספקים</button>';
   html+='<button class="btn btn-outline btn-sm admin-only-action" onclick="exportProjectOverviewPdf()">'+ic('file-text')+' ייצוא דוח PDF</button>';
   html+='<button class="btn btn-accent btn-sm admin-only-action" onclick="openNewUpdateModal()">'+ic('bell')+' עדכון חדש</button>';
+  html+='<button class="btn btn-primary btn-sm" onclick="exOpen()">'+ic('plus')+' הוספת הוצאה</button>';
   html+='</div>';
   html+='</div>';
 
