@@ -854,7 +854,9 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .main-content{padding:calc(56px + env(safe-area-inset-top,0px) + 16px) max(12px,env(safe-area-inset-right,0px)) max(20px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
   .client-mode .main-content{padding-bottom:calc(56px + env(safe-area-inset-top,0px) + 84px + env(safe-area-inset-bottom,0px))}
   .card{padding:16px}
-  .milestone-alert-inner{flex-direction:column;align-items:stretch}
+  .milestone-alert-inner{flex-direction:column;align-items:stretch;gap:8px}
+  .milestone-alert-items{display:none}
+  .milestone-alert-banner{padding:10px 16px}
   .milestone-alert-btn{width:100%;text-align:center}
   .milestone-actions .btn{flex:1;justify-content:center;min-width:calc(50% - 4px)}
   .dash-metrics{grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px}
@@ -3885,7 +3887,7 @@ function updateMilestoneAlertBanner(){
   }).join('');
   if(alerts.length>5)itemsHtml+='<span>… ועוד '+(alerts.length-5)+'</span>';
   el.innerHTML='<div class="milestone-alert-inner">'+
-    '<div class="milestone-alert-text"><strong>התראת אבני דרך קריטיות</strong>'+
+    '<div class="milestone-alert-text"><strong>התראת אבני דרך קריטיות ('+alerts.length+')</strong>'+
     '<div class="milestone-alert-items">'+itemsHtml+'</div></div>'+
     '<button type="button" class="milestone-alert-btn" onclick="goToMilestonesView()">עבור לאבני דרך</button></div>';
   el.classList.add('show');
