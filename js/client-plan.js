@@ -48,8 +48,8 @@ function cpModel(p){
   var sections=null,source='',sourceName='';
   if(p.approvedBudgetId){var items=(A.getBudgetItems&&A.getBudgetItems(p.approvedBudgetId))||[];
     if(items.length){var cats=[],by={},sub=0;items.forEach(function(it){var v=(Number(it.quantity)||0)*(Number(it.unitPrice)||0);if(!by[it.category]){by[it.category]=0;cats.push(it.category);}by[it.category]+=v;sub+=v;});
-      var before=Number(p.approvedBudgetBeforeVat)||sub,f=sub?before/sub:1,info={};((plan&&plan.sections)||[]).forEach(function(s){info[s.name]=s;});
-      sections=cats.filter(function(c){return by[c]>0;}).map(function(c){var s=info[c]||{};return {name:c,total:by[c]*f,inc:s.inc||'',qty:s.qty||[],tag:s.tag||'',count:items.filter(function(it){return it.category===c&&(Number(it.unitPrice)||0)>0;}).length};});
+      var before=Number(p.approvedBudgetBeforeVat)||sub,f=sub?before/sub:1,info={};((plan&&plan.sections)||[]).forEach(function(s){info[s.budget_category||s.name]=s;});
+      sections=cats.filter(function(c){return by[c]>0;}).map(function(c){var s=info[c]||{};return {name:s.name||c,total:by[c]*f,inc:s.inc||'',qty:s.qty||[],tag:s.tag||'',count:items.filter(function(it){return it.category===c&&(Number(it.unitPrice)||0)>0;}).length};});
       source='budget';sourceName=p.approvedBudgetName||'התקציב המאושר';}}
   if(!sections&&plan&&plan.sections){sections=plan.sections.map(function(s){return {name:s.name,total:Number(s.total)||0,inc:s.inc||'',qty:s.qty||[],tag:s.tag||''};});source='plan';sourceName=plan.estimate||'האומדן';}
   if(!sections){sections=[];source='phases';}
