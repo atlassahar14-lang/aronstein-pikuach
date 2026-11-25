@@ -2923,8 +2923,6 @@ function getProjectTabDefs(messagesTabBadge){
     ['plan','תקציב וזמנים','calendar-range',''],
     ['timeline','לוח זמנים','calendar',''],
     ['budget','מעקב תשלומים','banknote',''],
-    ['budget-analysis','ניתוח כספי','scale',''],
-    ['financial','דוח פיננסי','trending-up',''],
     ['docs','מסמכים','folder',''],
     ['gallery','גלריה','camera',''],
     ['finish-selections','בחירות גמרים','palette',''],
@@ -8607,6 +8605,7 @@ function renderProjectDetail(el){
   }
   currentProjectId=p.id;
   var isAdminUser=isAdmin();
+  if(currentTab==='financial'||currentTab==='budget-analysis')currentTab='overview';
   currentTab=normalizeClientTab(currentTab);
   var showWhatsApp=!!(currentUser&&!isAdminUser);
   var paymentsForView=getPaymentsForView(p.payments);
