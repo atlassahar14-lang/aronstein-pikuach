@@ -1063,6 +1063,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="js/client-plan.js"></script>
+<script src="js/expenses.js"></script>
 
 <!-- Modal: Project -->
 <div class="modal-overlay" id="modal-project">
@@ -8537,7 +8538,8 @@ function renderProjectsList(el){
 function renderPaymentActionsHtml(pay){
   return (paymentHasReceipt(pay)?'<button type="button" class="btn btn-outline btn-sm" onclick="openPaymentReceipt(\''+pay.id+'\')">'+ic('file-text')+' צפייה בקבלה</button>':'')+
     '<button type="button" class="btn btn-outline btn-sm admin-only-action" onclick="openEditPaymentModal(\''+pay.id+'\')">'+ic('pencil')+'</button>'+
-    '<button type="button" class="btn btn-danger btn-sm admin-only-action" onclick="deletePayment(\''+pay.id+'\')">'+ic('trash-2')+'</button>';
+    '<button type="button" class="btn btn-danger btn-sm admin-only-action" onclick="deletePayment(\''+pay.id+'\')">'+ic('trash-2')+'</button>'+
+    (window.exActionsHtml?window.exActionsHtml(pay):'');
 }
 function renderPaymentFilterBarHtml(){
   return '<div class="card list-filter-bar">'+
@@ -8565,7 +8567,7 @@ function renderBudgetPaymentsContentHtml(proj){
   return renderPaymentFilterBarHtml()+
     '<div class="payments-desktop"><div class="table-scroll"><table class="payments-table"><thead><tr><th>תיאור</th><th>נמען</th><th>קטגוריה</th><th>תאריך</th><th>סכום</th><th>סטטוס</th><th></th></tr></thead><tbody>'+
     list.map(function(pay){
-      return '<tr><td style="font-weight:600">'+escHtml(pay.desc)+'</td><td style="color:var(--text-muted)">'+escHtml(pay.to)+'</td>'+
+      return '<tr><td style="font-weight:600">'+escHtml(pay.desc)+(window.exBadgeHtml?window.exBadgeHtml(pay):'')+'</td><td style="color:var(--text-muted)">'+escHtml(pay.to)+'</td>'+
         '<td><span class="badge badge-blue">'+escHtml(pay.category)+'</span></td>'+
         '<td style="color:var(--text-muted)">'+escHtml(pay.date)+'</td>'+
         '<td style="font-weight:700;color:var(--primary)">'+fmtMoney(pay.amount)+'</td>'+
@@ -8591,7 +8593,7 @@ function refreshBudgetPaymentsList(){
 }
 function renderPaymentCardHtml(pay){
   return '<div class="payment-card">'+
-    '<div class="payment-card-header"><span class="payment-card-desc">'+escHtml(pay.desc)+'</span><span class="payment-card-amount">'+fmtMoney(pay.amount)+'</span></div>'+
+    '<div class="payment-card-header"><span class="payment-card-desc">'+escHtml(pay.desc)+(window.exBadgeHtml?window.exBadgeHtml(pay):'')+'</span><span class="payment-card-amount">'+fmtMoney(pay.amount)+'</span></div>'+
     '<div class="payment-card-meta"><span>'+escHtml(pay.to)+'</span><span class="badge badge-blue">'+escHtml(pay.category)+'</span><span>'+escHtml(pay.date)+'</span><span class="'+paymentStatusCssClass(pay)+'">'+getPaymentStatusLabel(pay)+'</span></div>'+
     '<div class="payment-actions">'+renderPaymentActionsHtml(pay)+'</div></div>';
 }
@@ -8666,6 +8668,9 @@ function renderProjectDetail(el){
     '<div class="flex-between" style="font-size:13px"><span style="color:var(--text-muted)">נותר:</span><span style="font-weight:700;color:var(--warning)">'+fmtMoney(remaining)+'</span></div>'+
     '</div></div></div>';
 
+  // CLIENT: floating add-expense button
+  if(!isAdminUser&&window.exFabHtml)html+=window.exFabHtml();
+
   // CLIENT PLAN TAB
   if(isAdminUser||isClientTabVisible(p,'plan')){try{if(typeof window.renderClientPlanTabHtml==='function')html+=window.renderClientPlanTabHtml(p,isAdminUser,currentTab);}catch(cpErr){console.error('client plan tab',cpErr);html+='<div id="tab-plan" class="tab-content '+(currentTab==='plan'?'active':'')+'"><p>שגיאה בטעינת לשונית התקציב והזמנים</p></div>';}}
 
@@ -8708,7 +8713,8 @@ function renderProjectDetail(el){
     '<div class="budget-item"><div class="label">נותר</div><div class="amount remaining">'+fmtMoney(remaining)+'</div></div>'+
     '<div class="budget-item"><div class="label">אחוז ניצול</div><div class="amount total">'+budgetUtilPct+'%</div></div>'+
     '</div><div class="card"><div class="section-actions"><div class="section-title">'+ic('credit-card')+' תשלומים</div>'+
-    '<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddPaymentModal()">'+ic('plus')+' תשלום חדש</button>'+
+    '<div class="flex-gap"><button type="button" class="btn btn-accent btn-sm" onclick="exOpen()">'+ic('plus')+' הוספת הוצאה</button>'+
+    '<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddPaymentModal()">'+ic('plus')+' תשלום חדש</button></div>'+
     '</div>'+
     '<div id="budget-payments-root">'+renderBudgetPaymentsContentHtml(p)+'</div></div></div>';
 
@@ -10471,7 +10477,7 @@ Object.assign(window,{
   onProjectStatusFilterChange
 });
 // bridge for js/client-plan.js (a classic script cannot see this module's functions)
-window.__app={isAdmin:isAdmin,requireAdmin:requireAdmin,getData:getData,saveData:saveData,showToast:showToast,logActivity:logActivity,renderProjectDetail:renderProjectDetail,getCurrentProject:getCurrentProject,setTab:function(t){currentTab=t;},getBudgetItems:getBudgetItems,refreshBudgetItems:refreshBudgetItems,getFinishSelectionsForProject:getFinishSelectionsForProject,refreshFinishSelectionsCache:refreshFinishSelectionsCache,supabase:supabase,vatRate:BUDGET_VAT_RATE};
+window.__app={isAdmin:isAdmin,requireAdmin:requireAdmin,getData:getData,saveData:saveData,showToast:showToast,logActivity:logActivity,renderProjectDetail:renderProjectDetail,getCurrentProject:getCurrentProject,setTab:function(t){currentTab=t;},getUser:function(){return currentUser;},getBudgetItems:getBudgetItems,refreshBudgetItems:refreshBudgetItems,getFinishSelectionsForProject:getFinishSelectionsForProject,refreshFinishSelectionsCache:refreshFinishSelectionsCache,supabase:supabase,vatRate:BUDGET_VAT_RATE};
 window.addEventListener('resize',function(){
   if(window.innerWidth>=1181)closeMobileSidebar();
   if(finCharts.pie)finCharts.pie.resize();
