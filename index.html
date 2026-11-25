@@ -2668,6 +2668,7 @@ function bindModalValidationClear(modalId){
 var currentUser=null,currentView='dashboard',currentProjectId=null,currentTab='overview',editingProjectId=null,editingPhaseId=null,editingMilestoneId=null,editingFinishSelectionId=null,editingPriceOfferId=null;
 var editingGalleryPostId=null;
 var galleryEditRemovedIds=[],galleryEditPendingFiles=[],galleryEditPreviewUrls=[];
+var viewingPunchItemId=null,punchPinDraft={x:null,y:null},punchBlueprintSignedUrl=null;
 var appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()},appUsers=[],subcontractorsCache=[],punchItemsCache=[],milestonesCache=[],finishSelectionsCache=[],priceComparisonsCache=[],priceOffersCache=[],dailyLogsCache=[],authBootstrapped=false,skipAuthHandler=false,voluntaryLogout=false,sessionExpiryHandling=false,pendingDeleteProjectId=null;
 const OFFLINE_PUNCH_STORAGE_KEY='offline_punch_items';
 const PUNCH_FORM_DRAFT_PREFIX='punch_form_draft_';
