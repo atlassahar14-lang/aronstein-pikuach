@@ -3571,8 +3571,12 @@ async function persistSpecialtiesOnly(){
   }
   return {ok:true};
 }
+function isMissingRpc(err){var m=String((err&&(err.message||err.hint||err.code))||'');return /PGRST202|42883|Could not find the function|does not exist/i.test(m);}
 async function refreshAppData(){
-  var res=await supabase.from('app_data').select('projects,activity_log,specialties').eq('id','main').maybeSingle();
+  var res=null,rpc=await supabase.rpc('get_my_app_data');
+  if(!rpc.error&&rpc.data&&typeof rpc.data==='object')res={data:rpc.data,error:null};
+  else if(rpc.error&&!isMissingRpc(rpc.error)){if(await checkSupabaseSessionError(rpc.error))return {ok:false,sessionExpired:true};}
+  if(!res)res=await supabase.from('app_data').select('projects,activity_log,specialties').eq('id','main').maybeSingle();
   if(res.error){
     console.error('refreshAppData',res.error);
     if(await checkSupabaseSessionError(res.error))return {ok:false,sessionExpired:true};
@@ -3606,6 +3610,7 @@ async function refreshAppData(){
     if(needsSeed&&isAdmin())await persistSpecialtiesOnly();
     return {ok:true};
   }
+  if(!isAdmin()){appDataCache={projects:[],activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()};return {ok:false,error:'לא נמצאו נתוני פרויקט עבור המשתמש'};}
   appDataCache={projects:getDefaultProjects(),activityLog:[],specialties:DEFAULT_SUBCONTRACTOR_SPECIALTIES.slice()};
   var seed=await persistAppData();
   if(!seed.ok){
@@ -3675,6 +3680,14 @@ async function saveData(d){
     var idx=appDataCache.projects.findIndex(function(p){return p.id===currentUser.projectId;});
     if(idx<0)return false;
     appDataCache.projects[idx]=proj;
+    var one=await supabase.rpc('save_my_project',{p_project:sanitizeJsonForDb(proj)});
+    if(!one.error)return true;
+    if(!isMissingRpc(one.error)){
+      console.error('saveData save_my_project',one.error);
+      if(await checkSupabaseSessionError(one.error))return false;
+      showToast('שגיאה בשמירת הנתונים: '+formatSupabaseErrorHint(one.error.message||one.error),'error');
+      return false;
+    }
   }
   var res=await persistAppData();
   if(!res.ok){
