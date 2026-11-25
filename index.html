@@ -955,6 +955,18 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .main-content{padding:36px 40px}
   .projects-grid{grid-template-columns:repeat(auto-fill,minmax(255px,1fr))}
 }
+/* Phones and tablets: the fixed top bar's room is reserved once for the whole column (alert banner + page),
+   so the red milestone alert is no longer hidden under the bar and there is no double gap above the page. */
+@media(max-width:1180px){
+  .main-shell{padding-top:calc(56px + env(safe-area-inset-top,0px))}
+  .main-content{padding-top:16px!important}
+}
+/* Phones: project action buttons two per row instead of a full-width stack. */
+@media(max-width:640px){
+  .responsive-stack>.flex-gap{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}
+  .responsive-stack>.flex-gap>.btn{width:100%;min-width:0!important;padding:10px 8px;font-size:14px;justify-content:center}
+  .responsive-stack>.flex-gap>.btn:last-child:nth-child(odd){grid-column:1/-1}
+}
 @media(pointer:coarse){
   .modal-header{cursor:default}
   .blueprint-viewer-wrap.clickable{touch-action:manipulation}
@@ -7777,7 +7789,7 @@ async function buildPdfFromElement(el,embedKw){
   if(document.fonts&&document.fonts.ready)await document.fonts.ready;
   await new Promise(function(r){setTimeout(r,150);});
   var libs=await loadJsPdfLib();
-  var canvas=await libs.html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,onclone:srStripEmptyPhotosInClone,
+  var canvas=await libs.html2canvas(el,{scale:pdfSafeScale(el),useCORS:true,backgroundColor:'#ffffff',logging:false,onclone:srStripEmptyPhotosInClone,
     windowWidth:1024,windowHeight:Math.max(window.innerHeight||0,(el.scrollHeight||0)+200,1400)});
   var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
   var margin=10,pageW=210,pageH=297,imgW=pageW-margin*2,pxPerMm=canvas.width/imgW,pageChunkPx=Math.floor((pageH-margin*2)*pxPerMm),sY=0,pageNum=0;
@@ -7819,13 +7831,21 @@ async function rasterizeElementToPdfBlob(el,embedKw){ var d=await buildPdfFromEl
 // user-activation may have expired, so a programmatic download can be silently
 // blocked — we therefore ALSO show a modal with a direct download button the
 // user taps (a fresh gesture that always works).
+function isIOSDevice(){return /iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
+function isMobileDevice(){return isIOSDevice()||/Android|Mobile/i.test(navigator.userAgent);}
+function pdfSafeScale(el){
+  var h=Math.max((el&&el.scrollHeight)||0,800)+40,w=1024,ios=isIOSDevice(),mob=isMobileDevice();
+  var maxArea=ios?15e6:(mob?40e6:120e6),maxDim=ios?16000:32000;
+  var sc=Math.min(2,Math.sqrt(maxArea/(w*h)),maxDim/h);
+  return Math.max(0.45,Math.round(sc*100)/100);
+}
 function deliverPdfBlob(blob,fileName){
   var url=URL.createObjectURL(blob);
-  try{var a=document.createElement('a');a.href=url;a.download=fileName;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(function(){if(a.parentNode)a.parentNode.removeChild(a);},0);}catch(e){}
-  showPdfReadyModal(url,fileName);
+  if(!isMobileDevice()){try{var a=document.createElement('a');a.href=url;a.download=fileName;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(function(){if(a.parentNode)a.parentNode.removeChild(a);},0);}catch(e){}}
+  showPdfReadyModal(url,fileName,blob);
   setTimeout(function(){try{URL.revokeObjectURL(url);}catch(e){}},180000);
 }
-function showPdfReadyModal(url,fileName){
+function showPdfReadyModal(url,fileName,blob){
   var ov=document.getElementById('pdf-ready-ov');if(ov&&ov.parentNode)ov.parentNode.removeChild(ov);
   ov=document.createElement('div');ov.id='pdf-ready-ov';
   ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(15,20,35,.55);display:flex;align-items:center;justify-content:center;padding:20px';
@@ -7842,6 +7862,11 @@ function showPdfReadyModal(url,fileName){
   var close=document.createElement('button');close.type='button';close.textContent='סגור';
   close.style.cssText='background:none;border:0;color:#9aa4b2;font-size:14px;cursor:pointer';
   close.onclick=function(){if(ov.parentNode)ov.parentNode.removeChild(ov);};
+  var shareFile=null;try{if(blob&&isMobileDevice()&&navigator.canShare){var f=new File([blob],fileName,{type:'application/pdf'});if(navigator.canShare({files:[f]}))shareFile=f;}}catch(e){}
+  if(shareFile){var sh=document.createElement('button');sh.type='button';sh.textContent='📤  שיתוף / שמירה';
+    sh.style.cssText='display:block;width:100%;background:#152449;color:#fff;font-weight:800;font-size:16px;border:0;padding:13px;border-radius:10px;margin-bottom:10px;cursor:pointer;font-family:inherit';
+    sh.onclick=function(){navigator.share({files:[shareFile],title:fileName}).then(function(){if(ov.parentNode)ov.parentNode.removeChild(ov);}).catch(function(){});};
+    card.appendChild(sh);}
   card.appendChild(a);card.appendChild(open);card.appendChild(close);ov.appendChild(card);
   ov.addEventListener('click',function(e){if(e.target===ov&&ov.parentNode)ov.parentNode.removeChild(ov);});
   document.body.appendChild(ov);
@@ -8358,7 +8383,7 @@ async function rasterizeElementToPdf(el,fileName,embedKw){
   // Force a desktop-width render so the PDF uses the desktop layout even when exported
   // from a phone (otherwise html2canvas captures the cramped mobile layout).
   var renderWidth=1024;
-  var canvas=await libs.html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,onclone:srStripEmptyPhotosInClone,
+  var canvas=await libs.html2canvas(el,{scale:pdfSafeScale(el),useCORS:true,backgroundColor:'#ffffff',logging:false,onclone:srStripEmptyPhotosInClone,
     windowWidth:renderWidth,windowHeight:Math.max(window.innerHeight||0,(el.scrollHeight||0)+200,1400)});
   var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
   var margin=10,pageW=210,pageH=297;
@@ -8379,7 +8404,7 @@ async function rasterizeElementToPdf(el,fileName,embedKw){
     sY+=chunkPx;pageNum++;
   }
   if(embedKw){try{doc.setProperties({keywords:embedKw});}catch(e){}}
-  doc.save(fileName);
+  deliverPdfBlob(doc.output('blob'),fileName);
 }
 // Renders an HTML report string to PDF by rasterizing an off-screen element.
 async function renderReportHtmlToPdf(html,fileName){
