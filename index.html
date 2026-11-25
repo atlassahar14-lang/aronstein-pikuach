@@ -95,6 +95,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .whatsapp-fab{position:fixed;bottom:20px;left:20px;z-index:200;width:50px;height:50px;border-radius:50%;background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(37,211,102,.45);text-decoration:none;transition:transform .2s,box-shadow .2s}
 .whatsapp-fab:hover{transform:scale(1.08);background:#1da851;color:#fff;box-shadow:0 6px 20px rgba(37,211,102,.55)}
 .whatsapp-fab .wa-icon{width:26px;height:26px}
+.tab-svg{width:20px;height:20px;flex-shrink:0;display:inline-block;vertical-align:-0.15em}
 .tab .tab-svg{width:16px;height:16px;flex-shrink:0;display:inline-block;vertical-align:-0.15em}
 .btn-sm{padding:7px 14px;font-size:13px}
 .btn-icon{width:auto;padding:7px 12px}
@@ -1528,6 +1529,7 @@ const supabaseHelper=createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistS
 function ic(n){return '<i data-lucide="'+n+'"></i>';}
 function tabIc(name){
   var icons={
+    'calendar-range':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M17 14h-6"/><path d="M13 18H7"/><path d="M7 14h.01"/><path d="M17 18h.01"/></svg>',
     'layout-dashboard':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
     'calendar':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
     'banknote':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>',
@@ -8682,9 +8684,6 @@ function renderProjectDetail(el){
     '<div class="progress-bar-wrap"><div class="progress-bar" style="width:'+budgetUtilPct+'%;background:var(--success)"></div></div></div>'+
     '<div class="flex-between" style="font-size:13px"><span style="color:var(--text-muted)">נותר:</span><span style="font-weight:700;color:var(--warning)">'+fmtMoney(remaining)+'</span></div>'+
     '</div></div></div>';
-
-  // CLIENT: floating add-expense button
-  if(!isAdminUser&&window.exFabHtml)html+=window.exFabHtml();
 
   // CLIENT PLAN TAB
   if(isAdminUser||isClientTabVisible(p,'plan')){try{if(typeof window.renderClientPlanTabHtml==='function')html+=window.renderClientPlanTabHtml(p,isAdminUser,currentTab);}catch(cpErr){console.error('client plan tab',cpErr);html+='<div id="tab-plan" class="tab-content '+(currentTab==='plan'?'active':'')+'"><p>שגיאה בטעינת לשונית התקציב והזמנים</p></div>';}}
