@@ -2702,7 +2702,8 @@ const DEFAULT_CLIENT_VISIBILITY={
   daily_logs:false,
   documents:true,
   suppliers:true,
-  plan:true
+  plan:true,
+  price_comparisons:true
 };
 const CLIENT_VISIBILITY_LABELS=[
   ['budget','תקציב'],
@@ -2714,7 +2715,8 @@ const CLIENT_VISIBILITY_LABELS=[
   ['daily_logs','יומן עבודה'],
   ['documents','מסמכים'],
   ['suppliers','ספקים'],
-  ['plan','תקציב וזמנים']
+  ['plan','תקציב וזמנים'],
+  ['price_comparisons','השוואת מחירים']
 ];
 const CLIENT_TAB_TO_VISIBILITY={
   budget:'budget',
@@ -2723,7 +2725,8 @@ const CLIENT_TAB_TO_VISIBILITY={
   punch:'defects',
   'daily-log':'daily_logs',
   docs:'documents',
-  plan:'plan'
+  plan:'plan',
+  'price-comparisons':'price_comparisons'
 };
 const DEFAULT_PROJECT_MILESTONES=[
   {title:'היתר בניה',priority:'high'},
@@ -2887,7 +2890,7 @@ function getDefaultProjects(){
 }
 
 function isAdmin(){return !!(currentUser&&currentUser.role==='admin');}
-var CLIENT_HIDDEN_TABS=['suppliers','budget-analysis','financial','finish-selections','price-comparisons'];
+var CLIENT_HIDDEN_TABS=['suppliers','budget-analysis','financial','finish-selections'];
 function getProjectClientVisibility(p){
   var cv=p&&p.client_visibility;
   var out={};
@@ -4651,10 +4654,10 @@ function syncPriceComparisonCategoryFilter(){
 }
 function renderPriceCategoryFiltersHtml(active){
   var cats=getPriceCategoriesList();
-  var addCatBtn=isAdmin()?'<button type="button" class="btn btn-outline btn-sm admin-only-action" onclick="openAddPriceCategoryModal()">'+ic('plus')+' הוסף קטגוריה</button>':'';
+  var addCatBtn=true?'<button type="button" class="btn btn-outline btn-sm" onclick="openAddPriceCategoryModal()">'+ic('plus')+' הוסף קטגוריה</button>':'';
   if(!cats.length){
     return '<div class="empty-state card" style="margin-bottom:16px"><div class="empty-icon">⚖️</div><p>הוסף קטגוריה ראשונה</p>'+
-      (isAdmin()?'<button type="button" class="btn btn-primary admin-only-action" style="margin-top:16px" onclick="openAddPriceCategoryModal()">'+ic('plus')+' הוסף קטגוריה</button>':'')+
+      (true?'<button type="button" class="btn btn-primary" style="margin-top:16px" onclick="openAddPriceCategoryModal()">'+ic('plus')+' הוסף קטגוריה</button>':'')+
       '</div>';
   }
   var chips=cats.map(function(c){
@@ -4668,14 +4671,14 @@ function onPriceCategoryFilterChange(cat){
 }
 function renderPriceOffersTableHtml(offers){
   if(!offers.length)return '<div class="empty-state card" style="margin-top:16px"><div class="empty-icon">⚖️</div><p>אין הצעות בקטגוריה זו</p>'+
-    (isAdmin()?'<button type="button" class="btn btn-primary admin-only-action" style="margin-top:16px" onclick="openAddPriceOfferModal()">'+ic('plus')+' הוסף הצעה</button>':'')+
+    (true?'<button type="button" class="btn btn-primary" style="margin-top:16px" onclick="openAddPriceOfferModal()">'+ic('plus')+' הוסף הצעה</button>':'')+
     '</div>';
   var extremes=getOfferPriceExtremes(offers);
   var hasColorLegend=offers.length>=2&&extremes.min!=null;
   return (hasColorLegend?'<p style="font-size:12px;color:var(--text-muted);margin:0 0 12px"><span style="color:#166534;font-weight:700">ירוק</span> = הזולה ביותר · <span style="color:#b91c1c;font-weight:700">אדום</span> = היקרה ביותר</p>':'')+
     '<div class="table-scroll"><table class="price-offers-table"><thead><tr>'+
     '<th>קבלן</th><th>סוג חומר</th><th>עלות חומר</th><th>עלות עבודה</th><th>מע"מ</th><th>פינוי פסולת</th><th>הערות</th><th>סה"כ</th><th>PDF</th>'+
-    (isAdmin()?'<th></th>':'')+
+    '<th></th>'+
     '</tr></thead><tbody>'+
     offers.map(function(o){
       var rowCls=getOfferRowPriceClass(o,extremes,null);
@@ -4689,9 +4692,9 @@ function renderPriceOffersTableHtml(offers){
         '<td>'+escHtml(o.notes||'—')+'</td>'+
         '<td class="total-cell">'+fmtMoney(Number(o.totalPrice)||0)+'</td>'+
         '<td>'+(priceOfferHasPdf(o)?'<button type="button" class="btn btn-outline btn-sm" onclick="openPriceOfferPdf(\''+o.id+'\')" title="פתח הצעת מחיר" aria-label="פתח PDF">📄</button>':'—')+'</td>'+
-        (isAdmin()?'<td><div class="flex-gap">'+
-          '<button type="button" class="btn btn-outline btn-sm admin-only-action" onclick="openEditPriceOfferModal(\''+o.id+'\')">'+ic('pencil')+'</button>'+
-          '<button type="button" class="btn btn-danger btn-sm admin-only-action" onclick="deletePriceOffer(\''+o.id+'\')">'+ic('trash-2')+'</button></div></td>':'')+
+        ('<td><div class="flex-gap">'+
+          '<button type="button" class="btn btn-outline btn-sm" aria-label="עריכת ההצעה" onclick="openEditPriceOfferModal(\''+o.id+'\')">'+ic('pencil')+'</button>'+
+          (isAdmin()?'<button type="button" class="btn btn-danger btn-sm admin-only-action" onclick="deletePriceOffer(\''+o.id+'\')">'+ic('trash-2')+'</button>':'')+'</div></td>')+
         '</tr>';
     }).join('')+
     '</tbody></table></div>';
@@ -4701,7 +4704,7 @@ function renderPriceComparisonsTabContentHtml(proj,loaded){
   var cats=getPriceCategoriesList();
   var list=getPriceOffersForProject(proj.id);
   if(priceComparisonCategoryFilter)list=list.filter(function(o){return (o.category||'')===priceComparisonCategoryFilter;});
-  var addBtn=isAdmin()&&cats.length?'<button type="button" class="btn btn-primary btn-sm admin-only-action" onclick="openAddPriceOfferModal()">'+ic('plus')+' הוסף הצעה</button>':'';
+  var addBtn=cats.length?'<button type="button" class="btn btn-primary btn-sm" onclick="openAddPriceOfferModal()">'+ic('plus')+' הוסף הצעה</button>':'';
   var catLabel=priceComparisonCategoryFilter||'';
   var summary=cats.length?('<p style="font-size:13px;color:var(--text-muted);margin:-8px 0 16px">'+escHtml(catLabel)+' · '+list.length+' הצעות</p>'):'';
   return '<div class="section-actions"><div class="section-title">'+tabIc('scale-balance')+' השוואת מחירים</div>'+
@@ -4731,12 +4734,12 @@ function refreshPriceComparisonsTab(){
   if(currentView==='project'&&currentTab==='price-comparisons')initPriceComparisonsTab();
 }
 function openAddPriceCategoryModal(){
-  if(!requireAdmin())return;
+  if(!requireProjectAccess())return;
   document.getElementById('price-category-name').value='';
   openModal('modal-price-category');
 }
 async function savePriceCategory(){
-  if(!requireAdmin()||!requireProjectAccess())return;
+  if(!requireProjectAccess())return;
   var proj=getCurrentProject();if(!proj)return;
   clearFormErrors('modal-price-category');
   if(!validateRequired('price-category-name')){focusFirstFormError('modal-price-category');return;}
@@ -4752,7 +4755,7 @@ async function savePriceCategory(){
   logActivity('השוואת מחירים','הוספת קטגוריה: '+name);
 }
 function openAddPriceOfferModal(){
-  if(!requireAdmin()||!requireProjectAccess())return;
+  if(!requireProjectAccess())return;
   var cats=getPriceCategoriesList();
   if(!cats.length){showToast('הוסף קטגוריה ראשונה לפני הוספת הצעה','error');return;}
   editingPriceOfferId=null;
@@ -4771,7 +4774,7 @@ function openAddPriceOfferModal(){
   openModal('modal-price-offer');
 }
 function openEditPriceOfferModal(id){
-  if(!requireAdmin()||!requireProjectAccess())return;
+  if(!requireProjectAccess())return;
   var o=priceOffersCache.find(function(x){return x.id===id;});
   if(!o)return;
   editingPriceOfferId=id;
@@ -4789,7 +4792,7 @@ function openEditPriceOfferModal(id){
   openModal('modal-price-offer');
 }
 async function savePriceOffer(){
-  if(!requireAdmin()||!requireProjectAccess())return;
+  if(!requireProjectAccess())return;
   var proj=getCurrentProject();if(!proj)return;
   clearFormErrors('modal-price-offer');
   if(!validateRequired('price-offer-contractor')){focusFirstFormError('modal-price-offer');return;}
@@ -8758,7 +8761,7 @@ function renderProjectDetail(el){
   // FINISH SELECTIONS TAB (admin)
   if(isAdminUser)html+='<div id="tab-finish-selections" class="tab-content '+(currentTab==='finish-selections'?'active':'')+'"><div id="finish-selections-tab-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div></div>';
 
-  if(isAdminUser)html+='<div id="tab-price-comparisons" class="tab-content '+(currentTab==='price-comparisons'?'active':'')+'"><div id="price-comparisons-tab-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div></div>';
+  if(isAdminUser||isClientTabVisible(p,'price-comparisons'))html+='<div id="tab-price-comparisons" class="tab-content '+(currentTab==='price-comparisons'?'active':'')+'"><div id="price-comparisons-tab-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div></div>';
 
   // PUNCH LIST TAB
   html+='<div id="tab-punch" class="tab-content '+(currentTab==='punch'?'active':'')+'"><div id="punch-tab-root"><div class="empty-state"><div class="empty-icon">'+ic('loader')+'</div><p>טוען...</p></div></div></div>';
