@@ -66,24 +66,24 @@ function renderClientBudgetTabHtml(p,isAdminUser,activeTab){
   var h=open+
     '<div class="cb-head"><div><h2 class="cb-title">התקציב המאושר</h2><div class="cb-sub">'+cbEsc(M.name)+(M.date?' · '+cbDate(M.date):'')+'</div></div>'+
     '<div class="cb-ro">'+(isAdminUser?'כך הלקוח רואה את התקציב. הוא יכול רק לקרוא.':'לקריאה בלבד · מתעדכן אוטומטית כשהמפקח מעדכן')+'</div></div>'+
-    '<div class="cb-kpi"><div><span>לפני מע"מ</span><b>'+cbNis(M.before)+'</b></div><div><span>מע"מ '+Math.round(M.vatRate*100)+'%</span><b>'+cbNis(M.vat)+'</b></div><div class="cb-strong"><span>כולל מע"מ</span><b>'+cbNis(M.before+M.vat)+'</b></div></div>'+
-    '<div class="cb-paid"><div class="cb-paid-row"><span>שולם עד היום (לפני מע"מ)</span><b>'+cbNis(M.paid)+' · '+pct+'%</b></div><div class="cb-bar"><i style="width:'+pct+'%"></i></div><div class="cb-paid-row cb-muted"><span>נותר מהתקציב</span><span>'+cbNis(Math.max(0,M.before-M.paid))+'</span></div></div>'+
+    '<div class="cb-sum"><div class="cb-kpi"><div><span>לפני מע"מ</span><b>'+cbNis(M.before)+'</b></div><div><span>מע"מ '+Math.round(M.vatRate*100)+'%</span><b>'+cbNis(M.vat)+'</b></div><div class="cb-strong"><span>כולל מע"מ</span><b>'+cbNis(M.before+M.vat)+'</b></div></div>'+
+    '<div class="cb-paid"><div class="cb-paid-row"><span>שולם עד היום (לפני מע"מ)</span><b>'+cbNis(M.paid)+' · '+pct+'%</b></div><div class="cb-bar"><i style="width:'+pct+'%"></i></div><div class="cb-paid-row cb-muted"><span>נותר מהתקציב</span><span>'+cbNis(Math.max(0,M.before-M.paid))+'</span></div></div></div>'+
     '<div class="cb-tools"><input id="cb-q" type="search" placeholder="חיפוש בתקציב (למשל: חלונות, ריצוף)" aria-label="חיפוש בתקציב" oninput="cbSearch(this.value)">'+
-    '<div class="cb-btns"><button type="button" class="btn btn-outline btn-sm" onclick="cbToggleAll(true)">פתיחת הכול</button><button type="button" class="btn btn-outline btn-sm" onclick="cbToggleAll(false)">סגירת הכול</button>'+
+    '<div class="cb-btns"><button type="button" class="btn btn-outline btn-sm m-hide-phone" onclick="cbToggleAll(true)">פתיחת הכול</button><button type="button" class="btn btn-outline btn-sm m-hide-phone" onclick="cbToggleAll(false)">סגירת הכול</button>'+
     '<button type="button" class="btn btn-outline btn-sm" onclick="cbExportExcel()">ייצוא לאקסל</button><button type="button" class="btn btn-outline btn-sm" onclick="cbExportPdf()">ייצוא ל-PDF</button>'+
     (isAdminUser?'<button type="button" class="btn btn-primary btn-sm" onclick="cbEditBudget()">עריכת התקציב</button>':'')+'</div></div>'+
     '<div id="cb-none" class="cb-empty" hidden>לא נמצאו שורות שמתאימות לחיפוש.</div>'+
     '<div class="cb-list">';
   M.secs.forEach(function(s,i){
     var sp=M.before?Math.round(s.total/M.before*1000)/10:0,pp=s.total?Math.min(100,Math.round(s.paid/s.total*100)):0;
-    h+='<details class="cb-sec" data-i="'+i+'"><summary><span class="cb-sname">'+cbEsc(s.name)+'</span><b class="cb-stotal">'+cbNis(s.total)+'</b><span class="cb-scount">'+s.count+' סעיפים · '+sp+'% מהתקציב</span>'+
+    h+='<details class="cb-sec" data-i="'+i+'"><summary><span class="cb-sname">'+cbEsc(s.name)+'</span><b class="cb-stotal">'+(s.total?cbNis(s.total):'')+'</b><span class="cb-scount">'+(s.count?s.count+' סעיפים · '+sp+'% מהתקציב':'הערות בלבד')+'</span>'+
       (s.paid>0?'<span class="cb-spaid"><span class="cb-bar sm"><i style="width:'+pp+'%"></i></span>שולם '+cbNis(s.paid)+'</span>':'')+'</summary>'+
       '<table class="cb-t"><thead><tr><th>תיאור</th><th>יחידה</th><th>כמות</th><th>מחיר ליחידה</th><th>סה"כ</th></tr></thead><tbody>'+
       s.lines.map(function(l){
         if(!l.q&&!l.u)return '<tr class="cb-note"><td colspan="5">'+cbEsc(l.d)+'</td></tr>';
         return '<tr><td class="cb-d">'+cbEsc(l.d)+'</td><td class="cb-u">'+cbEsc(l.unit)+'</td><td class="cb-n" data-l="כמות">'+cbQty(l.q)+'</td><td class="cb-n" data-l="מחיר ליחידה">'+(l.u?cbNis(l.u,1):'—')+'</td><td class="cb-n cb-tot" data-l="סה&quot;כ">'+(l.u?cbNis(l.t):'כלול')+'</td></tr>';
       }).join('')+
-      '</tbody><tfoot><tr><td colspan="4">סה"כ '+cbEsc(s.name)+' (לפני מע"מ)</td><td class="cb-n">'+cbNis(s.total)+'</td></tr></tfoot></table></details>';
+      '</tbody>'+(s.total?'<tfoot><tr><td colspan="4">סה"כ '+cbEsc(s.name)+' (לפני מע"מ)</td><td class="cb-n">'+cbNis(s.total)+'</td></tr></tfoot>':'')+'</table></details>';
   });
   h+='</div>'+(M.notes?'<div class="cb-notes"><b>הערות לתקציב:</b> '+cbEsc(M.notes)+'</div>':'')+
     '<p class="cb-foot">המחירים לפני מע"מ. "שולם" כולל רק תשלומים מאושרים, לפי הקטגוריה שלהם ב"מעקב תשלומים". שאלה על סעיף? אפשר לכתוב בלשונית "שאלות".</p></div>';
@@ -150,7 +150,7 @@ var CB_CSS='<style>'+
 '.cb-head{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:14px}.cb-title{margin:0;font-size:22px;color:var(--primary,#1B2B5E)}.cb-sub{color:var(--text-muted,#56657a);font-size:14px;margin-top:2px}'+
 '.cb-ro{font-size:13px;color:var(--text-muted,#56657a);background:var(--bg,#f0f4f8);border-radius:999px;padding:5px 12px}'+
 '.cb-kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}.cb-kpi>div{background:var(--card,#fff);border:1px solid var(--cb-line);border-radius:12px;padding:12px 14px;min-width:0}.cb-kpi span{display:block;font-size:13px;color:var(--text-muted,#56657a)}.cb-kpi b{font-size:clamp(16px,2.4vw,22px);font-variant-numeric:tabular-nums}.cb-kpi .cb-strong b{color:var(--primary,#1B2B5E)}'+
-'.cb-paid{background:var(--card,#fff);border:1px solid var(--cb-line);border-radius:12px;padding:12px 14px;margin-bottom:14px;display:grid;gap:6px}.cb-paid-row{display:flex;justify-content:space-between;gap:8px;font-size:14px;flex-wrap:wrap}.cb-muted{color:var(--text-muted,#56657a);font-size:13px}'+
+'.cb-sum{margin-bottom:14px}.cb-paid{background:var(--card,#fff);border:1px solid var(--cb-line);border-radius:12px;padding:12px 14px;display:grid;gap:6px}.cb-paid-row{display:flex;justify-content:space-between;gap:8px;font-size:14px;flex-wrap:wrap}.cb-muted{color:var(--text-muted,#56657a);font-size:13px}'+
 '.cb-bar{height:8px;background:var(--bg,#eef2f6);border-radius:99px;overflow:hidden}.cb-bar i{display:block;height:100%;background:var(--success,#15803d);border-radius:99px}.cb-bar.sm{display:inline-block;width:60px;height:6px;vertical-align:middle;margin-inline-end:6px}'+
 '.cb-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}.cb-tools input{flex:1 1 240px;min-width:0;font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--cb-line);border-radius:10px;background:var(--card,#fff);color:inherit}.cb-btns{display:flex;gap:8px;flex-wrap:wrap}.cb-btns .btn{flex:0 0 auto;width:auto}'+
 '.cb-list{display:grid;gap:10px}.cb-sec{background:var(--card,#fff);border:1px solid var(--cb-line);border-radius:12px;overflow:hidden}'+
@@ -161,7 +161,10 @@ var CB_CSS='<style>'+
 '.cb-n{font-variant-numeric:tabular-nums;white-space:nowrap}.cb-tot{font-weight:600}.cb-note td{color:var(--text-muted,#56657a);font-size:13px;background:var(--bg,#f8fafc)}.cb-t tfoot td{font-weight:700;border-bottom:0}'+
 '.cb-empty{padding:28px 16px;text-align:center;color:var(--text-muted,#56657a);background:var(--card,#fff);border:1px dashed var(--cb-line);border-radius:12px;line-height:1.7}'+
 '.cb-notes{margin-top:12px;font-size:14px;background:var(--card,#fff);border:1px solid var(--cb-line);border-radius:12px;padding:12px 14px}.cb-foot{font-size:13px;color:var(--text-muted,#56657a);margin:12px 2px 0}'+
-'@media (max-width:640px){.cb-kpi{gap:6px}.cb-kpi>div{padding:10px 8px}.cb-kpi span{font-size:11.5px}.cb-btns .btn{flex:1 1 calc(50% - 4px)}'+
+'@media (max-width:640px){.cb-head{margin-bottom:10px}.cb-title{font-size:19px}.cb-ro{background:none;padding:0;font-size:12px}'+
+'.cb-sum{background:var(--card,#fff);border:1px solid var(--cb-line);border-radius:12px;overflow:hidden;margin-bottom:10px}.cb-kpi{gap:0;margin:0;border-bottom:1px solid var(--cb-line)}.cb-kpi>div{border:0;border-radius:0;padding:10px 8px}.cb-kpi>div+div{border-inline-start:1px solid var(--cb-line)}.cb-kpi span{font-size:11.5px}.cb-kpi b{font-size:clamp(14px,4.2vw,17px)}.cb-paid{border:0;border-radius:0;padding:10px 12px}'+
+'.cb-tools{gap:8px;margin-bottom:10px}.cb-tools input{padding:9px 12px}.cb-btns{width:100%}.cb-btns .btn{flex:1 1 calc(50% - 4px);padding:9px 8px;font-size:14px}'+
+'.cb-list{gap:0;background:var(--card,#fff);border:1px solid var(--cb-line);border-radius:12px;overflow:hidden}.cb-sec{border:0;border-radius:0;border-bottom:1px solid var(--cb-line)}.cb-sec:last-child{border-bottom:0}.cb-sec>summary{padding:10px 12px}.cb-sname,.cb-stotal{font-size:15px}.cb-sname::before{width:20px;height:20px}'+
 '.cb-t thead{display:none}.cb-t,.cb-t tbody,.cb-t tr,.cb-t td,.cb-t tfoot{display:block;width:100%}.cb-t tbody tr{padding:10px 12px;border-bottom:1px solid var(--cb-line);display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px}.cb-t tbody td{border:0;padding:0}'+
 '.cb-t td.cb-d{grid-column:1/-1;font-weight:600}.cb-t td.cb-u{display:none}.cb-t td.cb-n::before{content:attr(data-l);display:block;font-size:11px;color:var(--text-muted,#56657a);font-weight:400}.cb-t tr.cb-note{display:block}.cb-t tr.cb-note td{background:none}'+
 '.cb-t tfoot tr{display:flex;justify-content:space-between;padding:10px 12px}.cb-t tfoot td{padding:0;width:auto}}'+
