@@ -85,6 +85,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .btn-primary{background:var(--primary);color:#fff;width:100%;justify-content:center}
 .btn-primary:hover{background:var(--primary-light);transform:translateY(-1px)}
 .btn-accent{background:var(--accent);color:#1a2332}
+.vat-note{font-size:.85em;font-weight:400;opacity:.85;white-space:nowrap}
 .btn-accent:hover{background:#d4911a}
 .btn-outline{background:transparent;border:2px solid var(--border);color:var(--text)}
 .btn-outline:hover{border-color:var(--primary-light);color:var(--primary-light)}
@@ -1149,7 +1150,8 @@ img,svg,video,canvas{max-width:100%;height:auto}
   <div class="modal">
     <div class="modal-header"><div class="modal-title">תשלום חדש</div><button class="modal-close" onclick="closeModal('modal-payment')"><i data-lucide="x"></i></button></div>
     <div class="form-group"><label>תיאור התשלום <span class="req-mark">*</span></label><input type="text" id="pay-desc" placeholder="לדוגמה: תשלום לקבלן שלד"/></div>
-    <div class="form-group"><label>סכום (₪) <span class="req-mark">*</span></label><input type="number" id="pay-amount" placeholder="0"/></div>
+    <div class="form-group"><label>סכום (₪) <span class="req-mark">*</span></label><input type="number" id="pay-amount" placeholder="0" oninput="payVatHint()"/></div>
+    <div class="form-group"><label for="pay-vat-mode">מע"מ</label><select id="pay-vat-mode" onchange="payVatHint()"><option value="incl">הסכום כולל מע"מ</option><option value="excl">הסכום לפני מע"מ (יתווסף מע"מ)</option><option value="none">ללא מע"מ (פטור)</option><option value="">לא צוין (נספר כפי שהוזן)</option></select><div id="pay-vat-hint" class="form-hint" style="font-size:13px;color:var(--text-muted);margin-top:4px"></div></div>
     <div class="form-group"><label>סטטוס</label><select id="pay-status"><option value="approved">מאושר (נספר בחישובים)</option><option value="pending">ממתין לתשלום (לא נספר)</option></select></div>
     <div class="form-group"><label>תאריך <span class="req-mark">*</span></label><input type="date" id="pay-date"/></div>
     <div class="form-group"><label>נמען</label><input type="text" id="pay-to" placeholder="שם הקבלן / ספק"/></div>
@@ -3049,8 +3051,19 @@ function formatDailyLogWorkersForCsv(workers){
     return name+': '+(Number(w.count)||0);
   }).join('; ');
 }
+/* The budget is stored before VAT, so every "paid" total is counted before VAT:
+   - amount_before_vat when the payment recorded it (expenses, and payments with a VAT choice);
+   - stage payments created from the plan (cp_frame) were stored including VAT;
+   - older payments with no VAT information count as entered. */
+function paymentNetAmount(x){
+  if(!x)return 0;
+  if(x.amount_before_vat!=null&&x.amount_before_vat!==''&&isFinite(Number(x.amount_before_vat)))return Number(x.amount_before_vat);
+  var a=Number(x.amount||0);
+  if(x.cp_frame)return Math.round(a/(1+BUDGET_VAT_RATE)*100)/100;
+  return a;
+}
 function sumProjectPaidFromList(payments){
-  return (payments||[]).reduce(function(s,x){return paymentIsApproved(x)?s+Number(x.amount||0):s;},0);
+  return (payments||[]).reduce(function(s,x){return paymentIsApproved(x)?s+paymentNetAmount(x):s;},0);
 }
 function clientCanAccessProject(projectId){
   if(!projectId||!currentUser)return false;
@@ -8294,7 +8307,7 @@ function calcBudgetUtilPct(paid,budget){
   return pct>0&&pct<1?Math.round(pct*10)/10:Math.round(pct);
 }
 function sumProjectPaid(p){
-  return (p.payments||[]).reduce(function(s,x){return paymentIsApproved(x)?s+Number(x.amount||0):s;},0);
+  return sumProjectPaidFromList(p.payments);
 }
 function calcBudgetAnalysis(p){
   var approved=getProjectBudget(p);
@@ -8477,7 +8490,7 @@ function projectStatusBadgeMeta(status){
   return map[status]||map.pending;
 }
 function projectCardHTML(p){
-  var paid=(p.payments||[]).reduce(function(s,x){return paymentIsApproved(x)?s+Number(x.amount||0):s;},0);
+  var paid=sumProjectPaidFromList(p.payments);
   var sc=projectStatusBadgeMeta(p.status);
   return '<div class="project-card" data-project-id="'+escHtml(p.id)+'" onclick="showView(\'project\',\''+p.id+'\')">'+
     '<button type="button" class="project-card-delete admin-only-action" title="מחק פרויקט" onclick="event.stopPropagation();confirmDeleteProject(\''+p.id+'\')">'+ic('trash-2')+'</button>'+
@@ -8786,9 +8799,9 @@ function renderProjectDetail(el){
   // BUDGET TAB
   if(isAdminUser||isClientTabVisible(p,'budget'))html+='<div id="tab-budget" class="tab-content '+(currentTab==='budget'?'active':'')+'">'+
     '<div class="budget-summary">'+
-    '<div class="budget-item"><div class="label">תקציב כולל</div><div class="amount total">'+fmtMoney(projectBudget)+'</div></div>'+
-    '<div class="budget-item"><div class="label">שולם</div><div class="amount paid">'+fmtMoney(paid)+'</div></div>'+
-    '<div class="budget-item"><div class="label">נותר</div><div class="amount remaining">'+fmtMoney(remaining)+'</div></div>'+
+    '<div class="budget-item"><div class="label">תקציב כולל <span class="vat-note">(לפני מע"מ)</span></div><div class="amount total">'+fmtMoney(projectBudget)+'</div></div>'+
+    '<div class="budget-item"><div class="label">שולם <span class="vat-note">(לפני מע"מ)</span></div><div class="amount paid">'+fmtMoney(paid)+'</div></div>'+
+    '<div class="budget-item"><div class="label">נותר <span class="vat-note">(לפני מע"מ)</span></div><div class="amount remaining">'+fmtMoney(remaining)+'</div></div>'+
     '<div class="budget-item"><div class="label">אחוז ניצול</div><div class="amount total">'+budgetUtilPct+'%</div></div>'+
     '</div><div class="card"><div class="section-actions"><div class="section-title">'+ic('credit-card')+' תשלומים</div>'+
     '<div class="flex-gap"><button type="button" class="btn btn-accent btn-sm" onclick="exOpen()">'+ic('plus')+' הוספת הוצאה</button>'+
@@ -8898,7 +8911,7 @@ function getCategoryFinancials(p){
     if(!paymentIsApproved(pay))return;
     var cat=pay.category||'אחר';
     if(actual[cat]===undefined)actual[cat]=0;
-    actual[cat]+=Number(pay.amount||0);
+    actual[cat]+=paymentNetAmount(pay);
   });
   var planned=Object.assign({},p.budgetPlan||{});
   var hasPlan=Object.keys(planned).length>0;
@@ -10014,7 +10027,10 @@ function openEditPaymentModal(id){
     else existingEl.innerHTML='';
   }
   document.getElementById('pay-desc').value=pay.desc;
-  document.getElementById('pay-amount').value=pay.amount;
+  var vm=pay.vat_mode==='incl'||pay.vat_mode==='excl'||pay.vat_mode==='none'?pay.vat_mode:'';
+  document.getElementById('pay-vat-mode').value=vm;
+  document.getElementById('pay-amount').value=vm==='excl'&&pay.amount_before_vat!=null?pay.amount_before_vat:pay.amount;
+  payVatHint();
   document.getElementById('pay-date').value=formatPhaseDateForInput(pay.date)||pay.date||'';
   document.getElementById('pay-to').value=pay.to||'';
   document.getElementById('pay-category').value=pay.category||'שלד';
@@ -10045,12 +10061,29 @@ function openAddPaymentModal(){
   var existingEl=document.getElementById('pay-receipt-existing');
   if(existingEl)existingEl.innerHTML='';
   document.getElementById('pay-desc').value='';document.getElementById('pay-amount').value='';
+  document.getElementById('pay-vat-mode').value='incl';payVatHint();
   document.getElementById('pay-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('pay-to').value='';
   document.getElementById('pay-category').value='שלד';
   document.getElementById('pay-status').value='approved';
   openModal('modal-payment');
   refreshIcons(document.getElementById('modal-payment'));
+}
+function payVatSplit(amt,mode){
+  var r=BUDGET_VAT_RATE,round=function(v){return Math.round(v*100)/100;};
+  amt=Number(amt)||0;
+  if(mode==='incl'){var b=round(amt/(1+r));return {total:amt,before:b,vat:round(amt-b),mode:'incl'};}
+  if(mode==='excl'){var t=round(amt*(1+r));return {total:t,before:amt,vat:round(t-amt),mode:'excl'};}
+  if(mode==='none')return {total:amt,before:amt,vat:0,mode:'none'};
+  return {total:amt,before:undefined,vat:undefined,mode:undefined};
+}
+function payVatHint(){
+  var el=document.getElementById('pay-vat-hint');if(!el)return;
+  var amt=Number(document.getElementById('pay-amount').value);
+  var mode=document.getElementById('pay-vat-mode').value;
+  if(!amt||!mode){el.textContent=mode?'':'התקציב מחושב לפני מע"מ, לכן כדאי לבחור.';return;}
+  var x=payVatSplit(amt,mode);
+  el.textContent='לפני מע"מ '+fmtMoney(x.before)+' · מע"מ '+fmtMoney(x.vat)+' · סה"כ '+fmtMoney(x.total)+' (נספר בתקציב: '+fmtMoney(x.before)+')';
 }
 async function savePayment(){
   if(!requireAdmin()||!requireProjectAccess())return;
@@ -10064,7 +10097,8 @@ async function savePayment(){
   var editId=document.getElementById('modal-payment').dataset.editId;
   var payId=editId||('p'+Date.now());
   var existing=editId?proj.payments.find(function(x){return x.id===editId;}):null;
-  var pay={desc:document.getElementById('pay-desc').value.trim(),amount:Number(document.getElementById('pay-amount').value),date:document.getElementById('pay-date').value,to:document.getElementById('pay-to').value,category:document.getElementById('pay-category').value,status:document.getElementById('pay-status').value};
+  var vatSplit=payVatSplit(Number(document.getElementById('pay-amount').value),document.getElementById('pay-vat-mode').value);
+  var pay={desc:document.getElementById('pay-desc').value.trim(),amount:vatSplit.total,amount_before_vat:vatSplit.before,vat_amount:vatSplit.vat,vat_mode:vatSplit.mode,date:document.getElementById('pay-date').value,to:document.getElementById('pay-to').value,category:document.getElementById('pay-category').value,status:document.getElementById('pay-status').value};
   var file=document.getElementById('pay-receipt').files[0];
   var btn=document.querySelector('#modal-payment .btn-primary');
   var cancelBtn=document.querySelector('#modal-payment .btn-outline');
@@ -10520,7 +10554,7 @@ document.getElementById('price-offer-pdf').addEventListener('change',function(){
 document.getElementById('punch-photo').addEventListener('change',function(){validateUploadInputFile('punch-photo',{allowPdf:false});});
 document.getElementById('gallery-post-files').addEventListener('change',onGalleryPostFilesSelected);
 document.getElementById('budget-excel-file').addEventListener('change',onBudgetExcelFileSelected);
-Object.assign(window,{
+Object.assign(window,{payVatHint:payVatHint,
   doLogin,doLogout,showForgotPassword,showLoginForm,submitForgotPassword,
   saveUser,deleteUser,changeAdminPass,sendAdminResetEmail,resetData,
   showView,switchTab,openModal,closeModal,toggleMobileSidebar,closeMobileSidebar,toggleMobileTabMenu,closeMobileTabMenu,exportProjectOverviewPdf,

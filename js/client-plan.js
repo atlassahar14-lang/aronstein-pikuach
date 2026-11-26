@@ -208,7 +208,7 @@ async function cpLink(data,proj,plan){
   var fp=plan.frame_payments,vat=Number(plan.vat)||0;
   if(fp)(fp.items||[]).forEach(function(it,i){var key='frame'+i;if(proj.payments.some(function(x){return x.cp_frame===key;}))return;
     var ph=plan.phases.find(function(o){return it.week>=o.start_week&&it.week<o.start_week+o.weeks;});
-    proj.payments.push({id:'pay'+Date.now()+'_f'+i,desc:'שלד: '+it.what+' ('+it.pct+'%)',amount:Math.round(fp.amount*it.pct/100*(1+vat)),date:cpIso(cpPlanWeekDate(plan,it.week)),to:fp.contractor||'',category:'שלד',status:'pending',
+    proj.payments.push({id:'pay'+Date.now()+'_f'+i,desc:'שלד: '+it.what+' ('+it.pct+'%)',amount:Math.round(fp.amount*it.pct/100*(1+vat)),amount_before_vat:Math.round(fp.amount*it.pct/100),vat_amount:Math.round(fp.amount*it.pct/100*(1+vat))-Math.round(fp.amount*it.pct/100),vat_mode:'excl',date:cpIso(cpPlanWeekDate(plan,it.week)),to:fp.contractor||'',category:'שלד',status:'pending',
       cp_frame:key,cp_pct:it.pct,cp_phase:ph?ph.key:'',cp_frac:ph?Math.min(1,(it.week-ph.start_week+1)/ph.weeks):null});out.pay++;});
   if(A.supabase&&(plan.decisions||[]).length){
     if(A.refreshFinishSelectionsCache)await A.refreshFinishSelectionsCache();
