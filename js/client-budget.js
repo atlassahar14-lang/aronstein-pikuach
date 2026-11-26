@@ -81,7 +81,7 @@ function renderClientBudgetTabHtml(p,isAdminUser,activeTab){
       '<table class="cb-t"><thead><tr><th>תיאור</th><th>יחידה</th><th>כמות</th><th>מחיר ליחידה</th><th>סה"כ</th></tr></thead><tbody>'+
       s.lines.map(function(l){
         if(!l.q&&!l.u)return '<tr class="cb-note"><td colspan="5">'+cbEsc(l.d)+'</td></tr>';
-        return '<tr><td class="cb-d">'+cbEsc(l.d)+'</td><td class="cb-u">'+cbEsc(l.unit)+'</td><td class="cb-n" data-l="כמות">'+cbQty(l.q)+'</td><td class="cb-n" data-l="מחיר ליחידה">'+(l.u?cbNis(l.u,1):'—')+'</td><td class="cb-n cb-tot" data-l="סה&quot;כ">'+(l.u?cbNis(l.t):'כלול')+'</td></tr>';
+        return '<tr><td class="cb-d">'+cbEsc(l.d)+'</td><td class="cb-u">'+cbEsc(l.unit)+'</td><td class="cb-n" data-l="כמות">'+cbQty(l.q)+'</td><td class="cb-n" data-l="מחיר ליחידה">'+(l.u?cbNis(l.u,1):'—')+'</td><td class="cb-n cb-tot" data-l="סה&quot;כ">'+(l.u?cbNis(l.t):'ללא מחיר')+'</td></tr>';
       }).join('')+
       '</tbody>'+(s.total?'<tfoot><tr><td colspan="4">סה"כ '+cbEsc(s.name)+' (לפני מע"מ)</td><td class="cb-n">'+cbNis(s.total)+'</td></tr></tfoot>':'')+'</table></details>';
   });
@@ -116,7 +116,7 @@ function cbExportExcel(){
   M.secs.forEach(function(s){sum.push([s.name,s.count,r2(s.total),M.before?Math.round(s.total/M.before*1000)/10+'%':'',r2(s.paid)]);});
   sum.push([]);sum.push(['סה"כ לפני מע"מ','',r2(M.before)]);sum.push(['מע"מ '+Math.round(M.vatRate*100)+'%','',r2(M.vat)]);sum.push(['סה"כ כולל מע"מ','',r2(M.before+M.vat)]);sum.push(['שולם עד היום (לפני מע"מ)','',r2(M.paid)]);
   var det=[['פירוט התקציב: '+(p.name||'')],[],['פרק','תיאור','יחידה','כמות','מחיר ליחידה','סה"כ']];
-  M.secs.forEach(function(s){s.lines.forEach(function(l,i){det.push([i?'':s.name,l.d,l.unit,l.q||'',l.u?r2(l.u):'',l.u?r2(l.t):(l.q?'כלול':'')]);});det.push(['סה"כ '+s.name,'','','','',r2(s.total)]);det.push([]);});
+  M.secs.forEach(function(s){s.lines.forEach(function(l,i){det.push([i?'':s.name,l.d,l.unit,l.q||'',l.u?r2(l.u):'',l.u?r2(l.t):(l.q?'ללא מחיר':'')]);});det.push(['סה"כ '+s.name,'','','','',r2(s.total)]);det.push([]);});
   det.push(['סה"כ לפני מע"מ','','','','',r2(M.before)]);
   var wb=XLSX.utils.book_new(),ws1=XLSX.utils.aoa_to_sheet(sum),ws2=XLSX.utils.aoa_to_sheet(det);
   ws1['!cols']=[{wch:30},{wch:9},{wch:16},{wch:13},{wch:15}];ws2['!cols']=[{wch:22},{wch:50},{wch:10},{wch:9},{wch:13},{wch:14}];
@@ -139,7 +139,7 @@ async function cbExportPdf(){
     html+='<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;background:#152449;color:#fff;padding:6px 10px;border-radius:6px 6px 0 0;font-weight:700;font-size:13px"><span>'+cbEsc(s.name)+'</span><span>'+cbNis(s.total)+'</span></div>'+
       '<table style="width:100%;border-collapse:collapse"><tr><th style="'+th+'">תיאור</th><th style="'+th+'">יחידה</th><th style="'+th+'">כמות</th><th style="'+th+'">מחיר ליחידה</th><th style="'+th+'">סה"כ</th></tr>'+
       s.lines.map(function(l){if(!l.q&&!l.u)return '<tr><td colspan="5" style="'+td+';color:#5b6577">'+cbEsc(l.d)+'</td></tr>';
-        return '<tr><td style="'+td+'">'+cbEsc(l.d)+'</td><td style="'+td+'">'+cbEsc(l.unit)+'</td><td style="'+td+'">'+cbQty(l.q)+'</td><td style="'+td+'">'+(l.u?cbNis(l.u,1):'—')+'</td><td style="'+td+'">'+(l.u?cbNis(l.t):'כלול')+'</td></tr>';}).join('')+'</table></div>';
+        return '<tr><td style="'+td+'">'+cbEsc(l.d)+'</td><td style="'+td+'">'+cbEsc(l.unit)+'</td><td style="'+td+'">'+cbQty(l.q)+'</td><td style="'+td+'">'+(l.u?cbNis(l.u,1):'—')+'</td><td style="'+td+'">'+(l.u?cbNis(l.t):'ללא מחיר')+'</td></tr>';}).join('')+'</table></div>';
   });
   html+=(M.notes?'<div style="font-size:12px;margin-top:8px"><b>הערות:</b> '+cbEsc(M.notes)+'</div>':'')+'<div style="font-size:11px;color:#5b6577;margin-top:12px">המחירים לפני מע"מ, אלא אם צוין אחרת.</div></div>';
   await A.reportPdf(html,cbFileName(p,'pdf'));

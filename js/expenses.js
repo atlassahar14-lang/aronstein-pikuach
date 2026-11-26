@@ -55,6 +55,7 @@ function exOpen(){
     '<div class="ex-f" style="margin-top:12px"><label for="ex-cat">לאיזו קטגוריה זה שייך?</label><select id="ex-cat"><option value="">בחר קטגוריה</option>'+cats.map(function(c){return '<option>'+exEsc(c)+'</option>';}).join('')+'</select></div>'+
     '<div class="ex-f"><label for="ex-date">תאריך</label><input id="ex-date" type="date" value="'+exToday()+'"></div>'+
     '<div class="ex-f"><label for="ex-to">למי שולם? (לא חובה)</label><input id="ex-to" type="text" placeholder="שם הקבלן או החנות" autocomplete="off"></div>'+
+    '<div class="ex-f"><label for="ex-file">קבלה / חשבונית (לא חובה)</label><input id="ex-file" type="file" accept="'+exEsc(exA().receiptAccept||'image/*,application/pdf')+'" onchange="exFileChosen(this)"><span class="ex-sub">תמונה, PDF, Excel או Word · עד 20MB</span></div>'+
     '<div class="ex-err" id="ex-err" role="alert"></div>'+
     '<div class="ex-act"><button type="button" onclick="exClose()">ביטול</button><button type="button" class="ex-save" id="ex-save" onclick="exSave()">שמירת ההוצאה</button></div>'+
     '<p class="ex-sub" style="margin-top:10px">המע"מ מחושב לפי '+r+'%. ההוצאה נכנסת ל"מעקב תשלומים" ונספרת בתקציב '+(exA().isAdmin&&exA().isAdmin()?'מיד':'אחרי אישור המפקח')+'.</p>'+
@@ -64,6 +65,11 @@ function exOpen(){
   document.addEventListener('keydown',exKey);
 }
 function exKey(e){if(e.key==='Escape')exClose();}
+function exFileChosen(inp){var err=document.getElementById('ex-err'),f=inp.files&&inp.files[0];if(!f||!err)return;
+  var ok=/\.(jpe?g|png|webp|heic|pdf|xlsx?|csv|docx?)$/i.test(f.name||'')||/^image\//.test(f.type||'');
+  if(!ok){err.textContent='סוג קובץ לא נתמך. אפשר תמונה, PDF, Excel או Word.';inp.value='';return;}
+  if(f.size>20*1024*1024){err.textContent='הקובץ גדול מ-20MB.';inp.value='';return;}
+  err.textContent='';}
 function exClose(){var o=document.getElementById('ex-ov');if(o)o.remove();document.removeEventListener('keydown',exKey);}
 function exParts(){
   var a=Number((document.getElementById('ex-amount')||{}).value)||0,m=(document.querySelector('input[name="ex-vat"]:checked')||{}).value||'incl',v=exVat();
@@ -84,8 +90,13 @@ async function exSave(){
   if(!proj){err.textContent='הפרויקט לא נמצא. רענן את העמוד ונסה שוב.';btn.disabled=false;btn.textContent='שמירת ההוצאה';return;}
   var u=(A.getUser&&A.getUser())||{},isAdm=A.isAdmin&&A.isAdmin();
   proj.payments=proj.payments||[];
-  proj.payments.push({id:'ex'+Date.now(),desc:desc,amount:x.total,amount_before_vat:x.before,vat_amount:x.vat,vat_mode:x.mode,date:date,to:to,category:cat,status:isAdm?'approved':'pending',awaiting_approval:!isAdm,
+  var payId='ex'+Date.now(),rc=null,fileEl=document.getElementById('ex-file'),file=fileEl&&fileEl.files&&fileEl.files[0];
+  if(file&&A.uploadReceipt){btn.textContent='מעלה קבלה...';var up=await A.uploadReceipt(proj.id,payId,file);
+    if(!up.ok){btn.disabled=false;btn.textContent='שמירת ההוצאה';err.textContent='העלאת הקבלה נכשלה: '+(up.error||'')+'. אפשר לנסות שוב או לשמור בלי קבלה.';return;}
+    rc=up.data;btn.textContent='שומר...';}
+  proj.payments.push({id:payId,desc:desc,amount:x.total,amount_before_vat:x.before,vat_amount:x.vat,vat_mode:x.mode,date:date,to:to,category:cat,status:isAdm?'approved':'pending',awaiting_approval:!isAdm,
     added_by:isAdm?'admin':'client',added_by_id:u.id||'',added_by_name:u.name||'',added_at:new Date().toISOString()});
+  if(rc){var np=proj.payments[proj.payments.length-1];np.receipt_url=rc.path;np.receiptName=rc.name;np.receiptType=rc.type;}
   var ok=await A.saveData(data);
   if(!ok){btn.disabled=false;btn.textContent='שמירת ההוצאה';err.textContent='השמירה נכשלה. בדוק חיבור לאינטרנט ונסה שוב.';return;}
   if(isAdm&&A.logActivity)A.logActivity('הוספת הוצאה','פרויקט: '+proj.name+' · '+desc+' · '+exNis(x.total));

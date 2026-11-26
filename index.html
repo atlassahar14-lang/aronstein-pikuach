@@ -1103,11 +1103,11 @@ img,svg,video,canvas{max-width:100%;height:auto}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="js/client-plan.js?v=20261126f"></script>
-<script src="js/client-budget.js?v=20261126f"></script>
-<script src="js/expenses.js?v=20261126f"></script>
-<script src="js/a11y.js?v=20261126f"></script>
-<script src="js/mobile-fold.js?v=20261126f"></script>
+<script src="js/client-plan.js?v=20261126g"></script>
+<script src="js/client-budget.js?v=20261126g"></script>
+<script src="js/expenses.js?v=20261126g"></script>
+<script src="js/a11y.js?v=20261126g"></script>
+<script src="js/mobile-fold.js?v=20261126g"></script>
 
 <!-- Modal: Project -->
 <div class="modal-overlay" id="modal-project">
@@ -1181,7 +1181,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
     <div class="form-group"><label>תאריך <span class="req-mark">*</span></label><input type="date" id="pay-date"/></div>
     <div class="form-group"><label>נמען</label><input type="text" id="pay-to" placeholder="שם הקבלן / ספק"/></div>
     <div class="form-group"><label>קטגוריה</label><select id="pay-category"><option>שלד</option><option>חפירות</option><option>טיח</option><option>חשמל</option><option>אינסטלציה</option><option>ריצוף</option><option>גמר</option><option>צנרת ואינסטלציה</option><option>בידוד</option><option>פיקוח הנדסי</option><option>חוץ וגינון</option><option>אחר</option></select></div>
-    <div class="form-group"><label>קבלה/חשבונית</label><label class="upload-label"><i data-lucide="paperclip"></i> בחר קובץ<input type="file" id="pay-receipt" accept=".jpg,.jpeg,.png,.webp,.heic,.pdf,image/jpeg,image/png,image/webp,image/heic,application/pdf" capture="environment"/></label><p class="upload-hint">JPG, PNG, PDF עד 50MB</p><div id="pay-receipt-preview" class="file-preview"></div><div id="pay-receipt-existing" class="file-preview-existing"></div><div id="pay-receipt-upload-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span id="pay-receipt-upload-text">מעלה קבלה...</span></div><div id="pay-receipt-upload-error" class="upload-error"></div></div>
+    <div class="form-group"><label>קבלה/חשבונית</label><label class="upload-label"><i data-lucide="paperclip"></i> בחר קובץ<input type="file" id="pay-receipt" accept=".jpg,.jpeg,.png,.webp,.heic,.pdf,.xls,.xlsx,.csv,.doc,.docx,image/*,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"/></label><p class="upload-hint">תמונה, PDF, Excel או Word · עד 20MB</p><div id="pay-receipt-preview" class="file-preview"></div><div id="pay-receipt-existing" class="file-preview-existing"></div><div id="pay-receipt-upload-status" class="upload-spinner" aria-live="polite"><span class="upload-spinner-icon"></span><span id="pay-receipt-upload-text">מעלה קבלה...</span></div><div id="pay-receipt-upload-error" class="upload-error"></div></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-payment')">ביטול</button>
       <button class="btn btn-primary" style="width:auto" onclick="savePayment()">שמור תשלום</button>
@@ -1556,6 +1556,9 @@ const UPLOAD_HINT_MEDIA='JPG, PNG, PDF, MP4 עד 50MB';
 const UPLOAD_IMAGE_EXTS=['jpg','jpeg','png','webp','heic'];
 const UPLOAD_DOC_EXTS=['pdf','dwg'];
 const UPLOAD_SHEET_EXTS=['xls','xlsx','csv'];
+const UPLOAD_OFFICE_EXTS=['doc','docx'];
+const RECEIPT_MAX_BYTES=20*1024*1024;
+const RECEIPT_ACCEPT='.jpg,.jpeg,.png,.webp,.heic,.pdf,.xls,.xlsx,.csv,.doc,.docx,image/*,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const UPLOAD_ACCEPT_SHEETS='.xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv';
 const DOC_CATEGORIES=['סיכום שבועי','דוח פיקוח','תוכניות אדריכלות','תוכניות DWG','קונסטרוקטור','היתרים','הסכמים','אחר'];
 const DOC_CATEGORY_ICONS={'סיכום שבועי':'calendar-check','דוח פיקוח':'clipboard-check','תוכניות אדריכלות':'ruler','תוכניות DWG':'pencil-ruler','קונסטרוקטור':'wrench','היתרים':'clipboard-list','הסכמים':'file-pen','אחר':'file-text'};
@@ -1678,6 +1681,12 @@ function resolveUploadFileExtension(file){
 function validateUploadFile(file,opts){
   opts=opts||{};
   if(!file)return {ok:false,message:'לא נבחר קובץ'};
+  if(opts.receipt){
+    if(file.size>RECEIPT_MAX_BYTES)return {ok:false,message:'הקובץ גדול מדי — גודל מקסימלי לקבלה 20MB'};
+    var rext=resolveUploadFileExtension(file);
+    if(!rext||UPLOAD_IMAGE_EXTS.concat(['pdf'],UPLOAD_SHEET_EXTS,UPLOAD_OFFICE_EXTS).indexOf(rext)<0)return {ok:false,message:'סוג קובץ לא נתמך — מותר: תמונה (JPG, PNG, HEIC), PDF, Excel או Word'};
+    return {ok:true};
+  }
   if(file.size>UPLOAD_MAX_BYTES)return {ok:false,message:'הקובץ גדול מדי — גודל מקסימלי 50MB'};
   var allowPdf=opts.allowPdf!==false&&opts.imagesOnly!==true;
   var allowVideo=!!opts.allowVideo;
@@ -2144,6 +2153,11 @@ async function prepareImageForUpload(file){
 function showCompressionToast(prepared){
   if(!prepared||prepared.skipped||prepared.originalSize===prepared.compressedSize)return;
   showToast('דחיסת תמונה: '+prepared.label,'success',4500);
+}
+async function uploadReceiptChecked(projectId,paymentId,file){
+  var check=validateUploadFile(file,{receipt:true});if(!check.ok)return {ok:false,error:check.message};
+  var up=file;if(isCompressibleImageFile(file)){try{up=(await prepareImageForUpload(file)).file;}catch(e){up=file;}}
+  return uploadPaymentReceiptFile(projectId,paymentId,up);
 }
 async function uploadPaymentReceiptFile(projectId,paymentId,file){
   var ext=paymentReceiptFileExt(file);
@@ -3021,15 +3035,8 @@ function readProjectClientVisibilityFromForm(){
   });
   return cv;
 }
-function paymentIsClientVisible(pay){
-  if(!pay)return false;
-  if(pay.added_by==='client')return true;
-  if(pay.approved===true||pay.confirmed===true)return true;
-  var status=String(pay.status||'').toLowerCase();
-  if(status==='confirmed'||status==='approved'||status==='מאושר')return true;
-  if(pay.approved===undefined&&pay.confirmed===undefined&&(!pay.status||status===''))return true;
-  return false;
-}
+// The client sees every payment of his project, pending ones too (Sahar, 26.11). Totals still count only approved payments.
+function paymentIsClientVisible(pay){return !!pay;}
 function getPaymentsForView(payments){
   var list=payments||[];
   if(isAdmin())return list;
@@ -6105,8 +6112,8 @@ async function refreshBudgetItems(budgetId){
   // Paginate past Supabase's 1000-row cap so large budgets load in full.
   var all=[],from=0,page=1000,lastErr=null;
   for(;;){
-    var res=await supabase.from('budget_items').select('*').eq('budget_id',budgetId).order('sort_order',{ascending:true}).order('created_at',{ascending:true}).range(from,from+page-1);
-    if(res.error){res=await supabase.from('budget_items').select('*').eq('budget_id',budgetId).range(from,from+page-1);}
+    // budget_items has no created_at column: ordering by it failed and the fallback returned the lines in no fixed order.
+    var res=await supabase.from('budget_items').select('*').eq('budget_id',budgetId).order('sort_order',{ascending:true}).order('id',{ascending:true}).range(from,from+page-1);
     if(res.error){lastErr=res.error;break;}
     var data=res.data||[];all=all.concat(data);
     if(data.length<page)break;
@@ -6117,6 +6124,7 @@ async function refreshBudgetItems(budgetId){
     if(await checkSupabaseSessionError(lastErr))return {ok:false,sessionExpired:true};
     return {ok:false,error:lastErr.message};
   }
+  all.sort(function(a,b){return (Number(a.sort_order)||0)-(Number(b.sort_order)||0);});
   budgetItemsByBudget[budgetId]=all.map(mapBudgetItemRow);
   return {ok:true};
 }
@@ -6131,8 +6139,7 @@ async function refreshAllBudgetItemsCache(){
   // their cards under-counted (e.g. showed "12 פריטים" instead of the real total).
   var all=[],from=0,page=1000,lastErr=null;
   for(;;){
-    var res=await supabase.from('budget_items').select('*').in('budget_id',ids).order('sort_order',{ascending:true}).order('created_at',{ascending:true}).range(from,from+page-1);
-    if(res.error){res=await supabase.from('budget_items').select('*').in('budget_id',ids).range(from,from+page-1);}
+    var res=await supabase.from('budget_items').select('*').in('budget_id',ids).order('sort_order',{ascending:true}).order('id',{ascending:true}).range(from,from+page-1);
     if(res.error){lastErr=res.error;break;}
     var data=res.data||[];all=all.concat(data);
     if(data.length<page)break;
@@ -10159,7 +10166,7 @@ async function savePayment(){
   setPaymentReceiptUploadUi(false);
   try{
     if(file){
-      var fileCheck=validateUploadFile(file,{allowPdf:true});
+      var fileCheck=validateUploadFile(file,{receipt:true});
       if(!fileCheck.ok){
         setPaymentReceiptUploadUi(false,null,fileCheck.message);
         return;
@@ -10582,7 +10589,7 @@ document.querySelectorAll('.modal-overlay').forEach(function(overlay){
 document.getElementById('forgot-email').addEventListener('keydown',function(e){if(e.key==='Enter')submitForgotPassword();});
 document.getElementById('logout-btn').addEventListener('click',function(e){e.preventDefault();doLogout();});
 document.getElementById('upd-media').addEventListener('change',function(){showFilePreview('upd-media','upd-media-preview',{errorElId:'upd-media-upload-error',allowPdf:true,allowVideo:true});});
-document.getElementById('pay-receipt').addEventListener('change',function(){showFilePreview('pay-receipt','pay-receipt-preview',{errorElId:'pay-receipt-upload-error',allowPdf:true});});
+document.getElementById('pay-receipt').addEventListener('change',function(){showFilePreview('pay-receipt','pay-receipt-preview',{errorElId:'pay-receipt-upload-error',receipt:true});});
 document.getElementById('price-offer-pdf').addEventListener('change',function(){
   var input=this;
   var preview=document.getElementById('price-offer-pdf-preview');
@@ -10642,7 +10649,7 @@ Object.assign(window,{payVatHint,
   onProjectStatusFilterChange
 });
 // bridge for js/client-plan.js (a classic script cannot see this module's functions)
-window.__app={isAdmin:isAdmin,requireAdmin:requireAdmin,getData:getData,saveData:saveData,showToast:showToast,logActivity:logActivity,renderProjectDetail:renderProjectDetail,getCurrentProject:getCurrentProject,setTab:function(t){currentTab=t;},getUser:function(){return currentUser;},filterPayments:filterAndSortPayments,reportPdf:renderReportHtmlToPdf,notifyAdmin:notifyAdminClientQuestion,getBudgetItems:getBudgetItems,refreshBudgetItems:refreshBudgetItems,getFinishSelectionsForProject:getFinishSelectionsForProject,refreshFinishSelectionsCache:refreshFinishSelectionsCache,supabase:supabase,vatRate:BUDGET_VAT_RATE,paymentNet:paymentNetAmount,paymentApproved:paymentIsApproved};
+window.__app={isAdmin:isAdmin,requireAdmin:requireAdmin,getData:getData,saveData:saveData,showToast:showToast,logActivity:logActivity,renderProjectDetail:renderProjectDetail,getCurrentProject:getCurrentProject,setTab:function(t){currentTab=t;},getUser:function(){return currentUser;},filterPayments:filterAndSortPayments,reportPdf:renderReportHtmlToPdf,notifyAdmin:notifyAdminClientQuestion,getBudgetItems:getBudgetItems,refreshBudgetItems:refreshBudgetItems,getFinishSelectionsForProject:getFinishSelectionsForProject,refreshFinishSelectionsCache:refreshFinishSelectionsCache,supabase:supabase,vatRate:BUDGET_VAT_RATE,paymentNet:paymentNetAmount,paymentApproved:paymentIsApproved,uploadReceipt:uploadReceiptChecked,receiptAccept:RECEIPT_ACCEPT};
 window.addEventListener('resize',function(){
   if(window.innerWidth>=1181)closeMobileSidebar();
   if(finCharts.pie)finCharts.pie.resize();
