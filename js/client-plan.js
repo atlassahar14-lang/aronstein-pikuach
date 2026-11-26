@@ -255,9 +255,12 @@ async function cpModelText(path){
 /* Any uploaded staged model fills the box whole: measure the finished house once (every stage shown),
    use that as the drawing's frame, and scale it to fit the box's width and height. */
 var CP_FIT='<style>html,body{height:100%;margin:0;overflow:hidden}body>div{height:100%;display:flex;align-items:center;justify-content:center}svg{width:100%!important;height:100%!important;max-height:100%;display:block}</style>'+
-  '<script>(function(){var s=document.querySelector("svg");if(!s||!s.getBBox)return;var p=[].slice.call(document.querySelectorAll(".pt")),w=p.map(function(e){return e.classList.contains("on")});'+
-  'p.forEach(function(e){e.classList.add("on")});try{var b=s.getBBox();if(b.width>0&&b.height>0){var d=Math.max(b.width,b.height)*0.03;s.setAttribute("viewBox",[b.x-d,b.y-d,b.width+2*d,b.height+2*d].join(" "));s.setAttribute("preserveAspectRatio","xMidYMid meet")}}catch(x){}'+
-  'p.forEach(function(e,i){if(!w[i])e.classList.remove("on")})})();<\/script>';
+  /* A frame that loads while its tab is hidden cannot measure yet, so it retries when it is shown (resize) and on a short timer. */
+  '<script>(function(){var s=document.querySelector("svg");if(!s||!s.getBBox)return;var done=false;'+
+  'function fit(){if(done)return true;var p=[].slice.call(document.querySelectorAll(".pt")),w=p.map(function(e){return e.classList.contains("on")}),ok=false;'+
+  'p.forEach(function(e){e.classList.add("on")});try{var b=s.getBBox();if(b.width>0&&b.height>0){var d=Math.max(b.width,b.height)*0.03;s.setAttribute("viewBox",[b.x-d,b.y-d,b.width+2*d,b.height+2*d].join(" "));s.setAttribute("preserveAspectRatio","xMidYMid meet");ok=true}}catch(x){}'+
+  'p.forEach(function(e,i){if(!w[i])e.classList.remove("on")});done=ok;return ok}'+
+  'if(!fit()){window.addEventListener("resize",fit);var n=0,t=setInterval(function(){if(fit()||++n>100)clearInterval(t)},200)}})();<\/script>';
 function cpFitModel(t){t=String(t||'');var i=t.toLowerCase().lastIndexOf('</body>');return i<0?t+CP_FIT:t.slice(0,i)+CP_FIT+t.slice(i);}
 async function cpLoadModelInto(frameId,path,msgId){
   var f=document.getElementById(frameId),msg=msgId&&document.getElementById(msgId);if(!f)return;
