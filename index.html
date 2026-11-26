@@ -6908,6 +6908,19 @@ async function renderBudgetBuilder(el){
   budgetBuilderInitInflight=initP;
   try{await initP;}finally{if(budgetBuilderInitInflight===initP)budgetBuilderInitInflight=null;}
 }
+async function syncApprovedBudgetToProject(budgetId,name,marginPercent){
+  var linked=getProjectApprovedFromBudget(budgetId);if(!linked)return '';
+  var t=calcBudgetTotals(getBudgetItems(budgetId),marginPercent);
+  var amount=Math.round(t.total);
+  var data=getData();var idx=data.projects.findIndex(function(p){return p.id===linked.id;});if(idx<0)return '';
+  var p=data.projects[idx];
+  if(Number(p.budget)===amount&&Number(p.approvedBudgetBeforeVat)===Math.round(t.beforeVat)&&p.approvedBudgetName===name)return p.name||'';
+  var before=Number(p.budget)||0;
+  data.projects[idx]=Object.assign({},p,{budget:amount,approvedBudgetTotal:amount,approvedBudgetBeforeVat:Math.round(t.beforeVat),approvedBudgetName:name,approvedBudgetSyncedAt:todayDateInputValue()});
+  if(!await saveData(data))return '';
+  if(before!==amount)logActivity('עדכון תקציב פרויקט','פרויקט: '+(p.name||'')+' · '+fmtMoney(before)+' → '+fmtMoney(amount));
+  return p.name||'';
+}
 async function saveBudgetBuilder(){
   if(!requireAdmin())return;
   if(!budgetBuilderDraft){showToast('שגיאה: אין נתוני תקציב','error');return;}
@@ -6964,8 +6977,10 @@ async function saveBudgetBuilder(){
     });
   }
   logActivity(wasEdit?'עריכת תקציב':'יצירת תקציב',clientName+' · '+projectAddress);
+  // Keep the project this budget was approved into in step: its total, name and pre-VAT figure follow every edit.
+  var syncedProj=await syncApprovedBudgetToProject(budgetId,clientName,budgetRow.margin_percent);
   await persistActivityLogOnly();
-  showToast('התקציב נשמר בהצלחה');
+  showToast(syncedProj?'התקציב נשמר ועודכן גם בפרויקט "'+syncedProj+'"':'התקציב נשמר בהצלחה');
   budgetBuilderMode='list';
   budgetBuilderDraft=null;
   editingBudgetId=null;
