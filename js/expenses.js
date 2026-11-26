@@ -5,7 +5,7 @@
    Stored: amount = total incl. VAT (like every payment), plus amount_before_vat, vat_amount, vat_mode, added_by. */
 function exA(){return window.__app||{};}
 function exEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function exNis(x){return (Math.round((Number(x)||0)*100)/100).toLocaleString('he-IL',{maximumFractionDigits:2})+' ₪';}
+function exNis(x){var v=Math.round((Number(x)||0)*100)/100;return '₪'+v.toLocaleString('he-IL',{minimumFractionDigits:v%1?2:0,maximumFractionDigits:2});}
 function exVat(){var v=exA().vatRate;return v!=null?Number(v):0.18;}
 function exToday(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 // Categories the client recognises: the project's approved budget, else the imported plan, else the budget plan, else the usual list.
@@ -105,8 +105,8 @@ function exCanDelete(pay){var A=exA();if(A.isAdmin&&A.isAdmin())return false;var
 function exBadgeHtml(pay){
   if(!pay||!pay.added_by)return '';
   var adm=exA().isAdmin&&exA().isAdmin();
-  var who=pay.added_by!=='client'?'':pay.awaiting_approval?'<span class="ex-badge">'+(adm?'ממתין לאישור שלך':'ממתין לאישור המפקח')+'</span>':'<span class="ex-badge ok">נוסף ע"י הלקוח · אושר</span>';
-  var vat=pay.amount_before_vat!=null?'<span class="ex-sub">'+(pay.vat_mode==='excl'?'הוזן לפני מע"מ':'הוזן כולל מע"מ')+' · לפני מע"מ '+exNis(pay.amount_before_vat)+'</span>':'';
+  var who=pay.added_by!=='client'?'':pay.awaiting_approval?'<span class="ex-badge">'+(adm?'ממתין לאישור שלך':'ממתין לאישור המפקח')+'</span>':'<span class="ex-badge ok">נוסף על ידי הלקוח · אושר</span>';
+  var vat=pay.amount_before_vat!=null?'<span class="ex-sub">'+(pay.vat_mode==='excl'?'הוזן לפני מע"מ':pay.vat_mode==='none'?'ללא מע"מ':'הוזן כולל מע"מ')+' · לפני מע"מ: '+exNis(pay.amount_before_vat)+'</span>':'';
   return who+vat;
 }
 async function exApprove(id){
@@ -188,3 +188,4 @@ async function exExportPdf(){
   try{await A.reportPdf(html,exFileName(D.p,'pdf'));}catch(e){console.error('exExportPdf',e);A.showToast&&A.showToast('שגיאה ביצוא PDF','error');}
 }
 /* ===== end expenses ===== */
+(function(){function add(){if(!document.getElementById("ex-css"))document.head.insertAdjacentHTML("beforeend",EX_CSS);}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",add);else add();})();
