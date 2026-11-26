@@ -980,9 +980,10 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .flex-between.responsive-stack.mb-24{margin-bottom:12px!important;gap:10px}
   .map-nav-btn{width:40px;height:40px;min-width:40px;min-height:40px}
   .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin-bottom:12px!important}
-  .stat-card{padding:12px!important;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:2px 10px}
+  .stat-card{padding:12px!important;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:2px 10px;min-width:0}
   .stat-card .stat-icon{grid-row:span 2;width:34px!important;height:34px!important;margin:0!important}
-  .stat-card .stat-value{font-size:19px!important;line-height:1.2}
+  .stat-card .stat-value{font-size:clamp(15px,4.8vw,19px)!important;line-height:1.2;overflow-wrap:anywhere;min-width:0}
+  .stat-card .stat-label{min-width:0}
   .stat-card .stat-label{font-size:12px!important}
   .budget-summary{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin-bottom:12px!important}
   .budget-summary .budget-item{padding:10px 12px!important}
@@ -990,6 +991,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
   .budget-summary .budget-item .label{font-size:12px!important}
   .grid-2{gap:12px!important}
 }
+@media(max-width:360px){.stat-card{grid-template-columns:minmax(0,1fr)}.stat-card .stat-icon{display:none!important}}
 /* Accessibility: keyboard focus is always visible. */
 :focus-visible{outline:3px solid #2563eb!important;outline-offset:2px!important}
 @media(pointer:coarse){
