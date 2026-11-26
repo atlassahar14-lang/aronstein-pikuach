@@ -86,6 +86,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
 .btn-primary:hover{background:var(--primary-light);transform:translateY(-1px)}
 .btn-accent{background:var(--accent);color:#1a2332}
 .vat-note{font-size:.85em;font-weight:400;opacity:.85;white-space:nowrap}
+.budget-excel-check{border-radius:10px;padding:10px 14px;margin:0 0 12px;font-size:14px;line-height:1.6}.budget-excel-check.ok{background:#ecfdf3;border:1px solid #86efac;color:#14532d}.budget-excel-check.bad{background:#fff7ed;border:1px solid #fdba74;color:#7c2d12}.budget-excel-check ul{margin:6px 0 0;padding-inline-start:18px}
 .btn-accent:hover{background:#d4911a}
 .btn-outline{background:transparent;border:2px solid var(--border);color:var(--text)}
 .btn-outline:hover{border-color:var(--primary-light);color:var(--primary-light)}
@@ -1476,6 +1477,7 @@ img,svg,video,canvas{max-width:100%;height:auto}
       <label>קטגוריה לייבוא <span class="req-mark">*</span></label>
       <select id="budget-excel-category"></select>
     </div>
+    <div id="budget-excel-check" class="budget-excel-check" style="display:none" role="status" aria-live="polite"></div>
     <div id="budget-excel-preview-wrap" style="display:none">
       <div class="section-title" style="margin-bottom:8px">תצוגה מקדימה — <span id="budget-excel-count">0</span> פריטים</div>
       <div class="budget-excel-preview table-scroll">
@@ -6351,7 +6353,7 @@ function parseBudgetExcelSheet(sheet){
   if(det){descCol=det.descCol;unitCol=det.unitCol;qtyCol=det.qtyCol;priceCol=det.priceCol;totalCol=det.totalCol;startRow=det.headerRow;}
   else{descCol=2;unitCol=null;qtyCol=4;priceCol=5;totalCol=6;startRow=range.s.r;} // legacy fixed layout
   function cellAt(r,c){return c==null?null:sheet[XLSX.utils.encode_cell({r:r,c:c})];}
-  var rows=[],currentCategory='כללי';
+  var rows=[],currentCategory='כללי',sums=[],dupHeads=[];
   for(var r=startRow;r<=range.e.r;r++){
     var descCell=cellAt(r,descCol);
     var desc=descCell!=null&&descCell.v!=null?String(descCell.v).trim().replace(/\s+/g,' '):'';
@@ -6368,20 +6370,53 @@ function parseBudgetExcelSheet(sheet){
     }
     var hasPrice=unitPrice!=null&&unitPrice>0;
     var isSumRow=/^סה/.test(unitVal)||/^סה["'׳״]?כ/.test(desc);
+    var totalVal=parseExcelCellNumber(totalCell&&totalCell.v);
     if(!hasPrice){
-      if(isSumRow)continue;                                  // skip "סה״כ ..." subtotal rows
-      if(isBudgetCategoryName(desc)){currentCategory=desc;continue;} // real section header
-      rows.push({description:desc,category:currentCategory,unit:'',quantity:0,unitPrice:0,isNote:true}); // meaningful note (no price)
+      if(isSumRow){sums.push({row:r+1,desc:desc,total:totalVal,cat:currentCategory});continue;} // "סה״כ ..." rows: not lines, but kept to check the import
+      // A section title is a name alone on its row. A row with a unit, quantity or total cell is a line, even if its text is a section name (e.g. "מטבח | קומפלט").
+      var bareRow=!unitVal&&qty==null&&!hasTotalCell;
+      if(isBudgetCategoryName(desc)&&bareRow){currentCategory=desc;continue;}
+      if(isBudgetCategoryName(desc))dupHeads.push(r+1);
+      // a line without a price: keep its text, unit and quantity (e.g. "מאווררי תקרה - קנייה · יח' · 6")
+      rows.push({description:desc,category:currentCategory,unit:unitVal?normalizeBudgetUnit(unitVal):'',quantity:qty!=null&&qty>0?qty:0,unitPrice:0,isNote:true,row:r+1});
       continue;
     }
     if(qty==null||qty<0)qty=0;                 // optional/estimate rows keep their price, qty 0
     rows.push({description:desc,category:currentCategory,
-      unit:normalizeBudgetUnit(unitVal||BUDGET_DEFAULT_UNIT),quantity:qty,unitPrice:unitPrice});
+      unit:normalizeBudgetUnit(unitVal||BUDGET_DEFAULT_UNIT),quantity:qty,unitPrice:unitPrice,row:r+1,fileTotal:totalVal});
   }
   if(!rows.length)return {ok:false};
   var categories=[],seenCat={};
   rows.forEach(function(x){if(x.category&&!seenCat[x.category]){seenCat[x.category]=1;categories.push(x.category);}});
-  return {ok:true,rows:rows,categories:categories};
+  return {ok:true,rows:rows,categories:categories,sums:sums,dupHeads:dupHeads};
+}
+/* Check the parsed rows against the file's own numbers, before anything is imported:
+   - every priced line: quantity × unit price = the line total written in the file;
+   - every "סה״כ" row: equals the lines it sums (its section, everything so far, or everything so far + VAT). */
+function checkBudgetExcelImport(sheet){
+  var rows=sheet.rows||[],sums=sheet.sums||[],issues=[],ok=0,checked=0,round=function(v){return Math.round(v*100)/100;};
+  rows.forEach(function(x){if(x.isNote||x.fileTotal==null)return;checked++;var t=round(x.quantity*x.unitPrice);
+    if(Math.abs(t-x.fileTotal)>0.5)issues.push('שורה '+x.row+' "'+String(x.description).slice(0,40)+'": באקסל '+fmtMoney(x.fileTotal)+', כמות × מחיר = '+fmtMoney(t));else ok++;});
+  var bySec={},run=0,ri=0,lines=rows.filter(function(x){return !x.isNote;}),sumsOk=0,sumsChecked=0;
+  var grandAll=lines.reduce(function(a,x){return a+x.quantity*x.unitPrice;},0);
+  sums.forEach(function(sm){
+    while(ri<rows.length&&rows[ri].row<sm.row){var x=rows[ri++];if(!x.isNote){var v=x.quantity*x.unitPrice;run+=v;bySec[x.category]=(bySec[x.category]||0)+v;}}
+    if(sm.total==null||!sm.total)return;
+    sumsChecked++;var t=sm.total,cands=[bySec[sm.cat]||0,run,run*(1+BUDGET_VAT_RATE),grandAll,grandAll*(1+BUDGET_VAT_RATE)];
+    Object.keys(bySec).forEach(function(k){cands.push(bySec[k]);});
+    if(cands.some(function(c){return Math.abs(c-t)<=1;}))sumsOk++;
+    else issues.push('שורת סיכום '+sm.row+' "'+sm.desc.slice(0,40)+'": באקסל '+fmtMoney(t)+', ולא נמצא סכום שורות שמתאים לה');});
+  return {ok:!issues.length,issues:issues,lines:lines.length,notes:rows.length-lines.length,total:grandAll,linesChecked:checked,sumsChecked:sumsChecked,sumsOk:sumsOk,dupHeads:sheet.dupHeads||[]};
+}
+function renderBudgetExcelCheck(){
+  var el=document.getElementById('budget-excel-check');if(!el)return;
+  var sh=null;for(var i=0;i<budgetExcelSheets.length;i++){if(budgetExcelSheets[i].name===budgetExcelSheetName){sh=budgetExcelSheets[i];break;}}
+  if(!sh){el.innerHTML='';el.style.display='none';return;}
+  var c=checkBudgetExcelImport(sh);el.style.display='block';
+  el.className='budget-excel-check '+(c.ok?'ok':'bad');
+  el.innerHTML=c.ok?'<b>✓ הקובץ נקרא במלואו ונבדק מול עצמו</b><br>'+c.lines+' שורות עם מחיר · '+c.notes+' שורות בלי מחיר / הערות · סה"כ '+fmtMoney(c.total)+' לפני מע"מ'+
+      (c.sumsChecked?'<br>כל '+c.sumsChecked+' שורות הסיכום באקסל ("סה״כ") תואמות לשורות שנקראו.':'')+(c.linesChecked?'<br>בכל '+c.linesChecked+' השורות: כמות × מחיר = הסכום שבאקסל.':'')
+    :'<b>⚠ יש לבדוק לפני הייבוא ('+c.issues.length+')</b><ul>'+c.issues.slice(0,12).map(function(t){return '<li>'+escHtml(t)+'</li>';}).join('')+(c.issues.length>12?'<li>ועוד '+(c.issues.length-12)+'...</li>':'')+'</ul>';
 }
 // Scans EVERY sheet in the workbook (budget files often keep the pricing on a later sheet)
 // and returns all sheets that hold real budget lines, best (most lines) first.
@@ -6392,7 +6427,7 @@ function parseBudgetExcelWorkbook(arrayBuffer){
   var sheets=[];
   wb.SheetNames.forEach(function(name){
     var parsed=parseBudgetExcelSheet(wb.Sheets[name]);
-    if(parsed.ok)sheets.push({name:name,rows:parsed.rows,categories:parsed.categories});
+    if(parsed.ok)sheets.push({name:name,rows:parsed.rows,categories:parsed.categories,sums:parsed.sums,dupHeads:parsed.dupHeads});
   });
   if(!sheets.length)return {ok:false,message:'לא נמצאו שורות תקינות באף גיליון — ודא שיש עמודת תיאור, עמודת מחיר יחידה וכותרות (כמות / מחיר / סכום) בקובץ'};
   sheets.sort(function(a,b){return b.rows.length-a.rows.length;});
@@ -6425,7 +6460,7 @@ function renderBudgetExcelPreview(){
   body.innerHTML=budgetExcelImportRows.map(function(row,idx){
     var cat=useFileCats?(row.category||'—'):'';
     var lineTotal=calcBudgetLineTotal(row.quantity,row.unitPrice);
-    return '<tr><td>'+(idx+1)+'</td>'+(useFileCats?'<td>'+escHtml(cat)+'</td>':'')+'<td>'+escHtml(row.description)+'</td><td>'+escHtml(row.unit||BUDGET_DEFAULT_UNIT)+'</td><td class="num">'+row.quantity+'</td><td class="num">'+fmtMoney(row.unitPrice)+'</td><td class="num">'+fmtMoney(lineTotal)+'</td></tr>';
+    return '<tr><td>'+(idx+1)+'</td>'+(useFileCats?'<td>'+escHtml(cat)+'</td>':'')+'<td>'+escHtml(row.description)+'</td><td>'+escHtml(row.isNote&&!row.unit?'':(row.unit||BUDGET_DEFAULT_UNIT))+'</td><td class="num">'+row.quantity+'</td><td class="num">'+fmtMoney(row.unitPrice)+'</td><td class="num">'+fmtMoney(lineTotal)+'</td></tr>';
   }).join('');
   if(btn)btn.disabled=false;
 }
@@ -6478,6 +6513,7 @@ function applyBudgetExcelSheet(name){
   updateBudgetExcelSheetUI();
   updateBudgetExcelCategoriesUI();
   renderBudgetExcelPreview();
+  renderBudgetExcelCheck();
 }
 function onBudgetExcelSheetChange(){
   var sel=document.getElementById('budget-excel-sheet');
@@ -6948,6 +6984,18 @@ async function renderBudgetBuilder(el){
   budgetBuilderInitInflight=initP;
   try{await initP;}finally{if(budgetBuilderInitInflight===initP)budgetBuilderInitInflight=null;}
 }
+async function verifySavedBudgetItems(budgetId,sent){
+  var res=await supabase.from('budget_items').select('description,category,unit,quantity,unit_price,sort_order').eq('budget_id',budgetId).order('sort_order',{ascending:true}).order('id',{ascending:true}).range(0,4999);
+  if(res.error)return {ok:false,count:0,issues:['לא ניתן לקרוא את התקציב לבדיקה: '+res.error.message]};
+  var got=res.data||[],issues=[];
+  if(got.length!==sent.length)issues.push('נשלחו '+sent.length+' שורות, נשמרו '+got.length);
+  for(var i=0;i<Math.min(got.length,sent.length);i++){var a=sent[i],b=got[i],w=[];
+    if(String(a.description)!==String(b.description))w.push('תיאור');if(String(a.category)!==String(b.category))w.push('פרק');
+    if((Number(a.quantity)||0)!==(Number(b.quantity)||0))w.push('כמות');if((Number(a.unit_price)||0)!==(Number(b.unit_price)||0))w.push('מחיר');
+    if(String(a.unit||'')!==String(b.unit||''))w.push('יחידה');
+    if(w.length)issues.push('שורה '+(i+1)+' "'+String(a.description).slice(0,30)+'": '+w.join(', '));}
+  return {ok:!issues.length,count:got.length,issues:issues};
+}
 async function syncApprovedBudgetToProject(budgetId,name,marginPercent){
   var linked=getProjectApprovedFromBudget(budgetId);if(!linked)return '';
   var t=calcBudgetTotals(getBudgetItems(budgetId),marginPercent);
@@ -7004,6 +7052,8 @@ async function saveBudgetBuilder(){
       return;
     }
   }
+  var sent=items.map(function(it,i){return buildBudgetItemDbRow(it,budgetId,i);});
+  var verify=await verifySavedBudgetItems(budgetId,sent);
   syncBudgetItemsCacheFromDraft(budgetId);
   var idx=budgetsCache.findIndex(function(x){return x.id===budgetId;});
   if(idx>=0){
@@ -7020,7 +7070,8 @@ async function saveBudgetBuilder(){
   // Keep the project this budget was approved into in step: its total, name and pre-VAT figure follow every edit.
   var syncedProj=await syncApprovedBudgetToProject(budgetId,clientName,budgetRow.margin_percent);
   await persistActivityLogOnly();
-  showToast(syncedProj?'התקציב נשמר ועודכן גם בפרויקט "'+syncedProj+'"':'התקציב נשמר בהצלחה');
+  if(verify.ok)showToast((syncedProj?'התקציב נשמר ועודכן גם בפרויקט "'+syncedProj+'"':'התקציב נשמר')+' · נבדק: '+verify.count+' שורות תואמות');
+  else{alert('התקציב נשמר, אבל הבדיקה מצאה הבדל בין מה שנשלח למה שנשמר:\n\n'+verify.issues.slice(0,8).join('\n')+(verify.issues.length>8?'\n...':'')+'\n\nפתח את התקציב ושמור שוב, ואם זה חוזר, פנה לתמיכה.');}
   budgetBuilderMode='list';
   budgetBuilderDraft=null;
   editingBudgetId=null;
