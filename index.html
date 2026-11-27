@@ -7919,6 +7919,25 @@ function applyWeeklyValues(vals){
   var fields=d.querySelectorAll('input,textarea,select');
   for(var i=0;i<fields.length;i++){ if(i<vals.length)fields[i].value=vals[i]; }
 }
+/* Where to end a PDF page: the lowest fully white strip of pixels in the page (down to ~35% full),
+   so a page break never cuts through a line of text, a table row, a photo or a card. */
+function pdfSmartChunk(canvas,srcCtx,y0,pageChunkPx){
+  var maxChunk=Math.min(pageChunkPx,canvas.height-y0);
+  if(y0+maxChunk>=canvas.height)return maxChunk;
+  var minKeep=Math.max(60,Math.floor(maxChunk*0.35));
+  // Scan only the INTERIOR width: a framed document has a border on its edges, and sampling
+  // from x=0 would hit a non-white pixel on every row and never find a break.
+  var x0=Math.floor(canvas.width*0.06),x1=Math.floor(canvas.width*0.94);
+  try{
+    var data=srcCtx.getImageData(0,y0,canvas.width,maxChunk).data;
+    for(var yy=maxChunk-1;yy>=minKeep;yy--){
+      var white=true,base=yy*canvas.width*4;
+      for(var x=x0;x<x1;x+=3){var i=base+x*4;if(data[i]<245||data[i+1]<245||data[i+2]<245){white=false;break;}}
+      if(white)return yy;
+    }
+  }catch(e){/* tainted canvas: hard cut */}
+  return maxChunk;
+}
 async function buildPdfFromElement(el,embedKw){
   if(document.fonts&&document.fonts.ready)await document.fonts.ready;
   await new Promise(function(r){setTimeout(r,150);});
@@ -7928,26 +7947,7 @@ async function buildPdfFromElement(el,embedKw){
   var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
   var margin=10,pageW=210,pageH=297,imgW=pageW-margin*2,pxPerMm=canvas.width/imgW,pageChunkPx=Math.floor((pageH-margin*2)*pxPerMm),sY=0,pageNum=0;
   var srcCtx=canvas.getContext('2d');
-  function smartChunk(y0){
-    var maxChunk=Math.min(pageChunkPx,canvas.height-y0);
-    if(y0+maxChunk>=canvas.height)return maxChunk;
-    // Scan the whole page (down to ~35% full) for the lowest fully-white row, so
-    // a page break never lands inside a photo, a 2-row photo block, or a content
-    // card — it is pushed to just above the block instead of cutting through it.
-    var minKeep=Math.max(60,Math.floor(maxChunk*0.35));
-    // Scan only the INTERIOR width — the .sr-doc has a 1px border, so sampling
-    // from x=0 would hit a non-white pixel on every row and never find a break.
-    var x0=Math.floor(canvas.width*0.06),x1=Math.floor(canvas.width*0.94);
-    try{
-      var data=srcCtx.getImageData(0,y0,canvas.width,maxChunk).data;
-      for(var yy=maxChunk-1;yy>=minKeep;yy--){
-        var white=true,base=yy*canvas.width*4;
-        for(var x=x0;x<x1;x+=5){var i=base+x*4;if(data[i]<245||data[i+1]<245||data[i+2]<245){white=false;break;}}
-        if(white)return yy;
-      }
-    }catch(e){/* tainted canvas — hard cut */}
-    return maxChunk;
-  }
+  function smartChunk(y0){return pdfSmartChunk(canvas,srcCtx,y0,pageChunkPx);}
   while(sY<canvas.height){
     var chunkPx=smartChunk(sY);
     var pc=document.createElement('canvas');pc.width=canvas.width;pc.height=chunkPx;
@@ -8524,9 +8524,9 @@ async function rasterizeElementToPdf(el,fileName,embedKw){
   var imgW=pageW-margin*2;
   var pxPerMm=canvas.width/imgW;
   var pageChunkPx=Math.floor((pageH-margin*2)*pxPerMm);
-  var sY=0,pageNum=0;
+  var sY=0,pageNum=0,srcCtx=canvas.getContext('2d');
   while(sY<canvas.height){
-    var chunkPx=Math.min(pageChunkPx,canvas.height-sY);
+    var chunkPx=pdfSmartChunk(canvas,srcCtx,sY,pageChunkPx);
     var pageCanvas=document.createElement('canvas');
     pageCanvas.width=canvas.width;
     pageCanvas.height=chunkPx;
