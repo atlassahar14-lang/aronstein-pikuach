@@ -7919,6 +7919,37 @@ function applyWeeklyValues(vals){
   var fields=d.querySelectorAll('input,textarea,select');
   for(var i=0;i<fields.length;i++){ if(i<vals.length)fields[i].value=vals[i]; }
 }
+/* Page breaks by structure: in the clone html2canvas lays out, record where every table row ends and
+   where every block outside a table ends. A page then ends at the lowest such line that fits, so a row
+   (even a 3-line one) is never split between pages. */
+function pdfCollectBreaks(root){
+  var rb=root.getBoundingClientRect(),top=rb.top,h=rb.height,rows=[],blocks=[];
+  // a heading row (column titles, a section title row) stays with the row after it: no break right below it
+  var isHead=function(tr){return tr.closest('thead')||/cat|group|section|head/i.test(tr.className||'')||(tr.cells.length&&[].every.call(tr.cells,function(c){return c.tagName==='TH';}));};
+  root.querySelectorAll('tr').forEach(function(tr){var b=tr.getBoundingClientRect();if(b.height>0&&!isHead(tr))rows.push(b.bottom-top);});
+  root.querySelectorAll('div,p,h1,h2,h3,h4,h5,li,ul,ol,table,section,header,footer,img,figure').forEach(function(e){
+    if(e.closest('tr'))return;var b=e.getBoundingClientRect();if(!(b.height>0))return;
+    // a title bar followed directly by its table stays with it
+    var nx=e.nextElementSibling;if(!(nx&&nx.tagName==='TABLE'))blocks.push(b.bottom-top);if(e.tagName!=='TABLE')blocks.push(b.top-top);});
+  return {h:h,w:rb.width,rows:rows,blocks:blocks};
+}
+function pdfRowIsBlank(canvas,srcCtx,y){
+  try{var W=canvas.width,x0=Math.floor(W*0.06),x1=Math.floor(W*0.94),d=srcCtx.getImageData(0,Math.max(0,y-60),W,61).data,n=0,cols=[];
+    // columns dark in most of the 60 rows above are vertical lines: ignore them
+    for(var x=x0;x<x1;x+=3){var c=0;for(var r=0;r<61;r+=3){var i=(r*W+x)*4;if(d[i]<245||d[i+1]<245||d[i+2]<245)c++;}if(c<18)cols.push(x);}
+    var base=60*W*4;for(var k=0;k<cols.length;k++){var j=base+cols[k]*4;if(d[j]<245||d[j+1]<245||d[j+2]<245)return false;}return true;
+  }catch(e){return false;}
+}
+function pdfStructuredChunk(canvas,srcCtx,y0,pageChunkPx,brk){
+  var maxChunk=Math.min(pageChunkPx,canvas.height-y0);
+  if(y0+maxChunk>=canvas.height||!brk)return pdfSmartChunk(canvas,srcCtx,y0,pageChunkPx);
+  var minY=y0+Math.max(60,Math.floor(maxChunk*0.35)),limit=y0+maxChunk,best=-1;
+  // a table-row boundary is always safe; a block edge only if nothing is drawn across it (side-by-side cards)
+  for(var i=0;i<brk.rows.length;i++){var y=brk.rows[i];if(y>minY&&y<=limit&&y>best)best=y;}
+  var bestBlock=-1;for(var j=0;j<brk.blocks.length;j++){var yb=brk.blocks[j];if(yb>minY&&yb<=limit&&yb>bestBlock&&yb>best&&pdfRowIsBlank(canvas,srcCtx,yb))bestBlock=yb;}
+  if(bestBlock>best)best=bestBlock;
+  return best>0?best-y0:pdfSmartChunk(canvas,srcCtx,y0,pageChunkPx);
+}
 /* Where to end a PDF page: the lowest fully white strip of pixels in the page (down to ~35% full),
    so a page break never cuts through a line of text, a table row, a photo or a card. */
 function pdfSmartChunk(canvas,srcCtx,y0,pageChunkPx){
@@ -7929,10 +7960,16 @@ function pdfSmartChunk(canvas,srcCtx,y0,pageChunkPx){
   // from x=0 would hit a non-white pixel on every row and never find a break.
   var x0=Math.floor(canvas.width*0.06),x1=Math.floor(canvas.width*0.94);
   try{
-    var data=srcCtx.getImageData(0,y0,canvas.width,maxChunk).data;
+    var data=srcCtx.getImageData(0,y0,canvas.width,maxChunk).data,W=canvas.width;
+    var dark=function(i){return data[i]<245||data[i+1]<245||data[i+2]<245;};
+    // Vertical lines (table borders, frames) are dark in almost every row of the page: ignore those columns,
+    // so the gap between two framed table rows still counts as a place to cut.
+    var cols=[],cnt=[],rows=0;for(var x=x0;x<x1;x+=3){cols.push(x);cnt.push(0);}
+    for(var ys=0;ys<maxChunk;ys+=4){rows++;var b=ys*W*4;for(var c=0;c<cols.length;c++)if(dark(b+cols[c]*4))cnt[c]++;}
+    var useCols=cols.filter(function(x,c){return cnt[c]<rows*0.9;});
     for(var yy=maxChunk-1;yy>=minKeep;yy--){
-      var white=true,base=yy*canvas.width*4;
-      for(var x=x0;x<x1;x+=3){var i=base+x*4;if(data[i]<245||data[i+1]<245||data[i+2]<245){white=false;break;}}
+      var white=true,base=yy*W*4;
+      for(var k=0;k<useCols.length;k++){if(dark(base+useCols[k]*4)){white=false;break;}}
       if(white)return yy;
     }
   }catch(e){/* tainted canvas: hard cut */}
@@ -8516,9 +8553,17 @@ async function rasterizeElementToPdf(el,fileName,embedKw){
   var libs=await loadJsPdfLib();
   // Force a desktop-width render so the PDF uses the desktop layout even when exported
   // from a phone (otherwise html2canvas captures the cramped mobile layout).
-  var renderWidth=1024;
-  var canvas=await libs.html2canvas(el,{scale:pdfSafeScale(el),useCORS:true,backgroundColor:'#ffffff',logging:false,onclone:srStripEmptyPhotosInClone,
-    windowWidth:renderWidth,windowHeight:Math.max(window.innerHeight||0,(el.scrollHeight||0)+200,1400)});
+  var renderWidth=1024,brkCss=null;
+  el.setAttribute('data-pdf-root','1');
+  var canvas;
+  try{
+    canvas=await libs.html2canvas(el,{scale:pdfSafeScale(el),useCORS:true,backgroundColor:'#ffffff',logging:false,
+      onclone:function(doc){srStripEmptyPhotosInClone(doc);try{var r=doc.querySelector('[data-pdf-root]');if(r)brkCss=pdfCollectBreaks(r);}catch(e){brkCss=null;}},
+      windowWidth:renderWidth,windowHeight:Math.max(window.innerHeight||0,(el.scrollHeight||0)+200,1400)});
+  }finally{el.removeAttribute('data-pdf-root');}
+  // break lines measured in CSS px, turned into canvas px (only when the measured height matches the image)
+  var brk=null;
+  if(brkCss&&brkCss.h>0){var k=canvas.height/brkCss.h;if(k>0&&brkCss.w>0&&Math.abs(canvas.width/brkCss.w-k)/k<0.03)brk={rows:brkCss.rows.map(function(y){return Math.round(y*k);}),blocks:brkCss.blocks.map(function(y){return Math.round(y*k);})};}
   var doc=new libs.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
   var margin=10,pageW=210,pageH=297;
   var imgW=pageW-margin*2;
@@ -8526,7 +8571,7 @@ async function rasterizeElementToPdf(el,fileName,embedKw){
   var pageChunkPx=Math.floor((pageH-margin*2)*pxPerMm);
   var sY=0,pageNum=0,srcCtx=canvas.getContext('2d');
   while(sY<canvas.height){
-    var chunkPx=pdfSmartChunk(canvas,srcCtx,sY,pageChunkPx);
+    var chunkPx=pdfStructuredChunk(canvas,srcCtx,sY,pageChunkPx,brk);
     var pageCanvas=document.createElement('canvas');
     pageCanvas.width=canvas.width;
     pageCanvas.height=chunkPx;
@@ -8975,9 +9020,9 @@ function renderProjectDetail(el){
     '<div style="display:flex;flex-direction:column;gap:14px">'+
     p.updates.slice().reverse().map(function(u){
       return '<div class="card"><div class="flex-between" style="margin-bottom:8px">'+
-        '<div style="font-size:16px;font-weight:700;color:var(--primary)">'+u.title+'</div>'+
-        '<div style="font-size:12px;color:var(--text-muted)">'+u.date+'</div></div>'+
-        '<p style="font-size:14px;line-height:1.6">'+u.body+'</p>'+
+        '<div style="font-size:16px;font-weight:700;color:var(--primary)">'+escHtml(u.title||'עדכון')+'</div>'+
+        '<div style="font-size:12px;color:var(--text-muted)">'+escHtml(u.date||'')+'</div></div>'+
+        ((u.body||u.text||u.content)?'<p style="font-size:14px;line-height:1.6;white-space:pre-line">'+escHtml(u.body||u.text||u.content)+'</p>':'')+
         renderUpdateMediaHtml(u)+
         '<button class="btn btn-danger btn-sm admin-only-action" style="margin-top:10px" onclick="deleteUpdate(\''+u.id+'\')">'+ic('trash-2')+' מחק</button>'+
         '</div>';
