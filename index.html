@@ -1812,9 +1812,12 @@ function openDocInAutodeskViewer(docId){
   window.open(getAutodeskViewerUrl(doc.url),'_blank','noopener,noreferrer');
 }
 function renderProjectDocsTabHtml(p){
+  // The client sees only folders that hold files (admin sees all, to upload into them).
+  var adm=isAdmin(),cats=adm?DOC_CATEGORIES:DOC_CATEGORIES.filter(function(cat){return (p.documents||[]).some(function(d){return d.category===cat;});});
+  if(!adm&&!cats.length)return '<div class="section-title" style="margin-bottom:16px">'+ic('folder')+' מסמכים ותוכניות</div><div class="empty-state card"><div class="empty-icon">'+ic('folder')+'</div><p>עוד לא הועלו מסמכים לפרויקט. כשהמפקח יעלה תוכניות, דוחות והיתרים, הם יופיעו כאן.</p></div>';
   return '<div class="section-title" style="margin-bottom:16px">'+ic('folder')+' מסמכים ותוכניות</div>'+
     '<div class="doc-categories">'+
-    DOC_CATEGORIES.map(function(cat){
+    cats.map(function(cat){
       var catIcon=DOC_CATEGORY_ICONS;
       var docs=(p.documents||[]).filter(function(d){return d.category===cat;});
       return '<div class="doc-category"><div class="doc-category-title">'+ic(catIcon[cat]||'file-text')+' '+cat+'</div>'+
@@ -3341,10 +3344,13 @@ function renderGanttChartHtml(phases){
     todayLine='<span class="gantt-today-line" style="right:'+todayPct+'%" title="היום"></span>';
   }
   var ticks=ganttMonthTicks(minT,maxT);
-  var axisHtml=todayLine+ticks.map(function(t){
+  // Many months on a narrow chart: name every 2nd or 3rd month so the labels never overlap (all divider lines stay).
+  var every=ticks.length>16?3:ticks.length>8?2:1,shown=0;
+  var axisHtml=todayLine+ticks.map(function(t,ti){
     var pct=((t.getTime()-minT)/range)*100;
     if(pct<0||pct>100)return '';
-    var lbl=t.toLocaleDateString('he-IL',{month:'short',year:'2-digit'});
+    if(ti%every!==0)return '<span class="gantt-axis-tick" style="right:'+pct+'%" aria-hidden="true"></span>';
+    var lbl=t.toLocaleDateString('he-IL',{month:'short'})+((shown++===0||t.getMonth()===0)?' '+String(t.getFullYear()).slice(2):'');
     return '<span class="gantt-axis-tick" style="right:'+pct+'%">'+escHtml(lbl)+'</span>';
   }).join('');
   var rowsHtml=items.map(function(item){
