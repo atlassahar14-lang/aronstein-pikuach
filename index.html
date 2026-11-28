@@ -1106,11 +1106,12 @@ img,svg,video,canvas{max-width:100%;height:auto}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="js/client-plan.js?v=20261126g"></script>
-<script src="js/client-budget.js?v=20261126g"></script>
-<script src="js/expenses.js?v=20261126g"></script>
-<script src="js/a11y.js?v=20261126g"></script>
-<script src="js/mobile-fold.js?v=20261126g"></script>
+<script src="js/client-plan.js?v=20261128a"></script>
+<script src="js/client-budget.js?v=20261128a"></script>
+<script src="js/advisor.js?v=20261128a"></script>
+<script src="js/expenses.js?v=20261128a"></script>
+<script src="js/a11y.js?v=20261128a"></script>
+<script src="js/mobile-fold.js?v=20261128a"></script>
 
 <!-- Modal: Project -->
 <div class="modal-overlay" id="modal-project">
@@ -1580,6 +1581,7 @@ const supabaseHelper=createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistS
 function ic(n){return '<i data-lucide="'+n+'"></i>';}
 function tabIc(name){
   var icons={
+    'sparkles':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>',
     'file-spreadsheet':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2M8 17h2M14 13h2M14 17h2"/></svg>',
     'calendar-range':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M17 14h-6"/><path d="M13 18H7"/><path d="M7 14h.01"/><path d="M17 18h.01"/></svg>',
     'layout-dashboard':'<svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
@@ -2773,7 +2775,8 @@ const DEFAULT_CLIENT_VISIBILITY={
   suppliers:true,
   plan:true,
   approved_budget:true,
-  price_comparisons:true
+  price_comparisons:true,
+  advisor:false
 };
 const CLIENT_VISIBILITY_LABELS=[
   ['budget','תקציב'],
@@ -2787,7 +2790,8 @@ const CLIENT_VISIBILITY_LABELS=[
   ['suppliers','ספקים'],
   ['plan','תקציב וזמנים'],
   ['approved_budget','התקציב המפורט'],
-  ['price_comparisons','השוואת מחירים']
+  ['price_comparisons','השוואת מחירים'],
+  ['advisor','יועץ הפרויקט (דמו)']
 ];
 const CLIENT_TAB_TO_VISIBILITY={
   budget:'budget',
@@ -2798,7 +2802,8 @@ const CLIENT_TAB_TO_VISIBILITY={
   docs:'documents',
   plan:'plan',
   'approved-budget':'approved_budget',
-  'price-comparisons':'price_comparisons'
+  'price-comparisons':'price_comparisons',
+  advisor:'advisor'
 };
 const DEFAULT_PROJECT_MILESTONES=[
   {title:'היתר בניה',priority:'high'},
@@ -2999,6 +3004,7 @@ function getProjectTabDefs(messagesTabBadge){
     ['overview','סקירה','layout-dashboard',''],
     ['plan','תקציב וזמנים','calendar-range',''],
     ['approved-budget','התקציב','file-spreadsheet',''],
+    ['advisor','יועץ הפרויקט','sparkles',''],
     ['timeline','לוח זמנים','calendar',''],
     ['budget','מעקב תשלומים','banknote',(window.exPendingBadge?window.exPendingBadge():'')],
     ['docs','מסמכים','folder',''],
@@ -7469,12 +7475,15 @@ function renderSidebar(){
     if(clientVis.milestones){
       clientNav+='<div class="nav-item '+(currentView==='milestones'?'active':'')+'" onclick="showView(\'milestones\',\''+currentUser.projectId+'\')"><span class="nav-icon">'+ic('milestone')+'</span> אבני דרך</div>';
     }
+    if(clientVis.advisor){
+      clientNav+='<div class="nav-item '+(currentView==='project'&&currentTab==='advisor'?'active':'')+'" onclick="adOpen()"><span class="nav-icon">'+ic('sparkles')+'</span> יועץ הפרויקט</div>';
+    }
     nav.innerHTML=clientNav;
   }
   refreshIcons(nav);
 }
 
-var TAB_LABELS={overview:'סקירה',plan:'תקציב וזמנים','approved-budget':'התקציב',suppliers:'ספקים',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-builder':'בניית תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה','finish-selections':'בחירות גמרים','price-comparisons':'השוואת מחירים',punch:'ליקויים','daily-log':'יומן עבודה',updates:'עדכונים',messages:'שאלות'};
+var TAB_LABELS={overview:'סקירה',plan:'תקציב וזמנים','approved-budget':'התקציב',advisor:'יועץ הפרויקט',suppliers:'ספקים',timeline:'לוח זמנים',budget:'מעקב תשלומים','budget-builder':'בניית תקציב','budget-analysis':'ניתוח כספי',financial:'דוח פיננסי',docs:'מסמכים',gallery:'גלריה','finish-selections':'בחירות גמרים','price-comparisons':'השוואת מחירים',punch:'ליקויים','daily-log':'יומן עבודה',updates:'עדכונים',messages:'שאלות'};
 var MOBILE_VIEW_TITLES={dashboard:'דשבורד',projects:'פרויקטים',milestones:'אבני דרך','budget-builder':'בניית תקציב','weekly-form':'טופס שבועי','supervision-report':'דוח פיקוח',clients:'לקוחות',subcontractors:'קבלני משנה','activity-log':'לוג פעולות',settings:'הגדרות',project:'הפרויקט שלי'};
 function updateMobileHeaderTitle(text){
   var el=document.getElementById('mobile-header-title');
@@ -8926,6 +8935,8 @@ function renderProjectDetail(el){
 
   // CLIENT PLAN TAB
   if(isAdminUser||isClientTabVisible(p,'plan')){try{if(typeof window.renderClientPlanTabHtml==='function')html+=window.renderClientPlanTabHtml(p,isAdminUser,currentTab);}catch(cpErr){console.error('client plan tab',cpErr);html+='<div id="tab-plan" class="tab-content '+(currentTab==='plan'?'active':'')+'"><p>שגיאה בטעינת לשונית התקציב והזמנים</p></div>';}}
+  // PROJECT ADVISOR TAB (demo; clients only when switched on for the project)
+  if(isAdminUser||isClientTabVisible(p,'advisor')){try{if(typeof window.renderAdvisorTabHtml==='function')html+=window.renderAdvisorTabHtml(p,isAdminUser,currentTab);}catch(adErr){console.error('advisor tab',adErr);html+='<div id="tab-advisor" class="tab-content '+(currentTab==='advisor'?'active':'')+'"><p>שגיאה בטעינת היועץ</p></div>';}}
   // APPROVED BUDGET TAB (read only)
   if(isAdminUser||(p.approvedBudgetId&&isClientTabVisible(p,'approved-budget'))){try{if(typeof window.renderClientBudgetTabHtml==='function')html+=window.renderClientBudgetTabHtml(p,isAdminUser,currentTab);}catch(cbErr){console.error('client budget tab',cbErr);html+='<div id="tab-approved-budget" class="tab-content '+(currentTab==='approved-budget'?'active':'')+'"><p>שגיאה בטעינת התקציב</p></div>';}}
 
